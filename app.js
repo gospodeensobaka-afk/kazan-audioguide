@@ -111,7 +111,7 @@ function initMap() {
                         {},
                         {
                             iconLayout: "default#image",
-                            iconImageHref: "https://gospodeensobaka-afk.github.io/kazan-audioguide/assets/arrow-green.png",
+                            iconImageHref: "https://gospodeensobaka-afk.github.io/kazan-audioguide/arrow-green.png",
                             iconImageSize: [40, 40],
                             iconImageOffset: [-20, -20],
                             iconImageRotate: true
@@ -195,3 +195,4 @@ document.addEventListener("DOMContentLoaded", () => {
         setStatus("Ошибка загрузки Яндекс.Карт.");
     }
 });
+
