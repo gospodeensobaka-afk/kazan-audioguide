@@ -43,11 +43,9 @@ function checkRadius(userCoords) {
     if (foundActive && activePointId !== foundActive.id) {
         activePointId = foundActive.id;
         setStatus(`Вы вошли в зону: ${foundActive.name}`);
-        console.log("ENTER:", foundActive.name);
     }
 
     if (!foundActive && activePointId !== null) {
-        console.log("EXIT:", activePointId);
         setStatus("Вы вышли из зоны");
         activePointId = null;
     }
@@ -110,10 +108,7 @@ function initMap() {
                         coords,
                         {},
                         {
-                            iconLayout: "default#image",
-                            iconImageHref: "https://gospodeensobaka-afk.github.io/kazan-audioguide/arrow-green.png",
-                            iconImageSize: [40, 40],
-                            iconImageOffset: [-20, -20],
+                            preset: "islands#blueNavigationIcon",
                             iconImageRotate: true
                         }
                     );
@@ -125,10 +120,7 @@ function initMap() {
                 map.setCenter(coords, 16);
                 setStatus("Геолокация получена.");
             },
-            (err) => {
-                console.warn("Ошибка геолокации", err);
-                setStatus("Не удалось получить геолокацию.");
-            },
+            () => setStatus("Не удалось получить геолокацию."),
             {
                 enableHighAccuracy: true,
                 timeout: 10000,
@@ -153,9 +145,7 @@ function initMap() {
 
                 setStatus("Обновление геолокации…");
             },
-            (err) => {
-                console.warn("Ошибка watchPosition", err);
-            },
+            () => {},
             {
                 enableHighAccuracy: true,
                 maximumAge: 0,
@@ -170,7 +160,6 @@ function initMap() {
 
 document.addEventListener("DOMContentLoaded", () => {
     const recenterBtn = document.getElementById("recenter-btn");
-    const helpBtn = document.getElementById("help-btn");
 
     if (recenterBtn) {
         recenterBtn.addEventListener("click", () => {
@@ -183,16 +172,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    if (helpBtn) {
-        helpBtn.addEventListener("click", () => {
-            setStatus("Скоро здесь появятся подсказки.");
-        });
-    }
-
     if (window.ymaps) {
         ymaps.ready(initMap);
     } else {
         setStatus("Ошибка загрузки Яндекс.Карт.");
     }
 });
-
