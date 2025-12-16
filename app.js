@@ -21,7 +21,8 @@ function initMap() {
     map = new ymaps.Map("map", {
         center: [55.8266, 49.0820], // центр двора
         zoom: 17,
-        controls: []
+        controls: [],
+        suppressMapOpenBlock: true // отключает системный кружок геолокации
     });
 
     setStatus("Карта загружена. Загружаем точки…");
