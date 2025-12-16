@@ -22,7 +22,8 @@ function initMap() {
         center: [55.8266, 49.0820], // центр двора
         zoom: 17,
         controls: [],
-        suppressMapOpenBlock: true // отключает системный кружок геолокации
+        suppressMapOpenBlock: true,
+        suppressGeoLocation: true // ← отключает системный кружок Яндекса
     });
 
     setStatus("Карта загружена. Загружаем точки…");
