@@ -8,6 +8,10 @@ if (window.Telegram && window.Telegram.WebApp) {
 let map;
 let userGeoObject = null;
 
+// Активная точка
+let activePointId = null;
+let pointsData = [];
+
 // Обновление статуса
 function setStatus(text) {
     const el = document.getElementById("route-status");
@@ -15,15 +19,66 @@ function setStatus(text) {
 }
 
 // -----------------------------
+// ФУНКЦИЯ: расстояние между точками (метры)
+// -----------------------------
+function distanceBetween(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // радиус Земли в метрах
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
+
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// -----------------------------
+// ФУНКЦИЯ: проверка входа/выхода из радиуса
+// -----------------------------
+function checkRadius(userCoords) {
+    if (!pointsData.length) return;
+
+    let foundActive = null;
+
+    pointsData.forEach(point => {
+        const dist = distanceBetween(
+            userCoords[0], userCoords[1],
+            point.lat, point.lon
+        );
+
+        if (dist <= point.radius) {
+            foundActive = point;
+        }
+    });
+
+    // Вход в радиус
+    if (foundActive && activePointId !== foundActive.id) {
+        activePointId = foundActive.id;
+        setStatus(`Вы вошли в зону: ${foundActive.name}`);
+        console.log("ENTER:", foundActive.name);
+    }
+
+    // Выход из радиуса
+    if (!foundActive && activePointId !== null) {
+        console.log("EXIT:", activePointId);
+        setStatus("Вы вышли из зоны");
+        activePointId = null;
+    }
+}
+
+// -----------------------------
 // ИНИЦИАЛИЗАЦИЯ КАРТЫ
 // -----------------------------
 function initMap() {
     map = new ymaps.Map("map", {
-        center: [55.8266, 49.0820], // центр двора
+        center: [55.8266, 49.0820],
         zoom: 17,
         controls: [],
         suppressMapOpenBlock: true,
-        suppressGeoLocation: true // ← отключает системный кружок Яндекса
+        suppressGeoLocation: true // отключает системный кружок Яндекса
     });
 
     setStatus("Карта загружена. Загружаем точки…");
@@ -34,6 +89,8 @@ function initMap() {
     fetch("points.json")
         .then(response => response.json())
         .then(points => {
+
+            pointsData = points; // сохраняем точки для логики радиусов
 
             points.forEach(point => {
 
@@ -51,8 +108,8 @@ function initMap() {
                 // Круг радиуса
                 const circle = new ymaps.Circle(
                     [
-                        [point.lat, point.lon],   // центр
-                        point.radius              // радиус в метрах
+                        [point.lat, point.lon],
+                        point.radius
                     ],
                     {},
                     {
@@ -110,7 +167,7 @@ function initMap() {
         );
 
         // -----------------------------
-        // ОТСЛЕЖИВАНИЕ ДВИЖЕНИЯ + ПОВОРОТ СТРЕЛКИ
+        // ОТСЛЕЖИВАНИЕ ДВИЖЕНИЯ + ПОВОРОТ СТРЕЛКИ + РАДИУСЫ
         // -----------------------------
         navigator.geolocation.watchPosition(
             (pos) => {
@@ -121,6 +178,9 @@ function initMap() {
 
                     // Обновляем позицию
                     userGeoObject.geometry.setCoordinates(newCoords);
+
+                    // Проверяем радиусы
+                    checkRadius(newCoords);
 
                     // Вычисляем направление движения
                     const dx = newCoords[1] - oldCoords[1];
