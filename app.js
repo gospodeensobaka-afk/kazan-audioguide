@@ -76,9 +76,18 @@ function initMap() {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
 
                 if (!userGeoObject) {
-                    userGeoObject = new ymaps.Placemark(coords, {}, {
-                        preset: "islands#blueCircleDotIcon"
-                    });
+                    // Стрелка вместо кружка
+                    userGeoObject = new ymaps.Placemark(
+                        coords,
+                        {},
+                        {
+                            iconLayout: "default#image",
+                            iconImageHref: "https://raw.githubusercontent.com/arthur-assets/nav-icons/main/arrow-blue.png",
+                            iconImageSize: [40, 40],
+                            iconImageOffset: [-20, -20],
+                            iconImageRotation: 0
+                        }
+                    );
                     map.geoObjects.add(userGeoObject);
                 } else {
                     userGeoObject.geometry.setCoordinates(coords);
@@ -99,14 +108,25 @@ function initMap() {
         );
 
         // -----------------------------
-        // ОТСЛЕЖИВАНИЕ ДВИЖЕНИЯ
+        // ОТСЛЕЖИВАНИЕ ДВИЖЕНИЯ + ПОВОРОТ СТРЕЛКИ
         // -----------------------------
         navigator.geolocation.watchPosition(
             (pos) => {
-                const coords = [pos.coords.latitude, pos.coords.longitude];
+                const newCoords = [pos.coords.latitude, pos.coords.longitude];
 
                 if (userGeoObject) {
-                    userGeoObject.geometry.setCoordinates(coords);
+                    const oldCoords = userGeoObject.geometry.getCoordinates();
+
+                    // Обновляем позицию
+                    userGeoObject.geometry.setCoordinates(newCoords);
+
+                    // Вычисляем направление движения
+                    const dx = newCoords[1] - oldCoords[1];
+                    const dy = newCoords[0] - oldCoords[0];
+                    const angle = Math.atan2(dx, dy) * (180 / Math.PI);
+
+                    // Поворачиваем стрелку
+                    userGeoObject.options.set("iconImageRotation", angle);
                 }
 
                 setStatus("Обновление геолокации…");
