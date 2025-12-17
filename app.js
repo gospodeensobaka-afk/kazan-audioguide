@@ -14,6 +14,11 @@ function setStatus(text) {
     if (el) el.textContent = text;
 }
 
+function debug(msg) {
+    const el = document.getElementById("debug");
+    if (el) el.textContent += msg + "\n";
+}
+
 function distanceBetween(lat1, lon1, lat2, lon2) {
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -58,11 +63,11 @@ function checkRadius(userCoords) {
 
     if (foundActive && activePointId !== foundActive.id) {
         activePointId = foundActive.id;
-        console.log("ENTER ZONE:", foundActive.name);
+        debug("ENTER ZONE: " + foundActive.name);
     }
 
     if (!foundActive && activePointId !== null) {
-        console.log("EXIT ZONE:", activePointId);
+        debug("EXIT ZONE: " + activePointId);
         activePointId = null;
     }
 }
@@ -111,6 +116,7 @@ function initMap() {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
+                debug("Геолокация получена: " + coords.join(", "));
 
                 if (!userGeoObject) {
                     userGeoObject = new ymaps.Placemark(
@@ -128,13 +134,17 @@ function initMap() {
                 checkRadius(coords);
                 setStatus("Геолокация получена.");
             },
-            () => setStatus("Не удалось получить геолокацию."),
+            () => {
+                debug("Ошибка геолокации");
+                setStatus("Не удалось получить геолокацию.");
+            },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
 
         navigator.geolocation.watchPosition(
             (pos) => {
                 const newCoords = [pos.coords.latitude, pos.coords.longitude];
+                debug("watchPosition: " + newCoords.join(", "));
 
                 if (userGeoObject) {
                     const oldCoords = userGeoObject.geometry.getCoordinates();
@@ -148,13 +158,11 @@ function initMap() {
                     checkRadius(newCoords);
                 }
             },
-            () => {},
+            () => debug("Ошибка watchPosition"),
             { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
     }
 }
-
-// ---------------- SIMULATION MODE ----------------
 
 document.addEventListener("DOMContentLoaded", () => {
     const recenterBtn = document.getElementById("recenter-btn");
@@ -170,12 +178,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (simulateBtn) {
         simulateBtn.addEventListener("click", () => {
+            debug("Симуляция: кнопка нажата");
+
             if (!userGeoObject) {
+                debug("ОШИБКА: userGeoObject = null");
                 setStatus("Сначала нужно получить геолокацию.");
                 return;
             }
 
             setStatus("Симуляция движения…");
+            debug("Симуляция: старт цикла");
 
             const path = [
                 [55.8266, 49.0820],
@@ -192,11 +204,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (i >= path.length) {
                     clearInterval(interval);
                     setStatus("Симуляция завершена.");
+                    debug("Симуляция завершена");
                     return;
                 }
 
                 const newCoords = path[i];
                 const oldCoords = userGeoObject.geometry.getCoordinates();
+
+                debug("Шаг " + i + ": " + newCoords.join(", "));
 
                 userGeoObject.geometry.setCoordinates(newCoords);
 
