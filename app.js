@@ -126,12 +126,15 @@ function initMap() {
         });
 
     // =========================
-    // КАСТОМНАЯ СТРЕЛКА
+    // ИКОНКА ПОЛЬЗОВАТЕЛЯ (SVG)
     // =========================
 
-    const userLayout = ymaps.templateLayoutFactory.createClass(
-        '<div class="user-arrow"></div>'
-    );
+    const userIcon = {
+        layout: 'default#image',
+        imageHref: 'arrow.png',
+        imageSize: [32, 32],
+        imageOffset: [-16, -16]
+    };
 
     // =========================
     // ГЕОЛОКАЦИЯ
@@ -146,11 +149,8 @@ function initMap() {
                 if (!userGeoObject) {
                     userGeoObject = new ymaps.Placemark(
                         coords,
-                        { rotation: 0 },
-                        {
-                            iconLayout: userLayout,
-                            iconShape: { type: "Circle", radius: 16, center: [0, 0] }
-                        }
+                        {},
+                        userIcon
                     );
                     map.geoObjects.add(userGeoObject);
                 }
@@ -172,18 +172,7 @@ function initMap() {
                 debug("watchPosition: " + newCoords.join(", "));
 
                 if (userGeoObject) {
-                    const oldCoords = userGeoObject.geometry.getCoordinates();
-
-                    const dx = newCoords[1] - oldCoords[1];
-                    const dy = newCoords[0] - oldCoords[0];
-                    const angle = Math.atan2(dx, dy) * (180 / Math.PI);
-
                     userGeoObject.geometry.setCoordinates(newCoords);
-                    userGeoObject.properties.set("rotation", angle);
-
-                    const el = userGeoObject.getOverlaySync()?.getElement();
-                    if (el) el.style.transform = `rotate(${angle}deg)`;
-
                     checkRadius(newCoords);
                 }
             },
@@ -242,20 +231,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const newCoords = path[i];
-                const oldCoords = userGeoObject.geometry.getCoordinates();
 
                 debug("Шаг " + i + ": " + newCoords.join(", "));
 
-                const dx = newCoords[1] - oldCoords[1];
-                const dy = newCoords[0] - oldCoords[0];
-                const angle = Math.atan2(dx, dy) * (180 / Math.PI);
-
                 userGeoObject.geometry.setCoordinates(newCoords);
-                userGeoObject.properties.set("rotation", angle);
-
-                const el = userGeoObject.getOverlaySync()?.getElement();
-                if (el) el.style.transform = `rotate(${angle}deg)`;
-
                 checkRadius(newCoords);
 
                 i++;
