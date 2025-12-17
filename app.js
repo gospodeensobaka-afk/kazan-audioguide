@@ -9,6 +9,10 @@ let userGeoObject = null;
 let activePointId = null;
 let pointsData = [];
 
+// =========================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// =========================
+
 function setStatus(text) {
     const el = document.getElementById("route-status");
     if (el) el.textContent = text;
@@ -30,6 +34,10 @@ function distanceBetween(lat1, lon1, lat2, lon2) {
         Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+// =========================
+// ПРОВЕРКА ВХОДА В ЗОНУ
+// =========================
 
 function checkRadius(userCoords) {
     if (!pointsData.length) return;
@@ -72,6 +80,10 @@ function checkRadius(userCoords) {
     }
 }
 
+// =========================
+// ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// =========================
+
 function initMap() {
     map = new ymaps.Map("map", {
         center: [55.8266, 49.0820],
@@ -83,6 +95,7 @@ function initMap() {
 
     setStatus("Карта загружена. Загружаем точки…");
 
+    // Загружаем точки
     fetch("points.json")
         .then(response => response.json())
         .then(points => {
@@ -112,6 +125,18 @@ function initMap() {
             setStatus("Точки загружены. Определяем местоположение…");
         });
 
+    // =========================
+    // КАСТОМНАЯ СТРЕЛКА
+    // =========================
+
+    const userLayout = ymaps.templateLayoutFactory.createClass(
+        '<div class="user-arrow" style="transform: rotate({{ rotation }}deg);"></div>'
+    );
+
+    // =========================
+    // ГЕОЛОКАЦИЯ
+    // =========================
+
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -121,10 +146,10 @@ function initMap() {
                 if (!userGeoObject) {
                     userGeoObject = new ymaps.Placemark(
                         coords,
-                        {},
+                        { rotation: 0 },
                         {
-                            preset: "islands#blueNavigationIcon",
-                            iconImageRotate: true
+                            iconLayout: userLayout,
+                            iconShape: { type: "Circle", radius: 16, center: [0, 0] }
                         }
                     );
                     map.geoObjects.add(userGeoObject);
@@ -148,12 +173,13 @@ function initMap() {
 
                 if (userGeoObject) {
                     const oldCoords = userGeoObject.geometry.getCoordinates();
-                    userGeoObject.geometry.setCoordinates(newCoords);
 
                     const dx = newCoords[1] - oldCoords[1];
                     const dy = newCoords[0] - oldCoords[0];
                     const angle = Math.atan2(dx, dy) * (180 / Math.PI);
-                    userGeoObject.options.set("iconImageRotation", angle);
+
+                    userGeoObject.geometry.setCoordinates(newCoords);
+                    userGeoObject.properties.set("rotation", angle);
 
                     checkRadius(newCoords);
                 }
@@ -163,6 +189,10 @@ function initMap() {
         );
     }
 }
+
+// =========================
+// СИМУЛЯЦИЯ ДВИЖЕНИЯ
+// =========================
 
 document.addEventListener("DOMContentLoaded", () => {
     const recenterBtn = document.getElementById("recenter-btn");
@@ -213,15 +243,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 debug("Шаг " + i + ": " + newCoords.join(", "));
 
-                userGeoObject.geometry.setCoordinates(newCoords);
-
                 const dx = newCoords[1] - oldCoords[1];
                 const dy = newCoords[0] - oldCoords[0];
                 const angle = Math.atan2(dx, dy) * (180 / Math.PI);
-                userGeoObject.options.set("iconImageRotation", angle);
+
+                userGeoObject.geometry.setCoordinates(newCoords);
+                userGeoObject.properties.set("rotation", angle);
 
                 checkRadius(newCoords);
-                map.setCenter(newCoords);
+
+                // УБИРАЕМ ДЁРГАНИЕ — НЕ ДВИГАЕМ КАРТУ
+                // map.setCenter(newCoords);
 
                 i++;
             }, 700);
