@@ -1,26 +1,13 @@
-let tg = null;
-if (window.Telegram && window.Telegram.WebApp) {
-    tg = window.Telegram.WebApp;
-    tg.ready();
-}
-
 let map;
 let userGeoObject = null;
-let activePointId = null;
 let pointsData = [];
 
-// =========================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// =========================
-
-function setStatus(text) {
-    const el = document.getElementById("route-status");
-    if (el) el.textContent = text;
+function setStatus(t) {
+    document.getElementById("route-status").textContent = t;
 }
 
-function debug(msg) {
-    const el = document.getElementById("debug");
-    if (el) el.textContent += msg + "\n";
+function debug(t) {
+    document.getElementById("debug").textContent += t + "\n";
 }
 
 function distanceBetween(lat1, lon1, lat2, lon2) {
@@ -35,212 +22,79 @@ function distanceBetween(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// =========================
-// ПРОВЕРКА ВХОДА В ЗОНУ
-// =========================
-
-function checkRadius(userCoords) {
+function checkRadius(coords) {
     if (!pointsData.length) return;
-
-    let foundActive = null;
-    let nearestPoint = null;
+    let nearest = null;
     let nearestDist = Infinity;
 
-    pointsData.forEach(point => {
-        const dist = distanceBetween(
-            userCoords[0], userCoords[1],
-            point.lat, point.lon
-        );
-
-        if (dist < nearestDist) {
-            nearestDist = dist;
-            nearestPoint = point;
-        }
-
-        if (dist <= point.radius) {
-            foundActive = point;
+    pointsData.forEach(p => {
+        const d = distanceBetween(coords[0], coords[1], p.lat, p.lon);
+        if (d < nearestDist) {
+            nearestDist = d;
+            nearest = p;
         }
     });
 
-    if (nearestPoint) {
-        setStatus(
-            `Ближайшая: ${nearestPoint.name}, ~${nearestDist.toFixed(1)} м` +
-            (foundActive ? ` — ВНУТРИ зоны ${foundActive.name}` : "")
-        );
-    }
-
-    if (foundActive && activePointId !== foundActive.id) {
-        activePointId = foundActive.id;
-        debug("ENTER ZONE: " + foundActive.name);
-    }
-
-    if (!foundActive && activePointId !== null) {
-        debug("EXIT ZONE: " + activePointId);
-        activePointId = null;
+    if (nearest) {
+        setStatus(`Ближайшая: ${nearest.name}, ~${nearestDist.toFixed(1)} м`);
     }
 }
-
-// =========================
-// ИНИЦИАЛИЗАЦИЯ КАРТЫ
-// =========================
 
 function initMap() {
     map = new ymaps.Map("map", {
         center: [55.8266, 49.0820],
         zoom: 17,
-        controls: [],
-        suppressMapOpenBlock: true,
-        suppressGeoLocation: true
+        controls: []
     });
 
-    setStatus("Карта загружена. Загружаем точки…");
-
-    // Загружаем точки
     fetch("points.json")
-        .then(response => response.json())
+        .then(r => r.json())
         .then(points => {
             pointsData = points;
 
-            points.forEach(point => {
-                const placemark = new ymaps.Placemark(
-                    [point.lat, point.lon],
-                    { balloonContent: `<b>${point.name}</b><br>${point.text}` },
+            points.forEach(p => {
+                map.geoObjects.add(new ymaps.Placemark(
+                    [p.lat, p.lon],
+                    { balloonContent: p.name },
                     { preset: "islands#redIcon" }
-                );
+                ));
 
-                const circle = new ymaps.Circle(
-                    [[point.lat, point.lon], point.radius],
+                map.geoObjects.add(new ymaps.Circle(
+                    [[p.lat, p.lon], p.radius],
                     {},
                     {
-                        fillColor: "rgba(255, 0, 0, 0.15)",
-                        strokeColor: "rgba(255, 0, 0, 0.4)",
+                        fillColor: "rgba(255,0,0,0.15)",
+                        strokeColor: "rgba(255,0,0,0.4)",
                         strokeWidth: 2
                     }
-                );
-
-                map.geoObjects.add(circle);
-                map.geoObjects.add(placemark);
+                ));
             });
 
-            setStatus("Точки загружены. Определяем местоположение…");
+            setStatus("Точки загружены.");
         });
-
-    // =========================
-    // ИКОНКА ПОЛЬЗОВАТЕЛЯ (SVG)
-    // =========================
-
-    const userIcon = {
-        layout: 'default#image',
-        imageHref: 'arrow.png',
-        imageSize: [32, 32],
-        imageOffset: [-16, -16]
-    };
-
-    // =========================
-    // ГЕОЛОКАЦИЯ
-    // =========================
 
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
-            (pos) => {
+            pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
-                debug("Геолокация получена: " + coords.join(", "));
+                debug("Геолокация: " + coords.join(", "));
 
-                if (!userGeoObject) {
-                    userGeoObject = new ymaps.Placemark(
-                        coords,
-                        {},
-                        userIcon
-                    );
-                    map.geoObjects.add(userGeoObject);
-                }
+                userGeoObject = new ymaps.Placemark(
+                    coords,
+                    {},
+                    { preset: "islands#blueCircleIcon" }
+                );
 
-                map.setCenter(coords, 16);
+                map.geoObjects.add(userGeoObject);
+                map.setCenter(coords);
                 checkRadius(coords);
-                setStatus("Геолокация получена.");
             },
-            () => {
-                debug("Ошибка геолокации");
-                setStatus("Не удалось получить геолокацию.");
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-
-        navigator.geolocation.watchPosition(
-            (pos) => {
-                const newCoords = [pos.coords.latitude, pos.coords.longitude];
-                debug("watchPosition: " + newCoords.join(", "));
-
-                if (userGeoObject) {
-                    userGeoObject.geometry.setCoordinates(newCoords);
-                    checkRadius(newCoords);
-                }
-            },
-            () => debug("Ошибка watchPosition"),
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+            () => setStatus("Ошибка геолокации"),
+            { enableHighAccuracy: true }
         );
     }
 }
 
-// =========================
-// СИМУЛЯЦИЯ ДВИЖЕНИЯ
-// =========================
-
 document.addEventListener("DOMContentLoaded", () => {
-    const recenterBtn = document.getElementById("recenter-btn");
-    const simulateBtn = document.getElementById("simulate-btn");
-
-    if (recenterBtn) {
-        recenterBtn.addEventListener("click", () => {
-            if (!userGeoObject) return;
-            const coords = userGeoObject.geometry.getCoordinates();
-            map.setCenter(coords, 16, { duration: 300 });
-        });
-    }
-
-    if (simulateBtn) {
-        simulateBtn.addEventListener("click", () => {
-            debug("Симуляция: кнопка нажата");
-
-            if (!userGeoObject) {
-                debug("ОШИБКА: userGeoObject = null");
-                setStatus("Сначала нужно получить геолокацию.");
-                return;
-            }
-
-            setStatus("Симуляция движения…");
-            debug("Симуляция: старт цикла");
-
-            const path = [
-                [55.8266, 49.0820],
-                [55.8267, 49.0821],
-                [55.8268, 49.0822],
-                [55.8269, 49.0823],
-                [55.8270, 49.0824],
-                [55.8271, 49.0825]
-            ];
-
-            let i = 0;
-
-            const interval = setInterval(() => {
-                if (i >= path.length) {
-                    clearInterval(interval);
-                    setStatus("Симуляция завершена.");
-                    debug("Симуляция завершена");
-                    return;
-                }
-
-                const newCoords = path[i];
-
-                debug("Шаг " + i + ": " + newCoords.join(", "));
-
-                userGeoObject.geometry.setCoordinates(newCoords);
-                checkRadius(newCoords);
-
-                i++;
-            }, 700);
-        });
-    }
-
     ymaps.ready(initMap);
 });
