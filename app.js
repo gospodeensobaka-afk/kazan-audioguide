@@ -1,23 +1,11 @@
-    // =======================
-// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-// =======================
-
 let map;
 let userMarker = null;
 
-let lastCoords = null;        // последние координаты маркера
-let lastAngle = 0;            // последний угол поворота
-
-// Анимация движения
-let animationFrameId = null;
-let animationStartTime = null;
-let animationDuration = 600;  // мс на перемещение между точками
-let startCoords = null;
-let targetCoords = null;
+// Последние координаты пользователя
+let lastCoords = null;
 
 // Зоны
 let zones = [];
-let routeCompleted = false;   // чтобы финальная точка не триггерила сброс несколько раз
 
 // Симуляция
 let simulationActive = false;
@@ -26,16 +14,6 @@ let simulationIndex = 0;
 
 // GPS
 let gpsActive = true;
-
-// Автоследование карты (B2)
-// true — карта следует за стрелкой
-// false — карта остаётся там, куда её сдвинул пользователь
-let autoFollow = true;
-
-
-// =======================
-// Служебные функции
-// =======================
 
 function log(t) {
     const el = document.getElementById("debug");
@@ -50,23 +28,7 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
-// Угол между двумя координатами (для поворота стрелки)
-function calculateAngle(prev, curr) {
-    const dx = curr[1] - prev[1];
-    const dy = curr[0] - prev[0];
-    const angleRad = Math.atan2(dx, dy);
-    return angleRad * (180 / Math.PI);
-}
-
-// Линейная интерполяция между координатами
-function lerpCoords(start, end, t) {
-    return [
-        start[0] + (end[0] - start[0]) * t,
-        start[1] + (end[1] - start[1]) * t
-    ];
-}
-
-// Расстояние между двумя точками (метры)
+// Расстояние между двумя координатами (в метрах)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -81,11 +43,7 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-
-// =======================
-// ЗОНЫ И ЧЕКПОИНТЫ
-// =======================
-
+// Проверка зон
 function checkZones(coords) {
     zones.forEach(z => {
         const dist = distance(coords, [z.lat, z.lon]);
@@ -100,124 +58,29 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            // Финальная точка — Мусорка
-            if (z.name === "Мусорка" && !routeCompleted) {
-                routeCompleted = true;
-                log("Маршрут пройден: достигнута Мусорка");
-                setStatus("Маршрут пройден! Сброс через 1 секунду.");
-
-                // Даём пользователю увидеть зелёный круг
-                setTimeout(() => {
-                    resetAllZones();
-                }, 1000);
+            // Если это последняя точка маршрута (id 4 — Точка 3)
+            if (z.id === 4) {
+                setStatus("Маршрут пройден! Финальная точка достигнута.");
+                log("Маршрут пройден (Точка 3)");
             }
         }
     });
 }
 
-function resetAllZones() {
-    zones.forEach(z => {
-        z.visited = false;
-        z.circle.options.set({
-            fillColor: "rgba(255,0,0,0.15)",
-            strokeColor: "rgba(255,0,0,0.4)"
-        });
-    });
-
-    routeCompleted = false;
-    log("Все зоны сброшены");
-    setStatus("Все чекпоинты сброшены. Можно проходить маршрут снова.");
+// Простое перемещение маркера без анимации
+function moveMarkerInstant(coords) {
+    lastCoords = coords;
+    userMarker.geometry.setCoordinates(coords);
+    checkZones(coords);
 }
 
-
-// =======================
-// АНИМАЦИЯ МАРКЕРА И АВТОСЛЕДОВАНИЕ
-// =======================
-
-function animateMarker(timestamp) {
-    if (!animationStartTime) animationStartTime = timestamp;
-
-    const elapsed = timestamp - animationStartTime;
-    let t = elapsed / animationDuration;
-    if (t > 1) t = 1;
-
-    const current = lerpCoords(startCoords, targetCoords, t);
-
-    // Перемещаем маркер
-    userMarker.geometry.setCoordinates(current);
-
-    // Поворот стрелки
-    userMarker.options.set("iconImageRotation", lastAngle);
-
-    // Автоследование карты (если не выключено пользователем)
-    if (autoFollow) {
-        map.setCenter(current, undefined, { duration: 200 });
-    }
-
-    // Проверяем зоны по пути
-    checkZones(current);
-
-    if (t < 1) {
-        animationFrameId = requestAnimationFrame(animateMarker);
-    } else {
-        animationFrameId = null;
-        animationStartTime = null;
-        lastCoords = targetCoords;
-
-        // Если идёт симуляция — продолжаем следующий шаг
-        if (simulationActive) {
-            simulateNextStep();
-        }
-    }
-}
-
-function moveMarkerSmooth(newCoords) {
-    // Если ещё нет lastCoords — просто ставим маркер и сохраняем
-    if (!lastCoords) {
-        lastCoords = newCoords;
-        userMarker.geometry.setCoordinates(newCoords);
-
-        // При первом появлении тоже можно автофолловить
-        if (autoFollow) {
-            map.setCenter(newCoords, undefined, { duration: 200 });
-        }
-
-        checkZones(newCoords);
-        return;
-    }
-
-    // Защита от нулевого движения (чтобы не дёргать анимацию и угол)
-    const dist = distance(lastCoords, newCoords);
-    if (dist < 0.5) {
-        // Движения практически нет — игнорируем
-        return;
-    }
-
-    // Останавливаем предыдущую анимацию, если ещё идёт
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-        animationStartTime = null;
-    }
-
-    startCoords = lastCoords;
-    targetCoords = newCoords;
-
-    // Считаем угол движения
-    lastAngle = calculateAngle(startCoords, targetCoords);
-
-    animationFrameId = requestAnimationFrame(animateMarker);
-}
-
-
-// =======================
-// СИМУЛЯЦИЯ
-// =======================
-
+// Симуляция — переход к следующей точке
 function simulateNextStep() {
+    if (!simulationActive) return;
+
     if (simulationIndex >= simulationPoints.length) {
         simulationActive = false;
-        gpsActive = true;      // возвращаем управление GPS
+        gpsActive = true;
         setStatus("Симуляция завершена");
         log("Симуляция завершена, GPS снова активен");
         return;
@@ -226,78 +89,58 @@ function simulateNextStep() {
     const next = simulationPoints[simulationIndex];
     simulationIndex++;
 
-    moveMarkerSmooth(next);
+    moveMarkerInstant(next);
+
+    // Переход к следующей точке через паузу (2 секунды — можешь менять)
+    setTimeout(simulateNextStep, 2000);
 }
 
 function startSimulation() {
     if (!simulationPoints.length) {
         setStatus("Точки симуляции не загружены");
+        log("Нет точек для симуляции");
         return;
     }
 
     simulationActive = true;
-    gpsActive = false;      // отключаем GPS, чтобы не мешал
-    autoFollow = true;      // включаем автоследование
+    gpsActive = false;
     simulationIndex = 0;
 
     const start = simulationPoints[0];
-    lastCoords = start;
-
-    userMarker.geometry.setCoordinates(start);
-
-    // S1 — при старте симуляции центрируем карту на стрелке
-    map.setCenter(start, undefined, { duration: 300 });
-
-    checkZones(start);
+    moveMarkerInstant(start);
+    map.setCenter(start, 16);
 
     setStatus("Симуляция запущена");
     log("Симуляция запущена");
 
-    simulateNextStep();
+    setTimeout(simulateNextStep, 2000);
 }
 
-
-// =======================
-// ИНИЦИАЛИЗАЦИЯ КАРТЫ
-// =======================
-
 function initMap() {
-    // Центр — твоя стартовая точка (можно подправить)
-    const initialCenter = [55.826620, 49.082188];
+    const initialCenter = [55.826584, 49.082118]; // Старт
 
     map = new ymaps.Map("map", {
         center: initialCenter,
-        zoom: 18,
+        zoom: 16,
         controls: []
     });
 
-    // Кастомный маркер-стрелка
+    // Простой маркер пользователя
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
         {
-            iconLayout: "default#image",
-            iconImageHref: "arrow.png",
-            iconImageSize: [40, 40],
-            iconImageOffset: [-20, -20],
-            iconImageRotate: true
+            preset: "islands#redCircleIcon"
         }
     );
 
     map.geoObjects.add(userMarker);
 
-    // ОТКЛЮЧЕНИЕ автоследования при действии пользователя (B2)
-    // Любое начало действия на карте (перемещение, зум) — вырубаем autoFollow
-    map.events.add("actionbegin", () => {
-        autoFollow = false;
-        log("Автоследование выключено пользователем");
-    });
-
-    // Загружаем точки и зоны из points.json
+    // Загружаем точки из points.json
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
-            // Рисуем зоны
+            // Создаём зоны
             points.forEach(p => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
@@ -322,23 +165,24 @@ function initMap() {
                 });
             });
 
-            // Собираем точки для симуляции
-            // Здесь я оставляю твою логику: id 3 -> id 2 -> id 4 (Мусорка)
-            const p1 = points.find(p => p.id === 3);
-            const p4 = points.find(p => p.id === 2);
-            const trash = points.find(p => p.id === 4);
+            // Маршрут симуляции: Старт → Точка 1 → Точка 2 → Точка 3
+            const start = points.find(p => p.id === 1);
+            const p1 = points.find(p => p.id === 2);
+            const p2 = points.find(p => p.id === 3);
+            const p3 = points.find(p => p.id === 4);
 
-            if (p1 && p4 && trash) {
+            if (start && p1 && p2 && p3) {
                 simulationPoints = [
+                    [start.lat, start.lon],
                     [p1.lat, p1.lon],
-                    [p4.lat, p4.lon],
-                    [trash.lat, trash.lon]
+                    [p2.lat, p2.lon],
+                    [p3.lat, p3.lon]
                 ];
                 setStatus("Готово к симуляции");
                 log("Точки симуляции загружены");
             } else {
-                setStatus("Не удалось найти точки для симуляции");
-                log("Ошибка: не найдены p1, p4 или trash в points.json");
+                setStatus("Не все точки найдены в points.json");
+                log("Ошибка: отсутствуют некоторые точки в points.json");
             }
         })
         .catch(err => {
@@ -359,10 +203,10 @@ function initMap() {
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             pos => {
-                if (!gpsActive) return;  // если идёт симуляция — игнорируем GPS
+                if (!gpsActive) return;
 
                 const coords = [pos.coords.latitude, pos.coords.longitude];
-                moveMarkerSmooth(coords);
+                moveMarkerInstant(coords);
             },
             err => {
                 console.error(err);
@@ -382,11 +226,6 @@ function initMap() {
     setStatus("Карта инициализирована");
     log("Карта инициализирована");
 }
-
-
-// =======================
-// СТАРТ
-// =======================
 
 document.addEventListener("DOMContentLoaded", () => {
     ymaps.ready(initMap);
