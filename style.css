@@ -8,20 +8,18 @@ html, body {
 #map {
     width: 100%;
     height: 70vh;
-    background: #ccc; /* чтобы было видно контейнер */
+    background: #ccc;
 }
 
 #status {
     padding: 10px;
     background: #fff;
-    color: #000;
     font-size: 14px;
 }
 
 #debug {
     padding: 10px;
     background: #eee;
-    color: #000;
     font-size: 12px;
     white-space: pre-line;
     height: 20vh;
