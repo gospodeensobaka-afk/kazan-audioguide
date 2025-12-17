@@ -8,6 +8,7 @@ let map;
 let userGeoObject = null;
 let activePointId = null;
 let pointsData = [];
+let lastDebugPoint = null; // для отладки ближайшей точки
 
 function setStatus(text) {
     const el = document.getElementById("route-status");
@@ -28,25 +29,45 @@ function distanceBetween(lat1, lon1, lat2, lon2) {
 
 function checkRadius(userCoords) {
     if (!pointsData.length) return;
+
     let foundActive = null;
+    let nearestPoint = null;
+    let nearestDist = Infinity;
 
     pointsData.forEach(point => {
         const dist = distanceBetween(
             userCoords[0], userCoords[1],
             point.lat, point.lon
         );
+
+        // Запоминаем ближайшую точку (для отладки)
+        if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestPoint = point;
+        }
+
         if (dist <= point.radius) {
             foundActive = point;
         }
     });
 
+    // Отладка: показываем расстояние до ближайшей точки
+    if (nearestPoint) {
+        const debugName = nearestPoint.name || nearestPoint.id || "точка";
+        setStatus(
+            `Ближайшая: ${debugName}, ~${nearestDist.toFixed(1)} м` +
+            (foundActive ? ` — ВНУТРИ зоны ${foundActive.name}` : "")
+        );
+    }
+
     if (foundActive && activePointId !== foundActive.id) {
         activePointId = foundActive.id;
-        setStatus(`Вы вошли в зону: ${foundActive.name}`);
+        console.log("ENTER ZONE:", foundActive.id, foundActive.name);
+        // тут потом повесим запуск аудио
     }
 
     if (!foundActive && activePointId !== null) {
-        setStatus("Вы вышли из зоны");
+        console.log("EXIT ZONE:", activePointId);
         activePointId = null;
     }
 }
@@ -119,8 +140,12 @@ function initMap() {
 
                 map.setCenter(coords, 16);
                 setStatus("Геолокация получена.");
+                checkRadius(coords); // сразу проверим зоны в стартовой точке
             },
-            () => setStatus("Не удалось получить геолокацию."),
+            (err) => {
+                console.warn("Ошибка геолокации (getCurrentPosition)", err);
+                setStatus("Не удалось получить геолокацию.");
+            },
             {
                 enableHighAccuracy: true,
                 timeout: 10000,
@@ -141,11 +166,26 @@ function initMap() {
                     const dy = newCoords[0] - oldCoords[0];
                     const angle = Math.atan2(dx, dy) * (180 / Math.PI);
                     userGeoObject.options.set("iconImageRotation", angle);
+                } else {
+                    // На всякий случай, если маркер ещё не создан
+                    userGeoObject = new ymaps.Placemark(
+                        newCoords,
+                        {},
+                        {
+                            preset: "islands#blueNavigationIcon",
+                            iconImageRotate: true
+                        }
+                    );
+                    map.geoObjects.add(userGeoObject);
+                    checkRadius(newCoords);
                 }
 
-                setStatus("Обновление геолокации…");
+                // Если хочешь – можно не трогать центр карты при движении
+                // map.setCenter(newCoords, 16);
             },
-            () => {},
+            (err) => {
+                console.warn("Ошибка геолокации (watchPosition)", err);
+            },
             {
                 enableHighAccuracy: true,
                 maximumAge: 0,
