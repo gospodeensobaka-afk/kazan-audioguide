@@ -1,14 +1,8 @@
 let map;
 let userMarker = null;
 
+// Последние координаты пользователя или симуляции
 let lastCoords = null;
-
-// Анимация
-let animationFrameId = null;
-let animationStartTime = null;
-let animationDuration = 1200; // скорость движения
-let startCoords = null;
-let targetCoords = null;
 
 // Зоны
 let zones = [];
@@ -21,6 +15,7 @@ let simulationIndex = 0;
 // GPS
 let gpsActive = true;
 
+// Лог
 function log(t) {
     const el = document.getElementById("debug");
     if (el) {
@@ -34,6 +29,7 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
+// Расстояние между двумя координатами (в метрах)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -48,6 +44,7 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
+// Проверка входа в зоны
 function checkZones(coords) {
     zones.forEach(z => {
         const dist = distance(coords, [z.lat, z.lon]);
@@ -55,6 +52,7 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
+            // Красим зону в зелёный
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
@@ -62,65 +60,37 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
+            // Если это последняя точка маршрута (id = 4)
             if (z.id === 4) {
-                setStatus("Маршрут пройден! Достигнута финальная точка.");
-                log("Маршрут пройден.");
+                setStatus("Финальная точка достигнута. Сброс через 10 секунд.");
+                log("Финальная точка достигнута.");
+
+                // Через 10 секунд сбрасываем все зоны
+                setTimeout(() => {
+                    zones.forEach(zone => {
+                        zone.visited = false;
+                        zone.circle.options.set({
+                            fillColor: "rgba(255,0,0,0.15)",
+                            strokeColor: "rgba(255,0,0,0.4)"
+                        });
+                    });
+
+                    setStatus("Маршрут сброшен. Можно проходить снова.");
+                    log("Все зоны сброшены.");
+                }, 10000);
             }
         }
     });
 }
 
-function lerpCoords(start, end, t) {
-    return [
-        start[0] + (end[0] - start[0]) * t,
-        start[1] + (end[1] - start[1]) * t
-    ];
+// Простое перемещение маркера
+function moveMarker(coords) {
+    lastCoords = coords;
+    userMarker.geometry.setCoordinates(coords);
+    checkZones(coords);
 }
 
-function animateMarker(timestamp) {
-    if (!animationStartTime) animationStartTime = timestamp;
-
-    const elapsed = timestamp - animationStartTime;
-    let t = elapsed / animationDuration;
-    if (t > 1) t = 1;
-
-    const current = lerpCoords(startCoords, targetCoords, t);
-
-    userMarker.geometry.setCoordinates(current);
-    checkZones(current);
-
-    if (t < 1) {
-        animationFrameId = requestAnimationFrame(animateMarker);
-    } else {
-        animationFrameId = null;
-        animationStartTime = null;
-        lastCoords = targetCoords;
-
-        if (simulationActive) {
-            simulateNextStep();
-        }
-    }
-}
-
-function moveMarkerSmooth(newCoords) {
-    if (!lastCoords) {
-        lastCoords = newCoords;
-        userMarker.geometry.setCoordinates(newCoords);
-        checkZones(newCoords);
-        return;
-    }
-
-    startCoords = lastCoords;
-    targetCoords = newCoords;
-
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-        animationStartTime = null;
-    }
-
-    animationFrameId = requestAnimationFrame(animateMarker);
-}
+// ===== СИМУЛЯЦИЯ =====
 
 function simulateNextStep() {
     if (!simulationActive) return;
@@ -136,12 +106,16 @@ function simulateNextStep() {
     const next = simulationPoints[simulationIndex];
     simulationIndex++;
 
-    moveMarkerSmooth(next);
+    moveMarker(next);
+
+    // Пауза между точками (2 секунды)
+    setTimeout(simulateNextStep, 2000);
 }
 
 function startSimulation() {
     if (!simulationPoints.length) {
         setStatus("Нет точек для симуляции");
+        log("Нет точек для симуляции");
         return;
     }
 
@@ -150,19 +124,19 @@ function startSimulation() {
     simulationIndex = 0;
 
     const start = simulationPoints[0];
-    lastCoords = start;
-
-    userMarker.geometry.setCoordinates(start);
+    moveMarker(start);
     map.setCenter(start, 14);
 
     setStatus("Симуляция запущена");
     log("Симуляция запущена");
 
-    simulateNextStep();
+    setTimeout(simulateNextStep, 2000);
 }
 
+// ===== ИНИЦИАЛИЗАЦИЯ КАРТЫ =====
+
 function initMap() {
-    const initialCenter = [55.826584, 49.082118];
+    const initialCenter = [55.826584, 49.082118]; // Старт
 
     map = new ymaps.Map("map", {
         center: initialCenter,
@@ -170,23 +144,22 @@ function initMap() {
         controls: []
     });
 
+    // Простой маркер (кружок)
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
         {
-            iconLayout: "default#image",
-            iconImageHref: "arrow.png",
-            iconImageSize: [40, 40],
-            iconImageOffset: [-20, -20],
-            iconImageRotate: true
+            preset: "islands#redCircleIcon"
         }
     );
 
     map.geoObjects.add(userMarker);
 
+    // Загружаем точки
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
+            // Создаём зоны
             points.forEach(p => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
@@ -211,6 +184,7 @@ function initMap() {
                 });
             });
 
+            // Маршрут симуляции: 1 → 2 → 3 → 4
             const p1 = points.find(p => p.id === 1);
             const p2 = points.find(p => p.id === 2);
             const p3 = points.find(p => p.id === 3);
@@ -224,25 +198,31 @@ function initMap() {
             ];
 
             setStatus("Готово к симуляции");
+            log("Точки симуляции загружены");
         });
 
+    // Кнопка симуляции
     const btnSim = document.getElementById("simulate");
     if (btnSim) {
         btnSim.addEventListener("click", startSimulation);
     }
 
+    // GPS
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             pos => {
                 if (!gpsActive) return;
 
                 const coords = [pos.coords.latitude, pos.coords.longitude];
-                moveMarkerSmooth(coords);
+                moveMarker(coords);
             },
             err => log("Ошибка GPS: " + err.message),
             { enableHighAccuracy: true }
         );
     }
+
+    setStatus("Карта инициализирована");
+    log("Карта инициализирована");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
