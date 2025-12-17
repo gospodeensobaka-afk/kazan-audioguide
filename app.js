@@ -200,7 +200,9 @@ function startSimulation() {
 
     simulationActive = true;
     gpsActive = false;
-    simulationIndex = 0;
+
+    // Начинаем со второй точки, потому что в первой мы уже стоим
+    simulationIndex = 1;
 
     const start = routeCoords[0];
     lastCoords = start;
@@ -214,6 +216,7 @@ function startSimulation() {
 
     setTimeout(simulateNextStep, 300);
 }
+
 
 // ======================================================
 // 6. ИНИЦИАЛИЗАЦИЯ КАРТЫ
