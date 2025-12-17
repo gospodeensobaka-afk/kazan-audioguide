@@ -8,7 +8,6 @@ let map;
 let userGeoObject = null;
 let activePointId = null;
 let pointsData = [];
-let lastDebugPoint = null; // для отладки ближайшей точки
 
 function setStatus(text) {
     const el = document.getElementById("route-status");
@@ -40,7 +39,6 @@ function checkRadius(userCoords) {
             point.lat, point.lon
         );
 
-        // Запоминаем ближайшую точку (для отладки)
         if (dist < nearestDist) {
             nearestDist = dist;
             nearestPoint = point;
@@ -51,19 +49,16 @@ function checkRadius(userCoords) {
         }
     });
 
-    // Отладка: показываем расстояние до ближайшей точки
     if (nearestPoint) {
-        const debugName = nearestPoint.name || nearestPoint.id || "точка";
         setStatus(
-            `Ближайшая: ${debugName}, ~${nearestDist.toFixed(1)} м` +
+            `Ближайшая: ${nearestPoint.name}, ~${nearestDist.toFixed(1)} м` +
             (foundActive ? ` — ВНУТРИ зоны ${foundActive.name}` : "")
         );
     }
 
     if (foundActive && activePointId !== foundActive.id) {
         activePointId = foundActive.id;
-        console.log("ENTER ZONE:", foundActive.id, foundActive.name);
-        // тут потом повесим запуск аудио
+        console.log("ENTER ZONE:", foundActive.name);
     }
 
     if (!foundActive && activePointId !== null) {
@@ -91,19 +86,12 @@ function initMap() {
             points.forEach(point => {
                 const placemark = new ymaps.Placemark(
                     [point.lat, point.lon],
-                    {
-                        balloonContent: `<b>${point.name}</b><br>${point.text}`
-                    },
-                    {
-                        preset: "islands#redIcon"
-                    }
+                    { balloonContent: `<b>${point.name}</b><br>${point.text}` },
+                    { preset: "islands#redIcon" }
                 );
 
                 const circle = new ymaps.Circle(
-                    [
-                        [point.lat, point.lon],
-                        point.radius
-                    ],
+                    [[point.lat, point.lon], point.radius],
                     {},
                     {
                         fillColor: "rgba(255, 0, 0, 0.15)",
@@ -134,23 +122,14 @@ function initMap() {
                         }
                     );
                     map.geoObjects.add(userGeoObject);
-                } else {
-                    userGeoObject.geometry.setCoordinates(coords);
                 }
 
                 map.setCenter(coords, 16);
+                checkRadius(coords);
                 setStatus("Геолокация получена.");
-                checkRadius(coords); // сразу проверим зоны в стартовой точке
             },
-            (err) => {
-                console.warn("Ошибка геолокации (getCurrentPosition)", err);
-                setStatus("Не удалось получить геолокацию.");
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
+            () => setStatus("Не удалось получить геолокацию."),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
 
         navigator.geolocation.watchPosition(
@@ -160,61 +139,79 @@ function initMap() {
                 if (userGeoObject) {
                     const oldCoords = userGeoObject.geometry.getCoordinates();
                     userGeoObject.geometry.setCoordinates(newCoords);
-                    checkRadius(newCoords);
 
                     const dx = newCoords[1] - oldCoords[1];
                     const dy = newCoords[0] - oldCoords[0];
                     const angle = Math.atan2(dx, dy) * (180 / Math.PI);
                     userGeoObject.options.set("iconImageRotation", angle);
-                } else {
-                    // На всякий случай, если маркер ещё не создан
-                    userGeoObject = new ymaps.Placemark(
-                        newCoords,
-                        {},
-                        {
-                            preset: "islands#blueNavigationIcon",
-                            iconImageRotate: true
-                        }
-                    );
-                    map.geoObjects.add(userGeoObject);
+
                     checkRadius(newCoords);
                 }
-
-                // Если хочешь – можно не трогать центр карты при движении
-                // map.setCenter(newCoords, 16);
             },
-            (err) => {
-                console.warn("Ошибка геолокации (watchPosition)", err);
-            },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 10000
-            }
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
-
-    } else {
-        setStatus("Геолокация недоступна.");
     }
 }
 
+// ---------------- SIMULATION MODE ----------------
+
 document.addEventListener("DOMContentLoaded", () => {
     const recenterBtn = document.getElementById("recenter-btn");
+    const simulateBtn = document.getElementById("simulate-btn");
 
     if (recenterBtn) {
         recenterBtn.addEventListener("click", () => {
-            if (!userGeoObject) {
-                setStatus("Сначала нужно получить геолокацию.");
-                return;
-            }
+            if (!userGeoObject) return;
             const coords = userGeoObject.geometry.getCoordinates();
             map.setCenter(coords, 16, { duration: 300 });
         });
     }
 
-    if (window.ymaps) {
-        ymaps.ready(initMap);
-    } else {
-        setStatus("Ошибка загрузки Яндекс.Карт.");
+    if (simulateBtn) {
+        simulateBtn.addEventListener("click", () => {
+            if (!userGeoObject) {
+                setStatus("Сначала нужно получить геолокацию.");
+                return;
+            }
+
+            setStatus("Симуляция движения…");
+
+            const path = [
+                [55.8266, 49.0820],
+                [55.8267, 49.0821],
+                [55.8268, 49.0822],
+                [55.8269, 49.0823],
+                [55.8270, 49.0824],
+                [55.8271, 49.0825]
+            ];
+
+            let i = 0;
+
+            const interval = setInterval(() => {
+                if (i >= path.length) {
+                    clearInterval(interval);
+                    setStatus("Симуляция завершена.");
+                    return;
+                }
+
+                const newCoords = path[i];
+                const oldCoords = userGeoObject.geometry.getCoordinates();
+
+                userGeoObject.geometry.setCoordinates(newCoords);
+
+                const dx = newCoords[1] - oldCoords[1];
+                const dy = newCoords[0] - oldCoords[0];
+                const angle = Math.atan2(dx, dy) * (180 / Math.PI);
+                userGeoObject.options.set("iconImageRotation", angle);
+
+                checkRadius(newCoords);
+                map.setCenter(newCoords);
+
+                i++;
+            }, 700);
+        });
     }
+
+    ymaps.ready(initMap);
 });
