@@ -57,10 +57,16 @@ function initMap() {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
                 log("Геолокация: " + coords.join(", "));
 
+                // 🔥 КАСТОМНАЯ СТРЕЛКА
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
-                    { preset: "islands#blueCircleIcon" }
+                    {
+                        iconLayout: "default#image",
+                        iconImageHref: "arrow.png",
+                        iconImageSize: [40, 40],
+                        iconImageOffset: [-20, -20]
+                    }
                 );
 
                 map.geoObjects.add(userGeoObject);
@@ -71,6 +77,18 @@ function initMap() {
                 log("Ошибка геолокации: " + err.message);
                 setStatus("Ошибка геолокации");
             },
+            { enableHighAccuracy: true }
+        );
+
+        // 🔥 Обновление стрелки при движении
+        navigator.geolocation.watchPosition(
+            pos => {
+                const coords = [pos.coords.latitude, pos.coords.longitude];
+                if (userGeoObject) {
+                    userGeoObject.geometry.setCoordinates(coords);
+                }
+            },
+            err => log("Ошибка watchPosition: " + err.message),
             { enableHighAccuracy: true }
         );
     } else {
