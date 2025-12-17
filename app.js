@@ -6,21 +6,33 @@ let lastAngle = 0;
 // Плавное движение
 let animationFrameId = null;
 let animationStartTime = null;
-let animationDuration = 400;
+let animationDuration = 800;
 let startCoords = null;
 let targetCoords = null;
 
 // Зоны (чекпоинты)
 let zones = [];
 
-// Симуляция маршрута
-let simulationPoints = []; // массив координат [lat, lon]
+// Симуляция маршрута: 1 подъезд → 4 подъезд → Мусорка
+// Берём координаты из твоего points.json
+const P_1_PODEZD  = [55.826823, 49.082742]; // id 3
+const P_4_PODEZD  = [55.826634, 49.082187]; // id 2
+const P_MUSORKA   = [55.826896, 49.082015]; // id 4
+
+const simulationPoints = [
+    P_1_PODEZD,
+    P_4_PODEZD,
+    P_MUSORKA
+];
+
 let simulationIndex = 0;
 let simulationActive = false;
 
 function log(t) {
     const el = document.getElementById("debug");
-    if (el) el.textContent += t + "\n";
+    if (!el) return;
+    el.textContent += t + "\n";
+    el.scrollTop = el.scrollHeight;
 }
 
 function setStatus(t) {
@@ -28,7 +40,7 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
-// Угол направления движения
+// Угол направления движения (для стрелки)
 function calculateAngle(prev, curr) {
     const dx = curr[1] - prev[1];
     const dy = curr[0] - prev[0];
@@ -36,7 +48,7 @@ function calculateAngle(prev, curr) {
     return angleRad * (180 / Math.PI);
 }
 
-// Линейная интерполяция координат
+// Линейная интерполяция
 function lerpCoords(start, end, t) {
     return [
         start[0] + (end[0] - start[0]) * t,
@@ -44,7 +56,7 @@ function lerpCoords(start, end, t) {
     ];
 }
 
-// Расстояние между двумя точками в метрах
+// Расстояние (для зон)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -59,25 +71,22 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-// Проверка зон: вход + чекпоинты + финал
+// Чекпоинты: отметить вход + финал
 function checkZones(coords) {
     zones.forEach(z => {
         const dist = distance(coords, [z.lat, z.lon]);
 
-        // первый вход в зону → отмечаем чекпоинт (зелёный)
+        // если ещё не посещали и вошли в радиус
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
-
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
             });
+            log(`Вход в зону: ${z.name}`);
 
-            log("Вход в зону: " + z.name);
-
-            // если это финальная точка - мусорка → считаем маршрут пройденным
             if (z.name === "Мусорка") {
-                log("Маршрут пройден: достигнута Мусорка");
+                log("Маршрут пройден: достигнута Мусорка → сбрасываем чекпоинты");
                 setStatus("Маршрут пройден! Все чекпоинты сброшены.");
                 resetAllZones();
             }
@@ -85,7 +94,6 @@ function checkZones(coords) {
     });
 }
 
-// Сброс всех чекпоинтов (после финальной точки)
 function resetAllZones() {
     zones.forEach(z => {
         z.visited = false;
@@ -111,7 +119,6 @@ function animateMarker(timestamp) {
         userGeoObject.options.set("iconImageRotation", lastAngle);
     }
 
-    // Проверяем зоны по текущему положению (симуляция + реальный GPS используют один механизм)
     checkZones(current);
 
     if (t < 1) {
@@ -121,18 +128,18 @@ function animateMarker(timestamp) {
         animationStartTime = null;
         lastCoords = targetCoords;
 
-        // Если идёт симуляция — переходим к следующему шагу
         if (simulationActive) {
             simulateNextStep();
         }
     }
 }
 
-// Запуск плавного движения к новой точке
+// Плавное движение к новой точке
 function moveMarkerSmooth(newCoords) {
     if (!lastCoords) {
         lastCoords = newCoords;
         if (userGeoObject) userGeoObject.geometry.setCoordinates(newCoords);
+        map.setCenter(newCoords);
         checkZones(newCoords);
         return;
     }
@@ -152,41 +159,36 @@ function moveMarkerSmooth(newCoords) {
     animationFrameId = requestAnimationFrame(animateMarker);
 }
 
-// Симуляция: двигаемся по точкам маршрута
+// Один шаг симуляции
 function simulateNextStep() {
     if (simulationIndex >= simulationPoints.length) {
         simulationActive = false;
         setStatus("Симуляция завершена");
+        log("Симуляция завершена");
         return;
     }
 
     const next = simulationPoints[simulationIndex];
+    log(`Симуляция: шаг ${simulationIndex + 1} → ${next[0].toFixed(6)}, ${next[1].toFixed(6)}`);
     simulationIndex++;
 
     moveMarkerSmooth(next);
 }
 
-// Запуск симуляции маршрута: 1 подъезд → 4 подъезд → Мусорка
+// Старт симуляции
 function startSimulation() {
-    if (!simulationPoints.length) {
-        setStatus("Симуляция недоступна: точки маршрута не загружены");
-        return;
-    }
-
     simulationActive = true;
-    simulationIndex = 1; // 0 — стартовая позиция, сразу ставим туда маркер
+    simulationIndex = 0;
 
+    // Стартуем с 1 подъезда
     const start = simulationPoints[0];
     lastCoords = start;
-
     if (userGeoObject) {
         userGeoObject.geometry.setCoordinates(start);
     }
-
     map.setCenter(start);
     setStatus("Симуляция маршрута…");
 
-    // Сразу проверим зоны в стартовой точке
     checkZones(start);
 
     simulateNextStep();
@@ -195,7 +197,6 @@ function startSimulation() {
 function initMap() {
     log("initMap вызван");
 
-    // Стартовый центр — примерно район маршрута
     map = new ymaps.Map("map", {
         center: [55.826620, 49.082188],
         zoom: 18,
@@ -208,7 +209,7 @@ function initMap() {
     map.behaviors.enable('drag');
     map.behaviors.enable('scrollZoom');
 
-    // Кастомный маркер (стрелка)
+    // Стрелка
     userGeoObject = new ymaps.Placemark(
         [55.826620, 49.082188],
         {},
@@ -223,7 +224,7 @@ function initMap() {
 
     map.geoObjects.add(userGeoObject);
 
-    // Загружаем точки маршрута и зоны
+    // Загружаем зоны из points.json (только для кругов и подсказок)
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
@@ -260,34 +261,23 @@ function initMap() {
                 });
             });
 
-            // Собираем точки для симуляции в нужном порядке:
-            // 1 подъезд (id: 3) → 4 подъезд (id: 2) → Мусорка (id: 4)
-            const p1 = points.find(p => p.id === 3); // 1 подъезд
-            const p4 = points.find(p => p.id === 2); // 4 подъезд
-            const trash = points.find(p => p.id === 4); // Мусорка
-
-            simulationPoints = [];
-            if (p1) simulationPoints.push([p1.lat, p1.lon]);
-            if (p4) simulationPoints.push([p4.lat, p4.lon]);
-            if (trash) simulationPoints.push([trash.lat, trash.lon]);
-
-            log("Точки симуляции: " + JSON.stringify(simulationPoints));
             setStatus("Готово к симуляции. Нажмите кнопку.");
+        })
+        .catch(err => {
+            log("Ошибка загрузки points.json: " + err);
+            setStatus("Ошибка загрузки точек");
         });
 
-    // Кнопка симуляции
     const btn = document.getElementById("simulate");
     if (btn) {
         btn.addEventListener("click", () => {
-            log("Запуск симуляции");
+            log("Нажата кнопка симуляции");
             startSimulation();
         });
     }
-
-    // Реальный GPS можно будет подключить позже тем же moveMarkerSmooth(coords)
-    // и той же checkZones(coords). Пока оставляем чисто симуляцию для отладки.
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    log("DOM загружен");
     ymaps.ready(initMap);
 });
