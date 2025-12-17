@@ -20,6 +20,34 @@ function initMap() {
 
     setStatus("Карта создана");
 
+    // Загружаем точки
+    fetch("points.json")
+        .then(r => r.json())
+        .then(points => {
+            points.forEach(p => {
+                const placemark = new ymaps.Placemark(
+                    [p.lat, p.lon],
+                    { balloonContent: p.name },
+                    { preset: "islands#redIcon" }
+                );
+
+                const circle = new ymaps.Circle(
+                    [[p.lat, p.lon], p.radius],
+                    {},
+                    {
+                        fillColor: "rgba(255,0,0,0.15)",
+                        strokeColor: "rgba(255,0,0,0.4)",
+                        strokeWidth: 2
+                    }
+                );
+
+                map.geoObjects.add(circle);
+                map.geoObjects.add(placemark);
+            });
+
+            log("Точки и зоны загружены");
+        });
+
     // Геолокация
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -30,7 +58,14 @@ function initMap() {
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
-                    { preset: "islands#blueCircleIcon" }
+                    {
+                        iconLayout: "default#image",
+                        iconImageHref: "arrow.png",
+                        iconImageSize: [40, 40],
+                        iconImageOffset: [-20, -20],
+                        iconImageRotate: true,
+                        iconRotate: true
+                    }
                 );
 
                 map.geoObjects.add(userGeoObject);
