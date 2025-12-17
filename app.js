@@ -22,6 +22,14 @@ function initMap() {
 
     setStatus("Карта создана");
 
+    // 🔥 Отключаем встроенный синий кружок Яндекса
+    ymaps.modules.require(['geolocation'], function (geolocation) {
+        geolocation.get({
+            provider: 'browser',
+            mapStateAutoApply: false
+        });
+    });
+
     // Загружаем точки и зоны
     fetch("points.json")
         .then(r => r.json())
@@ -57,7 +65,7 @@ function initMap() {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
                 log("Геолокация: " + coords.join(", "));
 
-                // 🔥 КАСТОМНАЯ СТРЕЛКА
+                // 🔥 Кастомная стрелка
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
@@ -91,9 +99,6 @@ function initMap() {
             err => log("Ошибка watchPosition: " + err.message),
             { enableHighAccuracy: true }
         );
-    } else {
-        log("Геолокация недоступна");
-        setStatus("Геолокация недоступна");
     }
 }
 
