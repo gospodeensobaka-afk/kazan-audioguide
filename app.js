@@ -9,10 +9,6 @@ let userGeoObject = null;
 let activePointId = null;
 let pointsData = [];
 
-// =========================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// =========================
-
 function setStatus(text) {
     const el = document.getElementById("route-status");
     if (el) el.textContent = text;
@@ -34,10 +30,6 @@ function distanceBetween(lat1, lon1, lat2, lon2) {
         Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
-// =========================
-// ПРОВЕРКА ВХОДА В ЗОНУ
-// =========================
 
 function checkRadius(userCoords) {
     if (!pointsData.length) return;
@@ -80,10 +72,6 @@ function checkRadius(userCoords) {
     }
 }
 
-// =========================
-// ИНИЦИАЛИЗАЦИЯ КАРТЫ
-// =========================
-
 function initMap() {
     map = new ymaps.Map("map", {
         center: [55.8266, 49.0820],
@@ -95,7 +83,6 @@ function initMap() {
 
     setStatus("Карта загружена. Загружаем точки…");
 
-    // Загружаем точки
     fetch("points.json")
         .then(response => response.json())
         .then(points => {
@@ -125,21 +112,6 @@ function initMap() {
             setStatus("Точки загружены. Определяем местоположение…");
         });
 
-    // =========================
-    // ИКОНКА ПОЛЬЗОВАТЕЛЯ (SVG)
-    // =========================
-
-    const userIcon = {
-        layout: 'default#image',
-        imageHref: 'arrow.png',
-        imageSize: [32, 32],
-        imageOffset: [-16, -16]
-    };
-
-    // =========================
-    // ГЕОЛОКАЦИЯ
-    // =========================
-
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -150,7 +122,10 @@ function initMap() {
                     userGeoObject = new ymaps.Placemark(
                         coords,
                         {},
-                        userIcon
+                        {
+                            preset: "islands#blueNavigationIcon",
+                            iconImageRotate: true
+                        }
                     );
                     map.geoObjects.add(userGeoObject);
                 }
@@ -172,7 +147,14 @@ function initMap() {
                 debug("watchPosition: " + newCoords.join(", "));
 
                 if (userGeoObject) {
+                    const oldCoords = userGeoObject.geometry.getCoordinates();
                     userGeoObject.geometry.setCoordinates(newCoords);
+
+                    const dx = newCoords[1] - oldCoords[1];
+                    const dy = newCoords[0] - oldCoords[0];
+                    const angle = Math.atan2(dx, dy) * (180 / Math.PI);
+                    userGeoObject.options.set("iconImageRotation", angle);
+
                     checkRadius(newCoords);
                 }
             },
@@ -181,10 +163,6 @@ function initMap() {
         );
     }
 }
-
-// =========================
-// СИМУЛЯЦИЯ ДВИЖЕНИЯ
-// =========================
 
 document.addEventListener("DOMContentLoaded", () => {
     const recenterBtn = document.getElementById("recenter-btn");
@@ -231,11 +209,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 const newCoords = path[i];
+                const oldCoords = userGeoObject.geometry.getCoordinates();
 
                 debug("Шаг " + i + ": " + newCoords.join(", "));
 
                 userGeoObject.geometry.setCoordinates(newCoords);
+
+                const dx = newCoords[1] - oldCoords[1];
+                const dy = newCoords[0] - oldCoords[0];
+                const angle = Math.atan2(dx, dy) * (180 / Math.PI);
+                userGeoObject.options.set("iconImageRotation", angle);
+
                 checkRadius(newCoords);
+                map.setCenter(newCoords);
 
                 i++;
             }, 700);
