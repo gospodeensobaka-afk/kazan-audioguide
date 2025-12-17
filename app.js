@@ -3,12 +3,16 @@ let userGeoObject = null;
 let lastCoords = null;
 let lastAngle = 0;
 
-// Параметры анимации
+// Параметры анимации движения
 let animationFrameId = null;
 let animationStartTime = null;
-let animationDuration = 400; // ms
+let animationDuration = 400;
 let startCoords = null;
 let targetCoords = null;
+
+// Параметры автоповорота карты
+let lastMapRotation = 0;
+let rotationSmoothing = 0.15; // плавность поворота карты
 
 function log(t) {
     const el = document.getElementById("debug");
@@ -28,7 +32,7 @@ function calculateAngle(prev, curr) {
     return angleRad * (180 / Math.PI);
 }
 
-// Линейная интерполяция между двумя координатами
+// Линейная интерполяция координат
 function lerpCoords(start, end, t) {
     return [
         start[0] + (end[0] - start[0]) * t,
@@ -36,7 +40,7 @@ function lerpCoords(start, end, t) {
     ];
 }
 
-// Анимация движения стрелки
+// Плавная анимация движения стрелки
 function animateMarker(timestamp) {
     if (!animationStartTime) animationStartTime = timestamp;
 
@@ -83,6 +87,22 @@ function moveMarkerSmooth(newCoords) {
     lastAngle = angle;
 
     animationFrameId = requestAnimationFrame(animateMarker);
+
+    // 🔥 Автоповорот карты
+    rotateMapToAngle(angle);
+}
+
+// Плавный поворот карты
+function rotateMapToAngle(targetAngle) {
+    if (!map) return;
+
+    // нормализуем угол
+    let diff = targetAngle - lastMapRotation;
+    diff = ((diff + 180) % 360) - 180;
+
+    lastMapRotation += diff * rotationSmoothing;
+
+    map.setRotation(lastMapRotation);
 }
 
 function initMap() {
@@ -96,13 +116,12 @@ function initMap() {
 
     setStatus("Карта создана");
 
-    // 🔥 Включаем жесты мультитача и поворот карты
+    // Жесты
     map.behaviors.enable('multiTouch');
-    map.behaviors.enable('multiTouchRotate'); // Поворот карты двумя пальцами
     map.behaviors.enable('drag');
     map.behaviors.enable('scrollZoom');
 
-    // 🔥 Отключаем встроенный синий кружок Яндекса
+    // 🔥 Отключаем синий кружок Яндекса
     ymaps.modules.require(['geolocation'], function (geolocation) {
         geolocation.get({
             provider: 'browser',
@@ -110,7 +129,7 @@ function initMap() {
         });
     });
 
-    // Загружаем точки и зоны
+    // Точки и зоны
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
@@ -147,7 +166,6 @@ function initMap() {
 
                 log("Геолокация: " + coords.join(", "));
 
-                // 🔥 Кастомная стрелка
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
@@ -171,7 +189,6 @@ function initMap() {
             { enableHighAccuracy: true }
         );
 
-        // 🔥 Обновление позиции + плавное движение + поворот стрелки
         navigator.geolocation.watchPosition(
             pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
