@@ -1,33 +1,60 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Аудиогид по Казани</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kazan Audio Guide</title>
 
-    <!-- Telegram WebApp API -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            background: #f5f5f5;
+        }
 
-    <!-- Яндекс.Карты -->
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=c19fec0e-bee5-4e1e-be7e-ab4b959fd303&lang=ru_RU"></script>
+        #map {
+            width: 100vw;
+            height: 80vh;
+        }
 
-    <link rel="stylesheet" href="style.css">
+        #controls {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            background: #2a8bf2;
+            color: white;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        #route-status {
+            padding: 10px;
+            background: #fff;
+            border-top: 1px solid #ddd;
+            font-size: 14px;
+        }
+    </style>
+
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
+    <script src="app.js" defer></script>
 </head>
+
 <body>
-<div id="app">
-    <header id="header">
-        <div id="route-title">Аудиогид по Казани</div>
-        <div id="route-status">Загрузка карты…</div>
-    </header>
 
     <div id="map"></div>
 
     <div id="controls">
-        <button id="recenter-btn">Моё положение</button>
-        <button id="help-btn">Подсказка</button>
+        <button id="recenter-btn">Центрировать</button>
+        <button id="simulate-btn">Симуляция движения</button>
     </div>
-</div>
 
-<script src="app.js"></script>
+    <div id="route-status">Загрузка…</div>
+
 </body>
 </html>
