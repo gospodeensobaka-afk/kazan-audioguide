@@ -130,7 +130,7 @@ function initMap() {
     // =========================
 
     const userLayout = ymaps.templateLayoutFactory.createClass(
-        '<div class="user-arrow" style="transform: rotate({{ rotation }}deg);"></div>'
+        '<div class="user-arrow"></div>'
     );
 
     // =========================
@@ -180,6 +180,9 @@ function initMap() {
 
                     userGeoObject.geometry.setCoordinates(newCoords);
                     userGeoObject.properties.set("rotation", angle);
+
+                    const el = userGeoObject.getOverlaySync()?.getElement();
+                    if (el) el.style.transform = `rotate(${angle}deg)`;
 
                     checkRadius(newCoords);
                 }
@@ -250,10 +253,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 userGeoObject.geometry.setCoordinates(newCoords);
                 userGeoObject.properties.set("rotation", angle);
 
-                checkRadius(newCoords);
+                const el = userGeoObject.getOverlaySync()?.getElement();
+                if (el) el.style.transform = `rotate(${angle}deg)`;
 
-                // УБИРАЕМ ДЁРГАНИЕ — НЕ ДВИГАЕМ КАРТУ
-                // map.setCenter(newCoords);
+                checkRadius(newCoords);
 
                 i++;
             }, 700);
