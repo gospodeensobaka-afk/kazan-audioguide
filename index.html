@@ -15,7 +15,7 @@
 
         #map {
             width: 100vw;
-            height: 80vh;
+            height: 70vh;
         }
 
         #controls {
@@ -39,6 +39,15 @@
             border-top: 1px solid #ddd;
             font-size: 14px;
         }
+
+        #debug {
+            padding: 10px;
+            background: #eee;
+            font-size: 12px;
+            white-space: pre-line;
+            height: 20vh;
+            overflow-y: auto;
+        }
     </style>
 
     <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
@@ -55,6 +64,7 @@
     </div>
 
     <div id="route-status">Загрузка…</div>
+    <div id="debug"></div>
 
 </body>
 </html>
