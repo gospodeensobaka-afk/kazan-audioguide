@@ -60,14 +60,7 @@ function initMap() {
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
-                    {
-                        iconLayout: "default#image",
-                        iconImageHref: "arrow.png",
-                        iconImageSize: [40, 40],
-                        iconImageOffset: [-20, -20],
-                        iconImageRotate: true,
-                        iconRotate: true
-                    }
+                    { preset: "islands#blueCircleIcon" }
                 );
 
                 map.geoObjects.add(userGeoObject);
