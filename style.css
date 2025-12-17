@@ -53,14 +53,3 @@ html, body {
     height: 20vh;
     overflow-y: auto;
 }
-
-/* СТРЕЛКА ПОЛЬЗОВАТЕЛЯ */
-.user-arrow {
-    width: 32px;
-    height: 32px;
-    background-image: url("arrow.png");
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    transform-origin: center center;
-}
