@@ -1,34 +1,40 @@
 // ======================================================
-// 1. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// 1. ГЛОБАЛЬНОЕ СОСТОЯНИЕ
 // ======================================================
 
 let map;
+
+// Маркер пользователя (стрелка)
 let userMarker = null;
 
-let lastCoords = null;        // последние координаты маркера
-let lastAngle = 0;            // последний угол поворота стрелки
+// Положение и ориентация
+let lastCoords = null;
+let lastAngle = 0;
 
 // Анимация движения
 let animationFrameId = null;
 let animationStartTime = null;
-let animationDuration = 1200; // скорость движения
+const ANIMATION_DURATION = 1200; // мс
+
 let startCoords = null;
 let targetCoords = null;
 
-// Зоны
+// Зоны-чекпоинты
 let zones = [];
+
+// Маршрут (список координат по порядку id)
+let routeCoords = [];
 
 // Симуляция
 let simulationActive = false;
-let simulationPoints = [];
 let simulationIndex = 0;
 
-// GPS
+// GPS состояние
 let gpsActive = true;
 
 
 // ======================================================
-// 2. СЛУЖЕБНЫЕ ФУНКЦИИ
+// 2. УТИЛИТЫ: ЛОГ, СТАТУС, МАТЕМАТИКА
 // ======================================================
 
 function log(t) {
@@ -44,7 +50,7 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
-// Расстояние между двумя точками
+// Расстояние между точками (в метрах)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -59,19 +65,20 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-// Угол между двумя координатами (для поворота стрелки)
-function calculateAngle(prev, curr) {
-    const dx = curr[1] - prev[1];
-    const dy = curr[0] - prev[0];
-    return Math.atan2(dx, dy) * (180 / Math.PI);
-}
-
-// Линейная интерполяция
+// Лерп координат
 function lerpCoords(start, end, t) {
     return [
         start[0] + (end[0] - start[0]) * t,
         start[1] + (end[1] - start[1]) * t
     ];
+}
+
+// Угол между двумя точками (в градусах)
+// dx по долготе, dy по широте — как в навигаторах
+function calculateAngle(prev, curr) {
+    const dx = curr[1] - prev[1];
+    const dy = curr[0] - prev[0];
+    return Math.atan2(dx, dy) * (180 / Math.PI);
 }
 
 
@@ -81,12 +88,11 @@ function lerpCoords(start, end, t) {
 
 function checkZones(coords) {
     zones.forEach(z => {
-        const dist = distance(coords, [z.lat, z.lon]);
+        const distToZone = distance(coords, [z.lat, z.lon]);
 
-        if (dist <= z.radius && !z.visited) {
+        if (distToZone <= z.radius && !z.visited) {
             z.visited = true;
 
-            // Красим зону в зелёный
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
@@ -94,8 +100,9 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            // Финальная точка — просто зелёная, без сброса
-            if (z.id === 4) {
+            // Финальная точка — просто лог и статус, без сброса
+            // (логика аудиогида: прошёл — больше не возвращаешься)
+            if (z.isLast) {
                 setStatus("Финальная точка достигнута!");
                 log("Финальная точка достигнута.");
             }
@@ -105,25 +112,26 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ПЛАВНОЕ ДВИЖЕНИЕ + ПОВОРОТ СТРЕЛКИ
+// 4. ДВИЖЕНИЕ МАРКЕРА: ПЛАВНОСТЬ + ПОВОРОТ
 // ======================================================
 
+// Анимационный кадр
 function animateMarker(timestamp) {
     if (!animationStartTime) animationStartTime = timestamp;
 
     const elapsed = timestamp - animationStartTime;
-    let t = elapsed / animationDuration;
+    let t = elapsed / ANIMATION_DURATION;
     if (t > 1) t = 1;
 
     const current = lerpCoords(startCoords, targetCoords, t);
 
-    // Поворот стрелки
+    // Поворот стрелки по направлению движения
     const angle = calculateAngle(startCoords, targetCoords);
+    lastAngle = angle;
     userMarker.options.set("iconImageRotation", angle);
 
-    // Перемещение маркера
+    // Перемещение
     userMarker.geometry.setCoordinates(current);
-
     checkZones(current);
 
     if (t < 1) {
@@ -133,17 +141,28 @@ function animateMarker(timestamp) {
         animationStartTime = null;
         lastCoords = targetCoords;
 
+        // Если идёт симуляция — двигаемся к следующей точке
         if (simulationActive) {
             simulateNextStep();
         }
     }
 }
 
+// Общий метод движения (GPS и симуляция)
+// Именно эта функция реализует «логику навигатора»
 function moveMarkerSmooth(newCoords) {
+    // Первый вызов — просто ставим стрелку в точку
     if (!lastCoords) {
         lastCoords = newCoords;
         userMarker.geometry.setCoordinates(newCoords);
+        userMarker.options.set("iconImageRotation", lastAngle);
         checkZones(newCoords);
+        return;
+    }
+
+    // Если движение совсем маленькое — не анимируем
+    const dist = distance(lastCoords, newCoords);
+    if (dist < 0.5) {
         return;
     }
 
@@ -161,13 +180,13 @@ function moveMarkerSmooth(newCoords) {
 
 
 // ======================================================
-// 5. СИМУЛЯЦИЯ
+// 5. СИМУЛЯЦИЯ МАРШРУТА
 // ======================================================
 
 function simulateNextStep() {
     if (!simulationActive) return;
 
-    if (simulationIndex >= simulationPoints.length) {
+    if (simulationIndex >= routeCoords.length) {
         simulationActive = false;
         gpsActive = true;
         setStatus("Симуляция завершена");
@@ -175,21 +194,28 @@ function simulateNextStep() {
         return;
     }
 
-    const next = simulationPoints[simulationIndex];
+    const next = routeCoords[simulationIndex];
     simulationIndex++;
 
     moveMarkerSmooth(next);
 }
 
 function startSimulation() {
+    if (!routeCoords.length) {
+        setStatus("Нет маршрута для симуляции");
+        log("Нет routeCoords для симуляции");
+        return;
+    }
+
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
 
-    const start = simulationPoints[0];
+    const start = routeCoords[0];
     lastCoords = start;
 
     userMarker.geometry.setCoordinates(start);
+    userMarker.options.set("iconImageRotation", lastAngle);
     map.setCenter(start, 15);
 
     setStatus("Симуляция запущена");
@@ -200,11 +226,11 @@ function startSimulation() {
 
 
 // ======================================================
-// 6. ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// 6. ИНИЦИАЛИЗАЦИЯ КАРТЫ, МАРКЕРА, МАРШРУТА, ЗОН
 // ======================================================
 
 function initMap() {
-    const initialCenter = [55.826584, 49.082118];
+    const initialCenter = [55.826584, 49.082118]; // Старт, под твой маршрут
 
     map = new ymaps.Map("map", {
         center: initialCenter,
@@ -212,13 +238,14 @@ function initMap() {
         controls: []
     });
 
-    // Стрелка
+    // ----- МАРКЕР-СТРЕЛКА -----
+    // Создаём ОДИН раз и больше НИКОГДА не пересоздаём
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
         {
             iconLayout: "default#image",
-            iconImageHref: "arrow.png",
+            iconImageHref: "arrow.png",       // В корне рядом с index.html
             iconImageSize: [40, 40],
             iconImageOffset: [-20, -20],
             iconImageRotate: true
@@ -227,13 +254,21 @@ function initMap() {
 
     map.geoObjects.add(userMarker);
 
-    // Загружаем точки
+    // ----- ЗАГРУЗКА ТОЧЕК -----
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
+            if (!Array.isArray(points) || points.length === 0) {
+                setStatus("points.json пустой");
+                log("points.json пустой или не массив");
+                return;
+            }
 
-            // ===== Нумерация точек (вариант A — синие кружки) =====
-            points.forEach(p => {
+            // Сортируем точки по id — задаём ПОРЯДОК маршрута
+            const sorted = points.slice().sort((a, b) => a.id - b.id);
+
+            // 6.1. Нумерация точек (вариант A — синие кружки с цифрой)
+            sorted.forEach(p => {
                 const label = new ymaps.Placemark(
                     [p.lat, p.lon],
                     { iconContent: p.id },
@@ -245,8 +280,8 @@ function initMap() {
                 map.geoObjects.add(label);
             });
 
-            // ===== Зоны =====
-            points.forEach(p => {
+            // 6.2. Зоны
+            sorted.forEach((p, index) => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
                     {},
@@ -266,17 +301,16 @@ function initMap() {
                     lon: p.lon,
                     radius: p.radius,
                     circle: circle,
-                    visited: false
+                    visited: false,
+                    isLast: index === sorted.length - 1 // последняя точка маршрута
                 });
             });
 
-            // ===== Маршрут (Polyline) =====
-            simulationPoints = points
-                .sort((a, b) => a.id - b.id)
-                .map(p => [p.lat, p.lon]);
+            // 6.3. Маршрут (Polyline) по порядку id
+            routeCoords = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
-                simulationPoints,
+                routeCoords,
                 {},
                 {
                     strokeColor: "#1E90FF",
@@ -287,15 +321,22 @@ function initMap() {
 
             map.geoObjects.add(routeLine);
 
-            setStatus("Готово к симуляции");
-            log("Маршрут и точки загружены");
+            setStatus("Маршрут загружен, готов к симуляции");
+            log("Точки и маршрут загружены");
+        })
+        .catch(err => {
+            console.error(err);
+            setStatus("Ошибка загрузки points.json");
+            log("Ошибка загрузки points.json: " + err.message);
         });
 
-    // Кнопка симуляции
+    // ----- Кнопка симуляции -----
     const btnSim = document.getElementById("simulate");
-    if (btnSim) btnSim.addEventListener("click", startSimulation);
+    if (btnSim) {
+        btnSim.addEventListener("click", startSimulation);
+    }
 
-    // GPS
+    // ----- GPS -----
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             pos => {
@@ -304,9 +345,18 @@ function initMap() {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
                 moveMarkerSmooth(coords);
             },
-            err => log("Ошибка GPS: " + err.message),
-            { enableHighAccuracy: true }
+            err => {
+                log("Ошибка GPS: " + err.message);
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 10000
+            }
         );
+    } else {
+        setStatus("GPS не поддерживается");
+        log("navigator.geolocation не поддерживается");
     }
 
     setStatus("Карта инициализирована");
