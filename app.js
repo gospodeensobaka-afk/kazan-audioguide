@@ -1,38 +1,32 @@
 let map;
-let userGeoObject = null;
+let userMarker = null;
 let lastCoords = null;
 let lastAngle = 0;
 
-// Плавное движение
+// Плавная анимация
 let animationFrameId = null;
 let animationStartTime = null;
-let animationDuration = 800;
+let animationDuration = 600;
 let startCoords = null;
 let targetCoords = null;
 
-// Зоны (чекпоинты)
+// Зоны
 let zones = [];
 
-// Симуляция маршрута: 1 подъезд → 4 подъезд → Мусорка
-// Берём координаты из твоего points.json
-const P_1_PODEZD  = [55.826823, 49.082742]; // id 3
-const P_4_PODEZD  = [55.826634, 49.082187]; // id 2
-const P_MUSORKA   = [55.826896, 49.082015]; // id 4
-
-const simulationPoints = [
-    P_1_PODEZD,
-    P_4_PODEZD,
-    P_MUSORKA
-];
-
-let simulationIndex = 0;
+// Симуляция
 let simulationActive = false;
+let simulationPoints = [];
+let simulationIndex = 0;
+
+// GPS
+let gpsActive = true;
 
 function log(t) {
     const el = document.getElementById("debug");
-    if (!el) return;
-    el.textContent += t + "\n";
-    el.scrollTop = el.scrollHeight;
+    if (el) {
+        el.textContent += t + "\n";
+        el.scrollTop = el.scrollHeight;
+    }
 }
 
 function setStatus(t) {
@@ -40,7 +34,6 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
-// Угол направления движения (для стрелки)
 function calculateAngle(prev, curr) {
     const dx = curr[1] - prev[1];
     const dy = curr[0] - prev[0];
@@ -48,7 +41,6 @@ function calculateAngle(prev, curr) {
     return angleRad * (180 / Math.PI);
 }
 
-// Линейная интерполяция
 function lerpCoords(start, end, t) {
     return [
         start[0] + (end[0] - start[0]) * t,
@@ -56,7 +48,6 @@ function lerpCoords(start, end, t) {
     ];
 }
 
-// Расстояние (для зон)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -71,24 +62,27 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-// Чекпоинты: отметить вход + финал
 function checkZones(coords) {
     zones.forEach(z => {
         const dist = distance(coords, [z.lat, z.lon]);
 
-        // если ещё не посещали и вошли в радиус
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
+
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
             });
-            log(`Вход в зону: ${z.name}`);
+
+            log("Вход в зону: " + z.name);
 
             if (z.name === "Мусорка") {
-                log("Маршрут пройден: достигнута Мусорка → сбрасываем чекпоинты");
-                setStatus("Маршрут пройден! Все чекпоинты сброшены.");
-                resetAllZones();
+                log("Маршрут пройден: достигнута Мусорка");
+                setStatus("Маршрут пройден! Сброс через 1 секунду.");
+
+                setTimeout(() => {
+                    resetAllZones();
+                }, 1000);
             }
         }
     });
@@ -102,9 +96,10 @@ function resetAllZones() {
             strokeColor: "rgba(255,0,0,0.4)"
         });
     });
+
+    log("Все зоны сброшены");
 }
 
-// Анимация маркера
 function animateMarker(timestamp) {
     if (!animationStartTime) animationStartTime = timestamp;
 
@@ -114,10 +109,8 @@ function animateMarker(timestamp) {
 
     const current = lerpCoords(startCoords, targetCoords, t);
 
-    if (userGeoObject) {
-        userGeoObject.geometry.setCoordinates(current);
-        userGeoObject.options.set("iconImageRotation", lastAngle);
-    }
+    userMarker.geometry.setCoordinates(current);
+    userMarker.options.set("iconImageRotation", lastAngle);
 
     checkZones(current);
 
@@ -134,12 +127,10 @@ function animateMarker(timestamp) {
     }
 }
 
-// Плавное движение к новой точке
 function moveMarkerSmooth(newCoords) {
     if (!lastCoords) {
         lastCoords = newCoords;
-        if (userGeoObject) userGeoObject.geometry.setCoordinates(newCoords);
-        map.setCenter(newCoords);
+        userMarker.geometry.setCoordinates(newCoords);
         checkZones(newCoords);
         return;
     }
@@ -153,41 +144,36 @@ function moveMarkerSmooth(newCoords) {
     startCoords = lastCoords;
     targetCoords = newCoords;
 
-    const angle = calculateAngle(startCoords, targetCoords);
-    lastAngle = angle;
+    lastAngle = calculateAngle(startCoords, targetCoords);
 
     animationFrameId = requestAnimationFrame(animateMarker);
 }
 
-// Один шаг симуляции
 function simulateNextStep() {
     if (simulationIndex >= simulationPoints.length) {
         simulationActive = false;
+        gpsActive = true;
         setStatus("Симуляция завершена");
-        log("Симуляция завершена");
         return;
     }
 
     const next = simulationPoints[simulationIndex];
-    log(`Симуляция: шаг ${simulationIndex + 1} → ${next[0].toFixed(6)}, ${next[1].toFixed(6)}`);
     simulationIndex++;
 
     moveMarkerSmooth(next);
 }
 
-// Старт симуляции
 function startSimulation() {
     simulationActive = true;
+    gpsActive = false;
+
     simulationIndex = 0;
 
-    // Стартуем с 1 подъезда
     const start = simulationPoints[0];
     lastCoords = start;
-    if (userGeoObject) {
-        userGeoObject.geometry.setCoordinates(start);
-    }
+
+    userMarker.geometry.setCoordinates(start);
     map.setCenter(start);
-    setStatus("Симуляция маршрута…");
 
     checkZones(start);
 
@@ -195,22 +181,13 @@ function startSimulation() {
 }
 
 function initMap() {
-    log("initMap вызван");
-
     map = new ymaps.Map("map", {
         center: [55.826620, 49.082188],
         zoom: 18,
         controls: []
     });
 
-    setStatus("Карта создана");
-
-    map.behaviors.enable('multiTouch');
-    map.behaviors.enable('drag');
-    map.behaviors.enable('scrollZoom');
-
-    // Стрелка
-    userGeoObject = new ymaps.Placemark(
+    userMarker = new ymaps.Placemark(
         [55.826620, 49.082188],
         {},
         {
@@ -222,21 +199,12 @@ function initMap() {
         }
     );
 
-    map.geoObjects.add(userGeoObject);
+    map.geoObjects.add(userMarker);
 
-    // Загружаем зоны из points.json (только для кругов и подсказок)
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
-            log("points.json загружен, всего точек: " + points.length);
-
             points.forEach(p => {
-                const placemark = new ymaps.Placemark(
-                    [p.lat, p.lon],
-                    { balloonContent: `<b>${p.name}</b><br>${p.text}` },
-                    { preset: "islands#redIcon" }
-                );
-
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
                     {},
@@ -248,7 +216,6 @@ function initMap() {
                 );
 
                 map.geoObjects.add(circle);
-                map.geoObjects.add(placemark);
 
                 zones.push({
                     id: p.id,
@@ -261,23 +228,29 @@ function initMap() {
                 });
             });
 
-            setStatus("Готово к симуляции. Нажмите кнопку.");
-        })
-        .catch(err => {
-            log("Ошибка загрузки points.json: " + err);
-            setStatus("Ошибка загрузки точек");
+            const p1 = points.find(p => p.id === 3);
+            const p4 = points.find(p => p.id === 2);
+            const trash = points.find(p => p.id === 4);
+
+            simulationPoints = [
+                [p1.lat, p1.lon],
+                [p4.lat, p4.lon],
+                [trash.lat, trash.lon]
+            ];
+
+            setStatus("Готово к симуляции");
         });
 
-    const btn = document.getElementById("simulate");
-    if (btn) {
-        btn.addEventListener("click", () => {
-            log("Нажата кнопка симуляции");
-            startSimulation();
-        });
-    }
+    document.getElementById("simulate").addEventListener("click", startSimulation);
+
+    navigator.geolocation.watchPosition(pos => {
+        if (!gpsActive) return;
+
+        const coords = [pos.coords.latitude, pos.coords.longitude];
+        moveMarkerSmooth(coords);
+    });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    log("DOM загружен");
     ymaps.ready(initMap);
 });
