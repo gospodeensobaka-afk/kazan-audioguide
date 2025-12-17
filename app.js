@@ -2,11 +2,13 @@ let map;
 let userGeoObject = null;
 
 function log(t) {
-    document.getElementById("debug").textContent += t + "\n";
+    const el = document.getElementById("debug");
+    if (el) el.textContent += t + "\n";
 }
 
 function setStatus(t) {
-    document.getElementById("status").textContent = t;
+    const el = document.getElementById("status");
+    if (el) el.textContent = t;
 }
 
 function initMap() {
@@ -20,14 +22,14 @@ function initMap() {
 
     setStatus("Карта создана");
 
-    // Загружаем точки
+    // Загружаем точки и зоны
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
             points.forEach(p => {
                 const placemark = new ymaps.Placemark(
                     [p.lat, p.lon],
-                    { balloonContent: p.name },
+                    { balloonContent: `<b>${p.name}</b><br>${p.text}` },
                     { preset: "islands#redIcon" }
                 );
 
