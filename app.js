@@ -2,6 +2,8 @@ let map;
 let userGeoObject = null;
 let lastCoords = null;
 let lastAngle = 0;
+
+// Параметры анимации
 let animationFrameId = null;
 let animationStartTime = null;
 let animationDuration = 400; // ms
@@ -18,7 +20,7 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
-// вычисляем угол направления (из старых координат в новые)
+// Вычисляем угол направления движения
 function calculateAngle(prev, curr) {
     const dx = curr[1] - prev[1];
     const dy = curr[0] - prev[0];
@@ -26,7 +28,7 @@ function calculateAngle(prev, curr) {
     return angleRad * (180 / Math.PI);
 }
 
-// линейная интерполяция между двумя точками
+// Линейная интерполяция между двумя координатами
 function lerpCoords(start, end, t) {
     return [
         start[0] + (end[0] - start[0]) * t,
@@ -34,6 +36,7 @@ function lerpCoords(start, end, t) {
     ];
 }
 
+// Анимация движения стрелки
 function animateMarker(timestamp) {
     if (!animationStartTime) animationStartTime = timestamp;
 
@@ -42,6 +45,7 @@ function animateMarker(timestamp) {
     if (t > 1) t = 1;
 
     const current = lerpCoords(startCoords, targetCoords, t);
+
     if (userGeoObject) {
         userGeoObject.geometry.setCoordinates(current);
         userGeoObject.options.set("iconImageRotation", lastAngle);
@@ -50,15 +54,14 @@ function animateMarker(timestamp) {
     if (t < 1) {
         animationFrameId = requestAnimationFrame(animateMarker);
     } else {
-        // анимация закончена
         animationFrameId = null;
         animationStartTime = null;
         lastCoords = targetCoords;
     }
 }
 
+// Запуск плавного движения
 function moveMarkerSmooth(newCoords) {
-    // если ещё не было координат — просто ставим маркер
     if (!lastCoords) {
         if (userGeoObject) {
             userGeoObject.geometry.setCoordinates(newCoords);
@@ -67,7 +70,6 @@ function moveMarkerSmooth(newCoords) {
         return;
     }
 
-    // если уже есть анимация — отменяем
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
@@ -77,7 +79,6 @@ function moveMarkerSmooth(newCoords) {
     startCoords = lastCoords;
     targetCoords = newCoords;
 
-    // считаем угол направления
     const angle = calculateAngle(startCoords, targetCoords);
     lastAngle = angle;
 
@@ -95,7 +96,13 @@ function initMap() {
 
     setStatus("Карта создана");
 
-    // отключаем встроенную геолокацию Яндекса (синий кружок)
+    // 🔥 Включаем жесты мультитача и поворот карты
+    map.behaviors.enable('multiTouch');
+    map.behaviors.enable('multiTouchRotate'); // Поворот карты двумя пальцами
+    map.behaviors.enable('drag');
+    map.behaviors.enable('scrollZoom');
+
+    // 🔥 Отключаем встроенный синий кружок Яндекса
     ymaps.modules.require(['geolocation'], function (geolocation) {
         geolocation.get({
             provider: 'browser',
@@ -103,7 +110,7 @@ function initMap() {
         });
     });
 
-    // точки и зоны
+    // Загружаем точки и зоны
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
@@ -131,7 +138,7 @@ function initMap() {
             log("Точки и зоны загружены");
         });
 
-    // геолокация
+    // Геолокация
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             pos => {
@@ -140,6 +147,7 @@ function initMap() {
 
                 log("Геолокация: " + coords.join(", "));
 
+                // 🔥 Кастомная стрелка
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
@@ -163,7 +171,7 @@ function initMap() {
             { enableHighAccuracy: true }
         );
 
-        // обновление позиции и поворот стрелки
+        // 🔥 Обновление позиции + плавное движение + поворот стрелки
         navigator.geolocation.watchPosition(
             pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
@@ -172,7 +180,6 @@ function initMap() {
                 if (userGeoObject) {
                     moveMarkerSmooth(coords);
                 } else {
-                    // на всякий случай, если маркер ещё не создан
                     lastCoords = coords;
                 }
             },
