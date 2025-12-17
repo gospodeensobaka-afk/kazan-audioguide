@@ -1,7 +1,12 @@
 let map;
 let userGeoObject = null;
-let lastCoords = null; // 🔥 добавлено
-let lastAngle = 0;     // 🔥 добавлено
+let lastCoords = null;
+let lastAngle = 0;
+let animationFrameId = null;
+let animationStartTime = null;
+let animationDuration = 400; // ms
+let startCoords = null;
+let targetCoords = null;
 
 function log(t) {
     const el = document.getElementById("debug");
@@ -13,12 +18,70 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
+// вычисляем угол направления (из старых координат в новые)
 function calculateAngle(prev, curr) {
-    // 🔥 Вычисляем направление движения
     const dx = curr[1] - prev[1];
     const dy = curr[0] - prev[0];
     const angleRad = Math.atan2(dx, dy);
     return angleRad * (180 / Math.PI);
+}
+
+// линейная интерполяция между двумя точками
+function lerpCoords(start, end, t) {
+    return [
+        start[0] + (end[0] - start[0]) * t,
+        start[1] + (end[1] - start[1]) * t
+    ];
+}
+
+function animateMarker(timestamp) {
+    if (!animationStartTime) animationStartTime = timestamp;
+
+    const elapsed = timestamp - animationStartTime;
+    let t = elapsed / animationDuration;
+    if (t > 1) t = 1;
+
+    const current = lerpCoords(startCoords, targetCoords, t);
+    if (userGeoObject) {
+        userGeoObject.geometry.setCoordinates(current);
+        userGeoObject.options.set("iconImageRotation", lastAngle);
+    }
+
+    if (t < 1) {
+        animationFrameId = requestAnimationFrame(animateMarker);
+    } else {
+        // анимация закончена
+        animationFrameId = null;
+        animationStartTime = null;
+        lastCoords = targetCoords;
+    }
+}
+
+function moveMarkerSmooth(newCoords) {
+    // если ещё не было координат — просто ставим маркер
+    if (!lastCoords) {
+        if (userGeoObject) {
+            userGeoObject.geometry.setCoordinates(newCoords);
+        }
+        lastCoords = newCoords;
+        return;
+    }
+
+    // если уже есть анимация — отменяем
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+        animationStartTime = null;
+    }
+
+    startCoords = lastCoords;
+    targetCoords = newCoords;
+
+    // считаем угол направления
+    const angle = calculateAngle(startCoords, targetCoords);
+    lastAngle = angle;
+
+    animationFrameId = requestAnimationFrame(animateMarker);
 }
 
 function initMap() {
@@ -32,7 +95,7 @@ function initMap() {
 
     setStatus("Карта создана");
 
-    // Отключаем встроенный синий кружок
+    // отключаем встроенную геолокацию Яндекса (синий кружок)
     ymaps.modules.require(['geolocation'], function (geolocation) {
         geolocation.get({
             provider: 'browser',
@@ -40,7 +103,7 @@ function initMap() {
         });
     });
 
-    // Загружаем точки
+    // точки и зоны
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
@@ -68,16 +131,15 @@ function initMap() {
             log("Точки и зоны загружены");
         });
 
-    // Геолокация
+    // геолокация
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
-                lastCoords = coords; // 🔥 сохраняем стартовые координаты
+                lastCoords = coords;
 
                 log("Геолокация: " + coords.join(", "));
 
-                // Стрелка
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
@@ -86,7 +148,7 @@ function initMap() {
                         iconImageHref: "arrow.png",
                         iconImageSize: [40, 40],
                         iconImageOffset: [-20, -20],
-                        iconImageRotate: true // 🔥 разрешаем поворот
+                        iconImageRotate: true
                     }
                 );
 
@@ -101,29 +163,25 @@ function initMap() {
             { enableHighAccuracy: true }
         );
 
-        // 🔥 Обновление стрелки при движении + поворот
+        // обновление позиции и поворот стрелки
         navigator.geolocation.watchPosition(
             pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
+                log("watchPosition: " + coords.join(", "));
 
                 if (userGeoObject) {
-                    userGeoObject.geometry.setCoordinates(coords);
-
-                    if (lastCoords) {
-                        const angle = calculateAngle(lastCoords, coords);
-
-                        // 🔥 Плавный поворот (без резких скачков)
-                        lastAngle = angle;
-
-                        userGeoObject.options.set("iconImageRotation", lastAngle);
-                    }
-
+                    moveMarkerSmooth(coords);
+                } else {
+                    // на всякий случай, если маркер ещё не создан
                     lastCoords = coords;
                 }
             },
             err => log("Ошибка watchPosition: " + err.message),
             { enableHighAccuracy: true }
         );
+    } else {
+        log("Геолокация недоступна");
+        setStatus("Геолокация недоступна");
     }
 }
 
