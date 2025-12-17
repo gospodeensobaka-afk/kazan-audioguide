@@ -1,5 +1,7 @@
 let map;
 let userGeoObject = null;
+let lastCoords = null; // 🔥 добавлено
+let lastAngle = 0;     // 🔥 добавлено
 
 function log(t) {
     const el = document.getElementById("debug");
@@ -9,6 +11,14 @@ function log(t) {
 function setStatus(t) {
     const el = document.getElementById("status");
     if (el) el.textContent = t;
+}
+
+function calculateAngle(prev, curr) {
+    // 🔥 Вычисляем направление движения
+    const dx = curr[1] - prev[1];
+    const dy = curr[0] - prev[0];
+    const angleRad = Math.atan2(dx, dy);
+    return angleRad * (180 / Math.PI);
 }
 
 function initMap() {
@@ -22,7 +32,7 @@ function initMap() {
 
     setStatus("Карта создана");
 
-    // 🔥 Отключаем встроенный синий кружок Яндекса
+    // Отключаем встроенный синий кружок
     ymaps.modules.require(['geolocation'], function (geolocation) {
         geolocation.get({
             provider: 'browser',
@@ -30,7 +40,7 @@ function initMap() {
         });
     });
 
-    // Загружаем точки и зоны
+    // Загружаем точки
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
@@ -63,9 +73,11 @@ function initMap() {
         navigator.geolocation.getCurrentPosition(
             pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
+                lastCoords = coords; // 🔥 сохраняем стартовые координаты
+
                 log("Геолокация: " + coords.join(", "));
 
-                // 🔥 Кастомная стрелка
+                // Стрелка
                 userGeoObject = new ymaps.Placemark(
                     coords,
                     {},
@@ -73,7 +85,8 @@ function initMap() {
                         iconLayout: "default#image",
                         iconImageHref: "arrow.png",
                         iconImageSize: [40, 40],
-                        iconImageOffset: [-20, -20]
+                        iconImageOffset: [-20, -20],
+                        iconImageRotate: true // 🔥 разрешаем поворот
                     }
                 );
 
@@ -88,12 +101,24 @@ function initMap() {
             { enableHighAccuracy: true }
         );
 
-        // 🔥 Обновление стрелки при движении
+        // 🔥 Обновление стрелки при движении + поворот
         navigator.geolocation.watchPosition(
             pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
+
                 if (userGeoObject) {
                     userGeoObject.geometry.setCoordinates(coords);
+
+                    if (lastCoords) {
+                        const angle = calculateAngle(lastCoords, coords);
+
+                        // 🔥 Плавный поворот (без резких скачков)
+                        lastAngle = angle;
+
+                        userGeoObject.options.set("iconImageRotation", lastAngle);
+                    }
+
+                    lastCoords = coords;
                 }
             },
             err => log("Ошибка watchPosition: " + err.message),
