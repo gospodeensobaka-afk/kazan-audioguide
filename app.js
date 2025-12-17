@@ -1,7 +1,7 @@
 let map;
 let userMarker = null;
 
-// Последние координаты пользователя
+// Последние координаты пользователя (или маркера симуляции)
 let lastCoords = null;
 
 // Зоны
@@ -12,7 +12,7 @@ let simulationActive = false;
 let simulationPoints = [];
 let simulationIndex = 0;
 
-// GPS
+// GPS включён ли сейчас
 let gpsActive = true;
 
 function log(t) {
@@ -43,7 +43,7 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-// Проверка зон
+// Проверка входа в зоны
 function checkZones(coords) {
     zones.forEach(z => {
         const dist = distance(coords, [z.lat, z.lon]);
@@ -58,23 +58,24 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            // Если это последняя точка маршрута (id 4 — Точка 3)
+            // Финальная точка — Точка 3 (id = 4)
             if (z.id === 4) {
-                setStatus("Маршрут пройден! Финальная точка достигнута.");
-                log("Маршрут пройден (Точка 3)");
+                setStatus("Маршрут пройден! Достигнута финальная точка (Точка 3).");
+                log("Маршрут пройден: достигнута Точка 3.");
             }
         }
     });
 }
 
-// Простое перемещение маркера без анимации
-function moveMarkerInstant(coords) {
+// Простое мгновенное перемещение маркера
+function moveMarker(coords) {
     lastCoords = coords;
     userMarker.geometry.setCoordinates(coords);
     checkZones(coords);
 }
 
-// Симуляция — переход к следующей точке
+// ===== СИМУЛЯЦИЯ =====
+
 function simulateNextStep() {
     if (!simulationActive) return;
 
@@ -89,9 +90,9 @@ function simulateNextStep() {
     const next = simulationPoints[simulationIndex];
     simulationIndex++;
 
-    moveMarkerInstant(next);
+    moveMarker(next);
 
-    // Переход к следующей точке через паузу (2 секунды — можешь менять)
+    // Пауза между точками (можешь менять, например 1000 или 3000)
     setTimeout(simulateNextStep, 2000);
 }
 
@@ -107,8 +108,8 @@ function startSimulation() {
     simulationIndex = 0;
 
     const start = simulationPoints[0];
-    moveMarkerInstant(start);
-    map.setCenter(start, 16);
+    moveMarker(start);
+    map.setCenter(start, 14);
 
     setStatus("Симуляция запущена");
     log("Симуляция запущена");
@@ -116,16 +117,18 @@ function startSimulation() {
     setTimeout(simulateNextStep, 2000);
 }
 
+// ===== ИНИЦИАЛИЗАЦИЯ КАРТЫ =====
+
 function initMap() {
     const initialCenter = [55.826584, 49.082118]; // Старт
 
     map = new ymaps.Map("map", {
         center: initialCenter,
-        zoom: 16,
+        zoom: 14,
         controls: []
     });
 
-    // Простой маркер пользователя
+    // Простой маркер пользователя (без поворотов, без анимаций)
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
@@ -165,7 +168,7 @@ function initMap() {
                 });
             });
 
-            // Маршрут симуляции: Старт → Точка 1 → Точка 2 → Точка 3
+            // Маршрут симуляции: по порядку 1 → 2 → 3 → 4
             const start = points.find(p => p.id === 1);
             const p1 = points.find(p => p.id === 2);
             const p2 = points.find(p => p.id === 3);
@@ -206,7 +209,7 @@ function initMap() {
                 if (!gpsActive) return;
 
                 const coords = [pos.coords.latitude, pos.coords.longitude];
-                moveMarkerInstant(coords);
+                moveMarker(coords);
             },
             err => {
                 console.error(err);
