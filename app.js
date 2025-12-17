@@ -24,6 +24,7 @@ function distanceBetween(lat1, lon1, lat2, lon2) {
 
 function checkRadius(coords) {
     if (!pointsData.length) return;
+
     let nearest = null;
     let nearestDist = Infinity;
 
