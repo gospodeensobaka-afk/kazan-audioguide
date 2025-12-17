@@ -1,84 +1,31 @@
 let map;
 let userGeoObject = null;
-let pointsData = [];
 
-function setStatus(t) {
-    document.getElementById("route-status").textContent = t;
-}
-
-function debug(t) {
+function log(t) {
     document.getElementById("debug").textContent += t + "\n";
 }
 
-function distanceBetween(lat1, lon1, lat2, lon2) {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function checkRadius(coords) {
-    if (!pointsData.length) return;
-
-    let nearest = null;
-    let nearestDist = Infinity;
-
-    pointsData.forEach(p => {
-        const d = distanceBetween(coords[0], coords[1], p.lat, p.lon);
-        if (d < nearestDist) {
-            nearestDist = d;
-            nearest = p;
-        }
-    });
-
-    if (nearest) {
-        setStatus(`Ближайшая: ${nearest.name}, ~${nearestDist.toFixed(1)} м`);
-    }
+function setStatus(t) {
+    document.getElementById("status").textContent = t;
 }
 
 function initMap() {
+    log("initMap вызван");
+
     map = new ymaps.Map("map", {
         center: [55.8266, 49.0820],
-        zoom: 17,
+        zoom: 16,
         controls: []
     });
 
-    fetch("points.json")
-        .then(r => r.json())
-        .then(points => {
-            pointsData = points;
+    setStatus("Карта создана");
 
-            points.forEach(p => {
-                map.geoObjects.add(new ymaps.Placemark(
-                    [p.lat, p.lon],
-                    { balloonContent: p.name },
-                    { preset: "islands#redIcon" }
-                ));
-
-                map.geoObjects.add(new ymaps.Circle(
-                    [[p.lat, p.lon], p.radius],
-                    {},
-                    {
-                        fillColor: "rgba(255,0,0,0.15)",
-                        strokeColor: "rgba(255,0,0,0.4)",
-                        strokeWidth: 2
-                    }
-                ));
-            });
-
-            setStatus("Точки загружены.");
-        });
-
+    // Геолокация
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             pos => {
                 const coords = [pos.coords.latitude, pos.coords.longitude];
-                debug("Геолокация: " + coords.join(", "));
+                log("Геолокация: " + coords.join(", "));
 
                 userGeoObject = new ymaps.Placemark(
                     coords,
@@ -88,14 +35,21 @@ function initMap() {
 
                 map.geoObjects.add(userGeoObject);
                 map.setCenter(coords);
-                checkRadius(coords);
+                setStatus("Геолокация получена");
             },
-            () => setStatus("Ошибка геолокации"),
+            err => {
+                log("Ошибка геолокации: " + err.message);
+                setStatus("Ошибка геолокации");
+            },
             { enableHighAccuracy: true }
         );
+    } else {
+        log("Геолокация недоступна");
+        setStatus("Геолокация недоступна");
     }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    log("DOM загружен");
     ymaps.ready(initMap);
 });
