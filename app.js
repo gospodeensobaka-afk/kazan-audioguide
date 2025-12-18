@@ -43,14 +43,23 @@ function initMap() {
             // Кастомный layout для стрелки
             const ArrowLayout = ymaps.templateLayoutFactory.createClass(
                 '<div style="width:100px;height:100px;position:relative;">' +
-                    '<img src="arrow.png" style="width:100%;height:100%;transform:rotate({{options.rotation}}deg);transform-origin:center center;" />' +
-                '</div>'
+                    '<img src="arrow.png" id="arrow-img" style="width:100%;height:100%;transform-origin:center center;" />' +
+                '</div>', {
+                    build: function () {
+                        ArrowLayout.superclass.build.call(this);
+                        this._$element = this.getElement().querySelector("#arrow-img");
+                    },
+                    rotate: function (deg) {
+                        if (this._$element) {
+                            this._$element.style.transform = `rotate(${deg}deg)`;
+                        }
+                    }
+                }
             );
 
             // Создаём стрелку
             arrow = new ymaps.Placemark(routeCoords[0], {}, {
                 iconLayout: ArrowLayout,
-                rotation: 0, // начальный угол
                 iconImageSize: [100, 100],
                 iconImageOffset: [-50, -50],
             });
@@ -100,8 +109,10 @@ function moveMarker(coords) {
 // Поворот стрелки
 function rotateArrow(degrees) {
     if (arrow) {
-        log("Поворот стрелки: " + degrees);
-        arrow.options.set('rotation', degrees);
+        const layout = arrow.options.get('iconLayout');
+        if (layout && layout.prototype.rotate) {
+            layout.prototype.rotate.call(arrow.options.get('iconLayout'), degrees);
+        }
     }
 }
 
@@ -129,6 +140,7 @@ function startSimulation() {
 function initCompass() {
     function handler(event) {
         let heading = event.alpha; // угол в градусах
+        log("Компас угол: " + heading);
         rotateArrow(heading);
     }
 
