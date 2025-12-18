@@ -42,8 +42,8 @@ function initMap() {
 
             // Кастомный layout для стрелки
             const ArrowLayout = ymaps.templateLayoutFactory.createClass(
-                '<div style="width:100px;height:100px;position:relative;">' +
-                    '<img src="arrow.png" style="width:100%;height:100%;transform:rotate({{options.rotation}}deg);transform-origin:center center;" />' +
+                '<div style="width:100px;height:100px;transform:rotate({{options.rotation}}deg);">' +
+                    '<img src="arrow.png" style="width:100%;height:100%;" />' +
                 '</div>'
             );
 
