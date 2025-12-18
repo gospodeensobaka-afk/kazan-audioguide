@@ -19,6 +19,10 @@ let simulationIndex = 0;
 // GPS
 let gpsActive = true;
 
+// Компас
+let compassActive = false;
+let compassAngle = null;
+
 
 // ======================================================
 // 2. УТИЛИТЫ
@@ -71,7 +75,6 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
-            // Красим зону в зелёный
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
@@ -79,7 +82,6 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            // Финальная точка — просто зелёная, без сброса
             if (z.id === 4) {
                 setStatus("Финальная точка достигнута!");
                 log("Финальная точка достигнута.");
@@ -90,14 +92,34 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ПЕРЕМЕЩЕНИЕ МАРКЕРА (ТЕЛЕПОРТАЦИЯ + ПОВОРОТ)
+// 4. ПОВОРОТ СТРЕЛКИ (КОМПАС + GPS)
+// ======================================================
+
+function rotateMarker(prev, curr) {
+    let angle = null;
+
+    // 1) Если есть компас — используем его
+    if (compassActive && compassAngle !== null) {
+        angle = compassAngle;
+    }
+
+    // 2) Если компаса нет — считаем угол по GPS
+    else if (prev) {
+        angle = calculateAngle(prev, curr);
+    }
+
+    if (angle !== null) {
+        userMarker.options.set("iconImageRotation", angle);
+    }
+}
+
+
+// ======================================================
+// 5. ПЕРЕМЕЩЕНИЕ МАРКЕРА (ТЕЛЕПОРТАЦИЯ)
 // ======================================================
 
 function moveMarker(coords) {
-    if (lastCoords) {
-        const angle = calculateAngle(lastCoords, coords);
-        userMarker.options.set("iconImageRotation", angle);
-    }
+    rotateMarker(lastCoords, coords);
 
     lastCoords = coords;
     userMarker.geometry.setCoordinates(coords);
@@ -106,7 +128,7 @@ function moveMarker(coords) {
 
 
 // ======================================================
-// 5. СИМУЛЯЦИЯ (ТЕЛЕПОРТАЦИЯ)
+// 6. СИМУЛЯЦИЯ (ТЕЛЕПОРТАЦИЯ)
 // ======================================================
 
 function simulateNextStep() {
@@ -125,14 +147,13 @@ function simulateNextStep() {
 
     moveMarker(next);
 
-    // Пауза между точками (2 секунды)
     setTimeout(simulateNextStep, 2000);
 }
 
 function startSimulation() {
     if (!simulationPoints.length) {
         setStatus("Нет точек для симуляции");
-        log("Нет точек для симуляции");
+        log("Нет точок для симуляции");
         return;
     }
 
@@ -152,7 +173,49 @@ function startSimulation() {
 
 
 // ======================================================
-// 6. ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// 7. КОМПАС ТЕЛЕФОНА
+// ======================================================
+
+function initCompass() {
+    if (!window.DeviceOrientationEvent) {
+        log("Компас не поддерживается");
+        return;
+    }
+
+    // iOS требует разрешения
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+        DeviceOrientationEvent.requestPermission()
+            .then(state => {
+                if (state === "granted") {
+                    compassActive = true;
+                    window.addEventListener("deviceorientation", handleCompass);
+                    log("Компас активирован (iOS)");
+                } else {
+                    log("Компас отклонён пользователем");
+                }
+            })
+            .catch(err => log("Ошибка компаса: " + err));
+    } else {
+        // Android
+        compassActive = true;
+        window.addEventListener("deviceorientationabsolute", handleCompass);
+        window.addEventListener("deviceorientation", handleCompass);
+        log("Компас активирован (Android)");
+    }
+}
+
+function handleCompass(e) {
+    let alpha = e.alpha;
+
+    if (alpha === null) return;
+
+    // Преобразуем в угол карты (0 = вверх)
+    compassAngle = 360 - alpha;
+}
+
+
+// ======================================================
+// 8. ИНИЦИАЛИЗАЦИЯ КАРТЫ
 // ======================================================
 
 function initMap() {
@@ -224,7 +287,7 @@ function initMap() {
                 });
             });
 
-            // Маршрут (Polyline)
+            // Маршрут
             const routeCoords = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
@@ -263,6 +326,18 @@ function initMap() {
             { enableHighAccuracy: true }
         );
     }
+
+    // Включаем компас
+    initCompass();
+
+    // Автотест поворота
+    setTimeout(() => {
+        log("Автотест поворота...");
+        moveMarker([55.826584, 49.082118]);
+        setTimeout(() => {
+            moveMarker([55.820000, 49.100000]);
+        }, 2000);
+    }, 3000);
 
     setStatus("Карта инициализирована");
     log("Карта инициализирована");
