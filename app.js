@@ -6,6 +6,10 @@ let gpsActive = false;
 // Логирование и статус
 function log(msg) {
     console.log(msg);
+    const debugEl = document.getElementById("debug");
+    if (debugEl) {
+        debugEl.textContent += msg + "\n";
+    }
 }
 function setStatus(msg) {
     const statusEl = document.getElementById("status");
@@ -15,7 +19,7 @@ function setStatus(msg) {
 // Инициализация карты
 function initMap() {
     map = new ymaps.Map("map", {
-        center: [55.796, 49.106], // центр Казани для примера
+        center: [55.796, 49.106], // центр Казани
         zoom: 14
     });
 
@@ -36,12 +40,19 @@ function initMap() {
 
             simulationPoints = routeCoords;
 
+            // Кастомный layout для стрелки
+            const ArrowLayout = ymaps.templateLayoutFactory.createClass(
+                '<div style="width:100px;height:100px;transform:rotate({{options.rotation}}deg);">' +
+                    '<img src="arrow.png" style="width:100%;height:100%;" />' +
+                '</div>'
+            );
+
             // Создаём стрелку
             arrow = new ymaps.Placemark(routeCoords[0], {}, {
-                iconLayout: 'default#image',
-                iconImageHref: 'arrow.jpg',
+                iconLayout: ArrowLayout,
+                rotation: 0, // начальный угол
                 iconImageSize: [100, 100],
-                iconImageOffset: [-50, -50], // центр картинки
+                iconImageOffset: [-50, -50],
             });
             map.geoObjects.add(arrow);
 
@@ -89,7 +100,8 @@ function moveMarker(coords) {
 // Поворот стрелки
 function rotateArrow(degrees) {
     if (arrow) {
-        arrow.options.set('iconImageRotation', degrees);
+        log("Поворот стрелки: " + degrees);
+        arrow.options.set('rotation', degrees);
     }
 }
 
@@ -115,10 +127,20 @@ function startSimulation() {
 
 // Инициализация компаса
 function initCompass() {
-    window.addEventListener("deviceorientation", (event) => {
-        let heading = event.alpha; // угол в градусах (0 = север)
+    function handler(event) {
+        let heading = event.alpha; // угол в градусах
         rotateArrow(heading);
-    });
+    }
+
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(response => {
+            if (response === 'granted') {
+                window.addEventListener("deviceorientation", handler);
+            }
+        });
+    } else {
+        window.addEventListener("deviceorientation", handler);
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
