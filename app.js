@@ -1,5 +1,6 @@
 let map;
 let arrow;
+let arrowLayoutInstance;
 let simulationPoints = [];
 let gpsActive = false;
 
@@ -48,6 +49,7 @@ function initMap() {
                     build: function () {
                         ArrowLayout.superclass.build.call(this);
                         this._$element = this.getElement().querySelector("#arrow-img");
+                        arrowLayoutInstance = this; // сохраняем ссылку на экземпляр
                     },
                     rotate: function (deg) {
                         if (this._$element) {
@@ -108,11 +110,8 @@ function moveMarker(coords) {
 
 // Поворот стрелки
 function rotateArrow(degrees) {
-    if (arrow) {
-        const layout = arrow.options.get('iconLayout');
-        if (layout && layout.prototype.rotate) {
-            layout.prototype.rotate.call(arrow.options.get('iconLayout'), degrees);
-        }
+    if (arrowLayoutInstance) {
+        arrowLayoutInstance.rotate(degrees);
     }
 }
 
