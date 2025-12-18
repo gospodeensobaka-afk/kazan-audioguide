@@ -3,7 +3,6 @@ let arrow;
 let simulationPoints = [];
 let gpsActive = false;
 
-// Логирование и статус
 function log(msg) {
     console.log(msg);
     const debugEl = document.getElementById("debug");
@@ -16,14 +15,12 @@ function setStatus(msg) {
     if (statusEl) statusEl.textContent = msg;
 }
 
-// Инициализация карты
 function initMap() {
     map = new ymaps.Map("map", {
-        center: [55.796, 49.106], // центр Казани
+        center: [55.796, 49.106],
         zoom: 14
     });
 
-    // Загружаем точки маршрута
     fetch("points.json")
         .then(res => res.json())
         .then(routeCoords => {
@@ -40,17 +37,10 @@ function initMap() {
 
             simulationPoints = routeCoords;
 
-            // Кастомный layout для стрелки
-            const ArrowLayout = ymaps.templateLayoutFactory.createClass(
-                '<div style="width:100px;height:100px;transform:rotate({{options.rotation}}deg);">' +
-                    '<img src="arrow.png" style="width:100%;height:100%;" />' +
-                '</div>'
-            );
-
-            // Создаём стрелку
+            // Стрелка как обычный маркер
             arrow = new ymaps.Placemark(routeCoords[0], {}, {
-                iconLayout: ArrowLayout,
-                rotation: 0, // начальный угол
+                iconLayout: 'default#image',
+                iconImageHref: 'arrow.png',
                 iconImageSize: [100, 100],
                 iconImageOffset: [-50, -50],
             });
@@ -60,11 +50,9 @@ function initMap() {
             log("Точки и маршрут загружены");
         });
 
-    // Кнопка симуляции
     const btnSim = document.getElementById("simulate");
     if (btnSim) btnSim.addEventListener("click", startSimulation);
 
-    // GPS‑трекер
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             pos => {
@@ -77,7 +65,6 @@ function initMap() {
         );
     }
 
-    // Кнопка компаса
     const btnCompass = document.getElementById("enableCompass");
     if (btnCompass) {
         btnCompass.addEventListener("click", () => {
@@ -90,22 +77,18 @@ function initMap() {
     log("Карта инициализирована");
 }
 
-// Движение стрелки
 function moveMarker(coords) {
     if (arrow) {
         arrow.geometry.setCoordinates(coords);
     }
 }
 
-// Поворот стрелки
 function rotateArrow(degrees) {
     if (arrow) {
-        log("Поворот стрелки: " + degrees);
-        arrow.options.set('rotation', degrees);
+        arrow.options.set('iconImageRotation', degrees);
     }
 }
 
-// Симуляция движения по точкам
 function startSimulation() {
     if (!simulationPoints.length) {
         log("Нет точек для симуляции");
@@ -125,10 +108,10 @@ function startSimulation() {
     }, 1000);
 }
 
-// Инициализация компаса
 function initCompass() {
     function handler(event) {
-        let heading = event.alpha; // угол в градусах
+        let heading = event.alpha;
+        log("Компас угол: " + heading);
         rotateArrow(heading);
     }
 
