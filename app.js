@@ -75,7 +75,7 @@ function checkZones(coords) {
             log("Вход в зону: " + z.name);
 
             if (z.id === 4) {
-                setStatus("Финальная точка достигнута!");
+                setStatus("Финурная точка достигнута!");
                 log("Финальная точка достигнута.");
             }
         }
@@ -92,8 +92,10 @@ function rotateMarker(prev, curr) {
 
     if (compassActive && compassAngle !== null) {
         angle = compassAngle;
+        log("Поворот по компасу: " + angle.toFixed(2));
     } else if (prev) {
         angle = calculateAngle(prev, curr);
+        log("Поворот по GPS: " + angle.toFixed(2));
     }
 
     if (angle !== null) {
@@ -164,35 +166,58 @@ function startSimulation() {
 // ======================================================
 
 function initCompass() {
+    log("initCompass() вызван по клику");
+
     if (!window.DeviceOrientationEvent) {
         log("Компас не поддерживается");
         return;
     }
 
+    // iOS
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
+        log("iOS: вызываем requestPermission()");
+
         DeviceOrientationEvent.requestPermission()
             .then(state => {
+                log("Ответ iOS: " + state);
+
                 if (state === "granted") {
                     compassActive = true;
                     window.addEventListener("deviceorientation", handleCompass);
+                    setStatus("Компас включён");
                     log("Компас активирован (iOS)");
                 } else {
-                    log("Компас отклонён пользователем");
+                    setStatus("Компас отклонён");
+                    log("Компас отклонён пользователем (iOS)");
                 }
             })
-            .catch(err => log("Ошибка компаса: " + err));
-    } else {
-        compassActive = true;
-        window.addEventListener("deviceorientationabsolute", handleCompass);
-        window.addEventListener("deviceorientation", handleCompass);
-        log("Компас активирован (Android)");
+            .catch(err => {
+                log("Ошибка iOS: " + err);
+                setStatus("Ошибка компаса");
+            });
+
+        return;
     }
+
+    // Android / Chrome
+    log("Android/Chrome: включаем deviceorientation");
+    compassActive = true;
+
+    window.addEventListener("deviceorientationabsolute", handleCompass);
+    window.addEventListener("deviceorientation", handleCompass);
+
+    setStatus("Компас включён");
+    log("Компас активирован (Android)");
 }
 
 function handleCompass(e) {
-    let alpha = e.alpha;
-    if (alpha === null) return;
-    compassAngle = 360 - alpha;
+    if (e.alpha == null) {
+        log("handleCompass: alpha === null");
+        return;
+    }
+
+    compassAngle = 360 - e.alpha;
+    log("Компас угол: " + compassAngle.toFixed(2));
 }
 
 
@@ -301,9 +326,13 @@ function initMap() {
         );
     }
 
-    // === КНОПКА ДЛЯ ВКЛЮЧЕНИЯ КОМПАСА ===
     const btnCompass = document.getElementById("enableCompass");
-    if (btnCompass) btnCompass.addEventListener("click", initCompass);
+    if (btnCompass) {
+        btnCompass.addEventListener("click", () => {
+            log("Кнопка 'Включить компас' нажата");
+            initCompass();
+        });
+    }
 
     setStatus("Карта инициализирована");
     log("Карта инициализирована");
