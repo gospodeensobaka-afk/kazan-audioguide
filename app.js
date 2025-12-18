@@ -75,7 +75,7 @@ function checkZones(coords) {
             log("Вход в зону: " + z.name);
 
             if (z.id === 4) {
-                setStatus("Финурная точка достигнута!");
+                setStatus("Финальная точка достигнута!");
                 log("Финальная точка достигнута.");
             }
         }
@@ -87,13 +87,23 @@ function checkZones(coords) {
 // 4. ПОВОРОТ СТРЕЛКИ
 // ======================================================
 
-function rotateMarker(prev, curr) {
+function rotateMarker(prev, curr, forcedAngle = null) {
     let angle = null;
 
-    if (compassActive && compassAngle !== null) {
+    // 1) Если симуляция передала угол — используем его
+    if (forcedAngle !== null) {
+        angle = forcedAngle;
+        log("Поворот по маршруту (симуляция): " + angle.toFixed(2));
+    }
+
+    // 2) Если есть компас — используем его
+    else if (compassActive && compassAngle !== null) {
         angle = compassAngle;
         log("Поворот по компасу: " + angle.toFixed(2));
-    } else if (prev) {
+    }
+
+    // 3) Если нет компаса — считаем угол по GPS
+    else if (prev) {
         angle = calculateAngle(prev, curr);
         log("Поворот по GPS: " + angle.toFixed(2));
     }
@@ -108,8 +118,8 @@ function rotateMarker(prev, curr) {
 // 5. ПЕРЕМЕЩЕНИЕ МАРКЕРА
 // ======================================================
 
-function moveMarker(coords) {
-    rotateMarker(lastCoords, coords);
+function moveMarker(coords, forcedAngle = null) {
+    rotateMarker(lastCoords, coords, forcedAngle);
     lastCoords = coords;
     userMarker.geometry.setCoordinates(coords);
     checkZones(coords);
@@ -131,10 +141,19 @@ function simulateNextStep() {
         return;
     }
 
-    const next = simulationPoints[simulationIndex];
+    const curr = simulationPoints[simulationIndex];
+    const next = simulationPoints[simulationIndex + 1];
+
+    let angle = null;
+
+    // Если есть следующая точка — считаем угол к ней
+    if (next) {
+        angle = calculateAngle(curr, next);
+    }
+
     simulationIndex++;
 
-    moveMarker(next);
+    moveMarker(curr, angle);
 
     setTimeout(simulateNextStep, 2000);
 }
@@ -151,7 +170,12 @@ function startSimulation() {
     simulationIndex = 0;
 
     const start = simulationPoints[0];
-    moveMarker(start);
+    const next = simulationPoints[1];
+
+    let angle = null;
+    if (next) angle = calculateAngle(start, next);
+
+    moveMarker(start, angle);
     map.setCenter(start, 15);
 
     setStatus("Симуляция запущена");
@@ -173,7 +197,6 @@ function initCompass() {
         return;
     }
 
-    // iOS
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
         log("iOS: вызываем requestPermission()");
 
@@ -199,7 +222,6 @@ function initCompass() {
         return;
     }
 
-    // Android / Chrome
     log("Android/Chrome: включаем deviceorientation");
     compassActive = true;
 
