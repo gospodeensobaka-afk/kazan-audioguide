@@ -5,21 +5,15 @@
 let map;
 let userMarker = null;
 
-// Последние координаты пользователя или симуляции
 let lastCoords = null;
-
-// Зоны
 let zones = [];
 
-// Симуляция
 let simulationActive = false;
 let simulationPoints = [];
 let simulationIndex = 0;
 
-// GPS
 let gpsActive = true;
 
-// Компас
 let compassActive = false;
 let compassAngle = null;
 
@@ -41,7 +35,6 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
-// Расстояние между двумя координатами (в метрах)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -56,7 +49,6 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-// Угол между двумя координатами (для поворота стрелки)
 function calculateAngle(prev, curr) {
     const dx = curr[1] - prev[1];
     const dy = curr[0] - prev[0];
@@ -92,19 +84,15 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ПОВОРОТ СТРЕЛКИ (КОМПАС + GPS)
+// 4. ПОВОРОТ СТРЕЛКИ
 // ======================================================
 
 function rotateMarker(prev, curr) {
     let angle = null;
 
-    // 1) Если есть компас — используем его
     if (compassActive && compassAngle !== null) {
         angle = compassAngle;
-    }
-
-    // 2) Если компаса нет — считаем угол по GPS
-    else if (prev) {
+    } else if (prev) {
         angle = calculateAngle(prev, curr);
     }
 
@@ -115,12 +103,11 @@ function rotateMarker(prev, curr) {
 
 
 // ======================================================
-// 5. ПЕРЕМЕЩЕНИЕ МАРКЕРА (ТЕЛЕПОРТАЦИЯ)
+// 5. ПЕРЕМЕЩЕНИЕ МАРКЕРА
 // ======================================================
 
 function moveMarker(coords) {
     rotateMarker(lastCoords, coords);
-
     lastCoords = coords;
     userMarker.geometry.setCoordinates(coords);
     checkZones(coords);
@@ -128,7 +115,7 @@ function moveMarker(coords) {
 
 
 // ======================================================
-// 6. СИМУЛЯЦИЯ (ТЕЛЕПОРТАЦИЯ)
+// 6. СИМУЛЯЦИЯ
 // ======================================================
 
 function simulateNextStep() {
@@ -153,7 +140,7 @@ function simulateNextStep() {
 function startSimulation() {
     if (!simulationPoints.length) {
         setStatus("Нет точек для симуляции");
-        log("Нет точок для симуляции");
+        log("Нет точек для симуляции");
         return;
     }
 
@@ -173,7 +160,7 @@ function startSimulation() {
 
 
 // ======================================================
-// 7. КОМПАС ТЕЛЕФОНА
+// 7. КОМПАС
 // ======================================================
 
 function initCompass() {
@@ -182,7 +169,6 @@ function initCompass() {
         return;
     }
 
-    // iOS требует разрешения
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
         DeviceOrientationEvent.requestPermission()
             .then(state => {
@@ -196,7 +182,6 @@ function initCompass() {
             })
             .catch(err => log("Ошибка компаса: " + err));
     } else {
-        // Android
         compassActive = true;
         window.addEventListener("deviceorientationabsolute", handleCompass);
         window.addEventListener("deviceorientation", handleCompass);
@@ -206,10 +191,7 @@ function initCompass() {
 
 function handleCompass(e) {
     let alpha = e.alpha;
-
     if (alpha === null) return;
-
-    // Преобразуем в угол карты (0 = вверх)
     compassAngle = 360 - alpha;
 }
 
@@ -227,7 +209,6 @@ function initMap() {
         controls: []
     });
 
-    // ----- МАРКЕР-СТРЕЛКА -----
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
@@ -242,13 +223,11 @@ function initMap() {
 
     map.geoObjects.add(userMarker);
 
-    // ----- ЗАГРУЗКА ТОЧЕК -----
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
             const sorted = points.slice().sort((a, b) => a.id - b.id);
 
-            // Нумерация точек
             sorted.forEach(p => {
                 const label = new ymaps.Placemark(
                     [p.lat, p.lon],
@@ -261,7 +240,6 @@ function initMap() {
                 map.geoObjects.add(label);
             });
 
-            // Зоны
             sorted.forEach((p, index) => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
@@ -287,7 +265,6 @@ function initMap() {
                 });
             });
 
-            // Маршрут
             const routeCoords = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
@@ -302,18 +279,15 @@ function initMap() {
 
             map.geoObjects.add(routeLine);
 
-            // Симуляция по маршруту
             simulationPoints = routeCoords;
 
             setStatus("Готово к симуляции");
             log("Точки и маршрут загружены");
         });
 
-    // Кнопка симуляции
     const btnSim = document.getElementById("simulate");
     if (btnSim) btnSim.addEventListener("click", startSimulation);
 
-    // GPS
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             pos => {
@@ -327,17 +301,9 @@ function initMap() {
         );
     }
 
-    // Включаем компас
-    initCompass();
-
-    // Автотест поворота
-    setTimeout(() => {
-        log("Автотест поворота...");
-        moveMarker([55.826584, 49.082118]);
-        setTimeout(() => {
-            moveMarker([55.820000, 49.100000]);
-        }, 2000);
-    }, 3000);
+    // === КНОПКА ДЛЯ ВКЛЮЧЕНИЯ КОМПАСА ===
+    const btnCompass = document.getElementById("enableCompass");
+    if (btnCompass) btnCompass.addEventListener("click", initCompass);
 
     setStatus("Карта инициализирована");
     log("Карта инициализирована");
