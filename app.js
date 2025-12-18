@@ -74,7 +74,7 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            if (z.id === 4) {
+            if (z.isLast) {
                 setStatus("Финальная точка достигнута!");
                 log("Финальная точка достигнута.");
             }
@@ -84,28 +84,30 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ПОВОРОТ СТРЕЛКИ
+// 4. ГИБРИДНЫЙ ПОВОРОТ СТРЕЛКИ
 // ======================================================
 
 function rotateMarker(prev, curr, forcedAngle = null) {
     let angle = null;
 
-    // 1) Если симуляция передала угол — используем его
+    // 1) Симуляция передала угол
     if (forcedAngle !== null) {
         angle = forcedAngle;
-        log("Поворот по маршруту (симуляция): " + angle.toFixed(2));
     }
 
-    // 2) Если есть компас — используем его
+    // 2) Компас активен
     else if (compassActive && compassAngle !== null) {
         angle = compassAngle;
-        log("Поворот по компасу: " + angle.toFixed(2));
     }
 
-    // 3) Если нет компаса — считаем угол по GPS
+    // 3) Есть движение
     else if (prev) {
         angle = calculateAngle(prev, curr);
-        log("Поворот по GPS: " + angle.toFixed(2));
+    }
+
+    // 4) Стоим → смотрим на следующую точку маршрута
+    else if (!prev && simulationPoints.length > 1) {
+        angle = calculateAngle(simulationPoints[0], simulationPoints[1]);
     }
 
     if (angle !== null) {
@@ -145,11 +147,7 @@ function simulateNextStep() {
     const next = simulationPoints[simulationIndex + 1];
 
     let angle = null;
-
-    // Если есть следующая точка — считаем угол к ней
-    if (next) {
-        angle = calculateAngle(curr, next);
-    }
+    if (next) angle = calculateAngle(curr, next);
 
     simulationIndex++;
 
@@ -183,7 +181,6 @@ function startSimulation() {
 
     setTimeout(simulateNextStep, 2000);
 }
-
 
 // ======================================================
 // 7. КОМПАС
@@ -264,7 +261,7 @@ function initMap() {
             iconImageHref: "arrow.png",
             iconImageSize: [40, 40],
             iconImageOffset: [-20, -20],
-            iconImageRotate: true
+            iconImageRotation: true
         }
     );
 
