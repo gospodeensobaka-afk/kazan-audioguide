@@ -96,7 +96,6 @@ const ArrowLayout = ymaps.layout.createClass(
     </div>`,
 
     {
-        // вызывается, когда layout добавлен на карту
         onAddToMap: function (map) {
             ArrowLayout.superclass.onAddToMap.call(this, map);
 
@@ -272,7 +271,7 @@ function handleCompass(e) {
 
 
 // ======================================================
-// 9. ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// 9. ИНИЦИАЛИЗАЦИЯ КАРТЫ (ЧАСТЬ 1)
 // ======================================================
 
 function initMap() {
@@ -298,9 +297,7 @@ function initMap() {
         }
     );
 
-    map.geoObjects.add(userMarker);
-
-    // === ЗАГРУЗКА ТОЧЕК ===
+        // === ЗАГРУЗКА ТОЧЕК ===
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
@@ -377,9 +374,23 @@ function initMap() {
     const btnCompass = document.getElementById("enableCompass");
     if (btnCompass) btnCompass.addEventListener("click", initCompass);
 
+
+    // ======================================================
+    // 🔥 ТЕСТ ВРАЩЕНИЯ СТРЕЛКИ (setInterval)
+    // ======================================================
+
+    let testAngle = 0;
+    setInterval(() => {
+        testAngle += 20;
+        rotateArrow(testAngle);
+    }, 1000);
+
+
     setStatus("Карта инициализирована");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     ymaps.ready(initMap);
 });
+
+    map.geoObjects.add(userMarker);
