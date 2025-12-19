@@ -84,35 +84,23 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ГИБРИДНЫЙ ПОВОРОТ СТРЕЛКИ (ПОКА БЕЗ РЕАЛЬНОГО ЭФФЕКТА)
+// 4. ГИБРИДНЫЙ ПОВОРОТ СТРЕЛКИ (ПОКА НЕ ВИДНО, НО ЛОГИКА НУЖНА)
 // ======================================================
 
 function rotateMarker(prev, curr, forcedAngle = null) {
     let angle = null;
 
-    // 1) Симуляция передала угол
     if (forcedAngle !== null) {
         angle = forcedAngle;
-    }
-
-    // 2) Компас активен
-    else if (compassActive && compassAngle !== null) {
+    } else if (compassActive && compassAngle !== null) {
         angle = compassAngle;
-    }
-
-    // 3) Есть движение
-    else if (prev) {
+    } else if (prev) {
         angle = calculateAngle(prev, curr);
-    }
-
-    // 4) Стоим → смотрим на следующую точку маршрута
-    else if (!prev && simulationPoints.length > 1) {
+    } else if (!prev && simulationPoints.length > 1) {
         angle = calculateAngle(simulationPoints[0], simulationPoints[1]);
     }
 
     if (angle !== null) {
-        // Пока это ничего не даёт визуально, потому что default#image не крутится,
-        // но логика нам ещё пригодится для Canvas/компаса.
         userMarker.options.set("iconImageRotation", angle);
     }
 }
@@ -256,7 +244,7 @@ function initMap() {
         controls: []
     });
 
-    // === ШАГ 1: ПРОСТАЯ PNG-СТРЕЛКА БЕЗ CANVAS И БЕЗ ВРАЩЕНИЯ ===
+    // === ШАГ 2: PNG-СТРЕЛКА + iconImageRotation ===
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
@@ -264,8 +252,8 @@ function initMap() {
             iconLayout: "default#image",
             iconImageHref: "arrow.png",
             iconImageSize: [40, 40],
-            iconImageOffset: [-20, -20]
-            // НЕ добавляем iconImageRotation: true на этом шаге
+            iconImageOffset: [-20, -20],
+            iconImageRotation: true   // ← ПАТЧ
         }
     );
 
