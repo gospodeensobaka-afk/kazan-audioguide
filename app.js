@@ -150,7 +150,8 @@ function moveMarker(coords) {
 function simulateNextStep() {
     if (!simulationActive) return;
 
-    if (simulationIndex >= 2) {  
+    // Останавливаемся строго на первой точке
+    if (simulationIndex >= 2) {
         simulationActive = false;
         gpsActive = true;
         setStatus("Симуляция завершена (до первой точки)");
@@ -246,7 +247,8 @@ function initMap() {
                 map.geoObjects.add(circle);
 
                 // Автоматически назначаем аудио по id
-                const audioFile = p.id === 1 ? "audio/start.mp3" : `audio/${p.id - 1}.mp3`;
+                const audioFile =
+                    p.id === 1 ? "audio/start.mp3" : `audio/${p.id - 1}.mp3`;
 
                 zones.push({
                     id: p.id,
