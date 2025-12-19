@@ -17,6 +17,9 @@ let gpsActive = true;
 let compassActive = false;
 let compassAngle = null;
 
+// ссылка на layout
+let arrowLayoutInstance = null;
+
 
 // ======================================================
 // 2. УТИЛИТЫ
@@ -84,30 +87,86 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ГИБРИДНЫЙ ПОВОРОТ СТРЕЛКИ (ПОКА НЕ ВИДНО, НО ЛОГИКА НУЖНА)
+// 4. CANVAS‑МАРКЕР (МИНИМАЛЬНЫЙ, НАДЁЖНЫЙ)
 // ======================================================
 
-function rotateMarker(prev, curr, forcedAngle = null) {
-    let angle = null;
+const ArrowLayout = ymaps.layout.createClass(
+    `<div style="width:60px;height:60px;position:relative;">
+        <canvas width="60" height="60"></canvas>
+    </div>`,
 
-    if (forcedAngle !== null) {
-        angle = forcedAngle;
-    } else if (compassActive && compassAngle !== null) {
-        angle = compassAngle;
-    } else if (prev) {
-        angle = calculateAngle(prev, curr);
-    } else if (!prev && simulationPoints.length > 1) {
-        angle = calculateAngle(simulationPoints[0], simulationPoints[1]);
+    {
+        // вызывается, когда layout добавлен на карту
+        onAddToMap: function (map) {
+            ArrowLayout.superclass.onAddToMap.call(this, map);
+
+            const el = this.getElement();
+            this.canvas = el.querySelector("canvas");
+            this.ctx = this.canvas.getContext("2d");
+
+            this.image = new Image();
+            this.image.src = "arrow.png";
+
+            this.rotation = 0;
+
+            arrowLayoutInstance = this;
+
+            this.image.onload = () => this.draw();
+        },
+
+        onRemoveFromMap: function () {
+            if (arrowLayoutInstance === this) arrowLayoutInstance = null;
+            ArrowLayout.superclass.onRemoveFromMap.call(this);
+        },
+
+        draw: function () {
+            if (!this.ctx || !this.image) return;
+
+            const ctx = this.ctx;
+            const img = this.image;
+
+            ctx.clearRect(0, 0, 60, 60);
+
+            ctx.save();
+            ctx.translate(30, 30);
+            ctx.rotate(this.rotation * Math.PI / 180);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            ctx.restore();
+        },
+
+        setRotation: function (angle) {
+            this.rotation = angle;
+            this.draw();
+        }
     }
+);
 
-    if (angle !== null) {
-        userMarker.options.set("iconImageRotation", angle);
+function rotateArrow(angle) {
+    if (arrowLayoutInstance) {
+        arrowLayoutInstance.setRotation(angle);
     }
 }
 
 
 // ======================================================
-// 5. ПЕРЕМЕЩЕНИЕ МАРКЕРА
+// 5. ГИБРИДНЫЙ ПОВОРОТ СТРЕЛКИ
+// ======================================================
+
+function rotateMarker(prev, curr, forcedAngle = null) {
+    let angle = null;
+
+    if (forcedAngle !== null) angle = forcedAngle;
+    else if (compassActive && compassAngle !== null) angle = compassAngle;
+    else if (prev) angle = calculateAngle(prev, curr);
+    else if (!prev && simulationPoints.length > 1)
+        angle = calculateAngle(simulationPoints[0], simulationPoints[1]);
+
+    if (angle !== null) rotateArrow(angle);
+}
+
+
+// ======================================================
+// 6. ПЕРЕМЕЩЕНИЕ МАРКЕРА
 // ======================================================
 
 function moveMarker(coords, forcedAngle = null) {
@@ -119,7 +178,7 @@ function moveMarker(coords, forcedAngle = null) {
 
 
 // ======================================================
-// 6. СИМУЛЯЦИЯ
+// 7. СИМУЛЯЦИЯ
 // ======================================================
 
 function simulateNextStep() {
@@ -174,7 +233,7 @@ function startSimulation() {
 
 
 // ======================================================
-// 7. КОМПАС
+// 8. КОМПАС
 // ======================================================
 
 function initCompass() {
@@ -186,53 +245,34 @@ function initCompass() {
     }
 
     if (typeof DeviceOrientationEvent.requestPermission === "function") {
-        log("iOS: вызываем requestPermission()");
-
         DeviceOrientationEvent.requestPermission()
             .then(state => {
-                log("Ответ iOS: " + state);
-
                 if (state === "granted") {
                     compassActive = true;
                     window.addEventListener("deviceorientation", handleCompass);
                     setStatus("Компас включён");
-                    log("Компас активирован (iOS)");
                 } else {
                     setStatus("Компас отклонён");
-                    log("Компас отклонён пользователем (iOS)");
                 }
-            })
-            .catch(err => {
-                log("Ошибка iOS: " + err);
-                setStatus("Ошибка компаса");
             });
-
         return;
     }
 
-    log("Android/Chrome: включаем deviceorientation");
     compassActive = true;
-
     window.addEventListener("deviceorientationabsolute", handleCompass);
     window.addEventListener("deviceorientation", handleCompass);
 
     setStatus("Компас включён");
-    log("Компас активирован (Android)");
 }
 
 function handleCompass(e) {
-    if (e.alpha == null) {
-        log("handleCompass: alpha === null");
-        return;
-    }
-
+    if (e.alpha == null) return;
     compassAngle = 360 - e.alpha;
-    log("Компас угол: " + compassAngle.toFixed(2));
 }
 
 
 // ======================================================
-// 8. ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// 9. ИНИЦИАЛИЗАЦИЯ КАРТЫ
 // ======================================================
 
 function initMap() {
@@ -244,21 +284,23 @@ function initMap() {
         controls: []
     });
 
-    // === ШАГ 2: PNG-СТРЕЛКА + iconImageRotation ===
+    // === CANVAS‑СТРЕЛКА ===
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
         {
-            iconLayout: "default#image",
-            iconImageHref: "arrow.png",
-            iconImageSize: [40, 40],
-            iconImageOffset: [-20, -20],
-            iconImageRotation: true   // ← ПАТЧ
+            iconLayout: ArrowLayout,
+            iconShape: {
+                type: "Circle",
+                radius: 30,
+                coordinates: [30, 30]
+            }
         }
     );
 
     map.geoObjects.add(userMarker);
 
+    // === ЗАГРУЗКА ТОЧЕК ===
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
@@ -301,10 +343,10 @@ function initMap() {
                 });
             });
 
-            const routeCoords = sorted.map(p => [p.lat, p.lon]);
+            simulationPoints = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
-                routeCoords,
+                simulationPoints,
                 {},
                 {
                     strokeColor: "#1E90FF",
@@ -315,10 +357,7 @@ function initMap() {
 
             map.geoObjects.add(routeLine);
 
-            simulationPoints = routeCoords;
-
             setStatus("Готово к симуляции");
-            log("Точки и маршрут загружены");
         });
 
     const btnSim = document.getElementById("simulate");
@@ -328,9 +367,7 @@ function initMap() {
         navigator.geolocation.watchPosition(
             pos => {
                 if (!gpsActive) return;
-
-                const coords = [pos.coords.latitude, pos.coords.longitude];
-                moveMarker(coords);
+                moveMarker([pos.coords.latitude, pos.coords.longitude]);
             },
             err => log("Ошибка GPS: " + err.message),
             { enableHighAccuracy: true }
@@ -338,15 +375,9 @@ function initMap() {
     }
 
     const btnCompass = document.getElementById("enableCompass");
-    if (btnCompass) {
-        btnCompass.addEventListener("click", () => {
-            log("Кнопка 'Включить компас' нажата");
-            initCompass();
-        });
-    }
+    if (btnCompass) btnCompass.addEventListener("click", initCompass);
 
     setStatus("Карта инициализирована");
-    log("Карта инициализирована");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
