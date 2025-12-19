@@ -1,18 +1,28 @@
+// ======================================================
+// 1. ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+// ======================================================
+
 let map;
 let userMarker = null;
 
+// Последние координаты пользователя или симуляции
 let lastCoords = null;
+
+// Зоны
 let zones = [];
 
+// Симуляция
 let simulationActive = false;
 let simulationPoints = [];
 let simulationIndex = 0;
 
+// GPS
 let gpsActive = true;
 
-// ===============================
-// УТИЛИТЫ
-// ===============================
+
+// ======================================================
+// 2. УТИЛИТЫ
+// ======================================================
 
 function log(t) {
     const el = document.getElementById("debug");
@@ -27,6 +37,7 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
+// Расстояние между двумя координатами (в метрах)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -41,44 +52,17 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-// ===============================
-// ПОВОРОТ НА СЛЕДУЮЩУЮ ТОЧКУ
-// ===============================
-
-function angleToNextPoint(current, next) {
-    const dx = next[1] - current[1];
-    const dy = next[0] - current[0];
+// Угол между двумя координатами (для поворота стрелки)
+function calculateAngle(prev, curr) {
+    const dx = curr[1] - prev[1];
+    const dy = curr[0] - prev[0];
     return Math.atan2(dx, dy) * (180 / Math.PI);
 }
 
-function rotateMarkerToNext() {
-    if (!lastCoords) return;
-    if (!simulationPoints.length) return;
 
-    // ищем ближайшую точку маршрута
-    let nearestIndex = 0;
-    let minDist = Infinity;
-
-    simulationPoints.forEach((p, i) => {
-        const d = distance(lastCoords, p);
-        if (d < minDist) {
-            minDist = d;
-            nearestIndex = i;
-        }
-    });
-
-    // если мы на последней точке — не вращаем
-    if (nearestIndex >= simulationPoints.length - 1) return;
-
-    const nextPoint = simulationPoints[nearestIndex + 1];
-    const angle = angleToNextPoint(lastCoords, nextPoint);
-
-    userMarker.options.set("iconImageRotation", angle);
-}
-
-// ===============================
-// ЗОНЫ
-// ===============================
+// ======================================================
+// 3. ЗОНЫ
+// ======================================================
 
 function checkZones(coords) {
     zones.forEach(z => {
@@ -87,6 +71,7 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
+            // Красим зону в зелёный
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
@@ -94,7 +79,8 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            if (z.isLast) {
+            // Финальная точка — просто зелёная, без сброса
+            if (z.id === 4) {
                 setStatus("Финальная точка достигнута!");
                 log("Финальная точка достигнута.");
             }
@@ -102,22 +88,26 @@ function checkZones(coords) {
     });
 }
 
-// ===============================
-// ДВИЖЕНИЕ МАРКЕРА
-// ===============================
+
+// ======================================================
+// 4. ПЕРЕМЕЩЕНИЕ МАРКЕРА (ТЕЛЕПОРТАЦИЯ + ПОВОРОТ)
+// ======================================================
 
 function moveMarker(coords) {
+    if (lastCoords) {
+        const angle = calculateAngle(lastCoords, coords);
+        userMarker.options.set("iconImageRotation", angle);
+    }
+
     lastCoords = coords;
     userMarker.geometry.setCoordinates(coords);
-
-    rotateMarkerToNext();   // ← ключевая строка
-
     checkZones(coords);
 }
 
-// ===============================
-// СИМУЛЯЦИЯ
-// ===============================
+
+// ======================================================
+// 5. СИМУЛЯЦИЯ (ТЕЛЕПОРТАЦИЯ)
+// ======================================================
 
 function simulateNextStep() {
     if (!simulationActive) return;
@@ -130,11 +120,12 @@ function simulateNextStep() {
         return;
     }
 
-    const curr = simulationPoints[simulationIndex];
+    const next = simulationPoints[simulationIndex];
     simulationIndex++;
 
-    moveMarker(curr);
+    moveMarker(next);
 
+    // Пауза между точками (2 секунды)
     setTimeout(simulateNextStep, 2000);
 }
 
@@ -150,7 +141,6 @@ function startSimulation() {
     simulationIndex = 0;
 
     const start = simulationPoints[0];
-
     moveMarker(start);
     map.setCenter(start, 15);
 
@@ -160,9 +150,10 @@ function startSimulation() {
     setTimeout(simulateNextStep, 2000);
 }
 
-// ===============================
-// ИНИЦИАЛИЗАЦИЯ КАРТЫ
-// ===============================
+
+// ======================================================
+// 6. ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// ======================================================
 
 function initMap() {
     const initialCenter = [55.826584, 49.082118];
@@ -173,6 +164,7 @@ function initMap() {
         controls: []
     });
 
+    // ----- МАРКЕР-СТРЕЛКА -----
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
@@ -181,18 +173,19 @@ function initMap() {
             iconImageHref: "arrow.png",
             iconImageSize: [40, 40],
             iconImageOffset: [-20, -20],
-            iconImageRotation: 0,
-            iconRotate: true
+            iconImageRotate: true
         }
     );
 
     map.geoObjects.add(userMarker);
 
+    // ----- ЗАГРУЗКА ТОЧЕК -----
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
             const sorted = points.slice().sort((a, b) => a.id - b.id);
 
+            // Нумерация точек
             sorted.forEach(p => {
                 const label = new ymaps.Placemark(
                     [p.lat, p.lon],
@@ -205,6 +198,7 @@ function initMap() {
                 map.geoObjects.add(label);
             });
 
+            // Зоны
             sorted.forEach((p, index) => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
@@ -230,10 +224,11 @@ function initMap() {
                 });
             });
 
-            simulationPoints = sorted.map(p => [p.lat, p.lon]);
+            // Маршрут (Polyline)
+            const routeCoords = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
-                simulationPoints,
+                routeCoords,
                 {},
                 {
                     strokeColor: "#1E90FF",
@@ -244,17 +239,25 @@ function initMap() {
 
             map.geoObjects.add(routeLine);
 
+            // Симуляция по маршруту
+            simulationPoints = routeCoords;
+
             setStatus("Готово к симуляции");
+            log("Точки и маршрут загружены");
         });
 
+    // Кнопка симуляции
     const btnSim = document.getElementById("simulate");
     if (btnSim) btnSim.addEventListener("click", startSimulation);
 
+    // GPS
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             pos => {
                 if (!gpsActive) return;
-                moveMarker([pos.coords.latitude, pos.coords.longitude]);
+
+                const coords = [pos.coords.latitude, pos.coords.longitude];
+                moveMarker(coords);
             },
             err => log("Ошибка GPS: " + err.message),
             { enableHighAccuracy: true }
@@ -262,6 +265,7 @@ function initMap() {
     }
 
     setStatus("Карта инициализирована");
+    log("Карта инициализирована");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
