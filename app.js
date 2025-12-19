@@ -54,7 +54,17 @@ function calculateAngle(prev, curr) {
 
 
 // ======================================================
-// 3. ЗОНЫ
+// 3. АУДИО
+// ======================================================
+
+function playZoneAudio(src) {
+    const audio = new Audio(src);
+    audio.play().catch(err => log("Ошибка аудио: " + err.message));
+}
+
+
+// ======================================================
+// 4. ЗОНЫ
 // ======================================================
 
 function checkZones(coords) {
@@ -64,12 +74,18 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
+            // Красим зону в зелёный
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
             });
 
             log("Вход в зону: " + z.name);
+
+            // 🔊 ПРОИГРЫВАЕМ АУДИО
+            if (z.audio) {
+                playZoneAudio(z.audio);
+            }
 
             if (z.isLast) {
                 setStatus("Финальная точка достигнута!");
@@ -81,7 +97,7 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ДВИЖЕНИЕ МАРКЕРА
+// 5. ДВИЖЕНИЕ МАРКЕРА
 // ======================================================
 
 function moveMarker(coords) {
@@ -98,7 +114,7 @@ function moveMarker(coords) {
 
 
 // ======================================================
-// 5. СИМУЛЯЦИЯ
+// 6. СИМУЛЯЦИЯ
 // ======================================================
 
 function simulateNextStep() {
@@ -143,7 +159,7 @@ function startSimulation() {
 
 
 // ======================================================
-// 6. ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// 7. ИНИЦИАЛИЗАЦИЯ КАРТЫ
 // ======================================================
 
 function initMap() {
@@ -174,6 +190,7 @@ function initMap() {
         .then(points => {
             const sorted = points.slice().sort((a, b) => a.id - b.id);
 
+            // Нумерация точек
             sorted.forEach(p => {
                 const label = new ymaps.Placemark(
                     [p.lat, p.lon],
@@ -186,6 +203,7 @@ function initMap() {
                 map.geoObjects.add(label);
             });
 
+            // Зоны
             sorted.forEach((p, index) => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
@@ -207,10 +225,12 @@ function initMap() {
                     radius: p.radius,
                     circle: circle,
                     visited: false,
-                    isLast: index === sorted.length - 1
+                    isLast: index === sorted.length - 1,
+                    audio: p.audio   // ← АУДИО ДЛЯ ЗОНЫ
                 });
             });
 
+            // Маршрут
             simulationPoints = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
