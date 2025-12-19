@@ -5,18 +5,13 @@
 let map;
 let userMarker = null;
 
-// Последние координаты пользователя или симуляции
 let lastCoords = null;
-
-// Зоны
 let zones = [];
 
-// Симуляция
 let simulationActive = false;
 let simulationPoints = [];
 let simulationIndex = 0;
 
-// GPS
 let gpsActive = true;
 
 
@@ -37,7 +32,6 @@ function setStatus(t) {
     if (el) el.textContent = t;
 }
 
-// Расстояние между двумя координатами (в метрах)
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -52,7 +46,6 @@ function distance(a, b) {
     return Math.sqrt(x * x + y * y) * R;
 }
 
-// Угол между двумя координатами (для поворота стрелки)
 function calculateAngle(prev, curr) {
     const dx = curr[1] - prev[1];
     const dy = curr[0] - prev[0];
@@ -71,7 +64,6 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
-            // Красим зону в зелёный
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
@@ -79,8 +71,7 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            // Финальная точка — просто зелёная, без сброса
-            if (z.id === 4) {
+            if (z.isLast) {
                 setStatus("Финальная точка достигнута!");
                 log("Финальная точка достигнута.");
             }
@@ -90,7 +81,7 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ПЕРЕМЕЩЕНИЕ МАРКЕРА (ТЕЛЕПОРТАЦИЯ + ПОВОРОТ)
+// 4. ДВИЖЕНИЕ МАРКЕРА
 // ======================================================
 
 function moveMarker(coords) {
@@ -101,12 +92,13 @@ function moveMarker(coords) {
 
     lastCoords = coords;
     userMarker.geometry.setCoordinates(coords);
+
     checkZones(coords);
 }
 
 
 // ======================================================
-// 5. СИМУЛЯЦИЯ (ТЕЛЕПОРТАЦИЯ)
+// 5. СИМУЛЯЦИЯ
 // ======================================================
 
 function simulateNextStep() {
@@ -125,7 +117,6 @@ function simulateNextStep() {
 
     moveMarker(next);
 
-    // Пауза между точками (2 секунды)
     setTimeout(simulateNextStep, 2000);
 }
 
@@ -164,7 +155,6 @@ function initMap() {
         controls: []
     });
 
-    // ----- МАРКЕР-СТРЕЛКА -----
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
@@ -173,19 +163,17 @@ function initMap() {
             iconImageHref: "arrow.png",
             iconImageSize: [40, 40],
             iconImageOffset: [-20, -20],
-            iconImageRotate: true
+            iconRotate: true
         }
     );
 
     map.geoObjects.add(userMarker);
 
-    // ----- ЗАГРУЗКА ТОЧЕК -----
     fetch("points.json")
         .then(r => r.json())
         .then(points => {
             const sorted = points.slice().sort((a, b) => a.id - b.id);
 
-            // Нумерация точек
             sorted.forEach(p => {
                 const label = new ymaps.Placemark(
                     [p.lat, p.lon],
@@ -198,7 +186,6 @@ function initMap() {
                 map.geoObjects.add(label);
             });
 
-            // Зоны
             sorted.forEach((p, index) => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
@@ -224,11 +211,10 @@ function initMap() {
                 });
             });
 
-            // Маршрут (Polyline)
-            const routeCoords = sorted.map(p => [p.lat, p.lon]);
+            simulationPoints = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
-                routeCoords,
+                simulationPoints,
                 {},
                 {
                     strokeColor: "#1E90FF",
@@ -239,25 +225,18 @@ function initMap() {
 
             map.geoObjects.add(routeLine);
 
-            // Симуляция по маршруту
-            simulationPoints = routeCoords;
-
             setStatus("Готово к симуляции");
             log("Точки и маршрут загружены");
         });
 
-    // Кнопка симуляции
     const btnSim = document.getElementById("simulate");
     if (btnSim) btnSim.addEventListener("click", startSimulation);
 
-    // GPS
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             pos => {
                 if (!gpsActive) return;
-
-                const coords = [pos.coords.latitude, pos.coords.longitude];
-                moveMarker(coords);
+                moveMarker([pos.coords.latitude, pos.coords.longitude]);
             },
             err => log("Ошибка GPS: " + err.message),
             { enableHighAccuracy: true }
