@@ -14,6 +14,12 @@ let simulationIndex = 0;
 
 let gpsActive = true;
 
+// Флаг, чтобы не накладывались аудио
+let audioPlaying = false;
+
+// Флаг, что пользователь разрешил звук
+let audioEnabled = false;
+
 
 // ======================================================
 // 2. УТИЛИТЫ
@@ -58,8 +64,34 @@ function calculateAngle(prev, curr) {
 // ======================================================
 
 function playZoneAudio(src) {
+    if (!audioEnabled) {
+        log("Аудио заблокировано браузером — нажми кнопку 'Включить звук'");
+        return;
+    }
+
+    if (audioPlaying) {
+        log("Аудио уже играет — новое не запускаем");
+        return;
+    }
+
+    log("Запуск аудио: " + src);
+
     const audio = new Audio(src);
-    audio.play().catch(err => log("Ошибка аудио: " + err.message));
+    audioPlaying = true;
+
+    audio.play()
+        .then(() => {
+            log("Аудио успешно проигрывается");
+        })
+        .catch(err => {
+            log("Ошибка аудио: " + err.message);
+            audioPlaying = false;
+        });
+
+    audio.onended = () => {
+        audioPlaying = false;
+        log("Аудио завершено");
+    };
 }
 
 
@@ -74,7 +106,6 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
-            // Красим зону в зелёный
             z.circle.options.set({
                 fillColor: "rgba(0,255,0,0.15)",
                 strokeColor: "rgba(0,255,0,0.4)"
@@ -82,7 +113,6 @@ function checkZones(coords) {
 
             log("Вход в зону: " + z.name);
 
-            // 🔊 ПРОИГРЫВАЕМ АУДИО
             if (z.audio) {
                 playZoneAudio(z.audio);
             }
@@ -114,16 +144,16 @@ function moveMarker(coords) {
 
 
 // ======================================================
-// 6. СИМУЛЯЦИЯ
+// 6. СИМУЛЯЦИЯ (ТОЛЬКО ДО ПЕРВОЙ ТОЧКИ)
 // ======================================================
 
 function simulateNextStep() {
     if (!simulationActive) return;
 
-    if (simulationIndex >= simulationPoints.length) {
+    if (simulationIndex >= 2) {  
         simulationActive = false;
         gpsActive = true;
-        setStatus("Симуляция завершена");
+        setStatus("Симуляция завершена (до первой точки)");
         log("Симуляция завершена");
         return;
     }
@@ -151,7 +181,7 @@ function startSimulation() {
     moveMarker(start);
     map.setCenter(start, 15);
 
-    setStatus("Симуляция запущена");
+    setStatus("Симуляция запущена (до первой точки)");
     log("Симуляция запущена");
 
     setTimeout(simulateNextStep, 2000);
@@ -190,7 +220,6 @@ function initMap() {
         .then(points => {
             const sorted = points.slice().sort((a, b) => a.id - b.id);
 
-            // Нумерация точек
             sorted.forEach(p => {
                 const label = new ymaps.Placemark(
                     [p.lat, p.lon],
@@ -203,7 +232,6 @@ function initMap() {
                 map.geoObjects.add(label);
             });
 
-            // Зоны
             sorted.forEach((p, index) => {
                 const circle = new ymaps.Circle(
                     [[p.lat, p.lon], p.radius],
@@ -217,6 +245,9 @@ function initMap() {
 
                 map.geoObjects.add(circle);
 
+                // Автоматически назначаем аудио по id
+                const audioFile = p.id === 1 ? "audio/start.mp3" : `audio/${p.id - 1}.mp3`;
+
                 zones.push({
                     id: p.id,
                     name: p.name,
@@ -226,11 +257,10 @@ function initMap() {
                     circle: circle,
                     visited: false,
                     isLast: index === sorted.length - 1,
-                    audio: p.audio   // ← АУДИО ДЛЯ ЗОНЫ
+                    audio: audioFile
                 });
             });
 
-            // Маршрут
             simulationPoints = sorted.map(p => [p.lat, p.lon]);
 
             const routeLine = new ymaps.Polyline(
@@ -251,6 +281,20 @@ function initMap() {
 
     const btnSim = document.getElementById("simulate");
     if (btnSim) btnSim.addEventListener("click", startSimulation);
+
+    // Кнопка включения звука
+    const btnAudio = document.getElementById("enableAudio");
+    if (btnAudio) {
+        btnAudio.addEventListener("click", () => {
+            const a = new Audio("audio/start.mp3");
+            a.play()
+                .then(() => {
+                    audioEnabled = true;
+                    log("Аудио разрешено браузером");
+                })
+                .catch(err => log("Ошибка разрешения аудио: " + err.message));
+        });
+    }
 
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
