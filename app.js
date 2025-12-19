@@ -17,6 +17,9 @@ let gpsActive = true;
 let compassActive = false;
 let compassAngle = null;
 
+// Глобальная ссылка на экземпляр Canvas‑layout стрелки
+let arrowLayoutInstance = null;
+
 
 // ======================================================
 // 2. УТИЛИТЫ
@@ -84,7 +87,81 @@ function checkZones(coords) {
 
 
 // ======================================================
-// 4. ГИБРИДНЫЙ ПОВОРОТ СТРЕЛКИ
+// 4. CANVAS-СТРЕЛКА (layout + управление поворотом)
+// ======================================================
+
+// Кастомный layout с <canvas>, который рисует arrow.png и вращает её
+const ArrowLayout = ymaps.templateLayoutFactory.createClass(
+    '<canvas width="60" height="60"></canvas>',
+    {
+        build: function () {
+            ArrowLayout.superclass.build.call(this);
+
+            // Находим canvas, созданный этим layout
+            this.canvas = this.getParentElement().querySelector("canvas");
+            this.ctx = this.canvas.getContext("2d");
+
+            this.image = new Image();
+            this.image.src = "arrow.png";
+
+            this.rotation = 0; // угол в градусах
+
+            // Сохраняем ссылку на текущий экземпляр layout
+            arrowLayoutInstance = this;
+
+            this.image.onload = () => {
+                this.draw();
+            };
+        },
+
+        clear: function () {
+            // При очистке убираем ссылку
+            if (arrowLayoutInstance === this) {
+                arrowLayoutInstance = null;
+            }
+            ArrowLayout.superclass.clear.call(this);
+        },
+
+        draw: function () {
+            if (!this.ctx || !this.image) return;
+
+            const ctx = this.ctx;
+            const img = this.image;
+            const w = this.canvas.width;
+            const h = this.canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.rotate(this.rotation * Math.PI / 180);
+
+            // Рисуем стрелку по центру
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            ctx.restore();
+        },
+
+        // Вызывается извне, чтобы обновить угол
+        setRotation: function (angle) {
+            this.rotation = angle;
+            this.draw();
+        }
+    }
+);
+
+// Функция, которую будет вызывать rotateMarker
+function rotateArrow(angle) {
+    if (!arrowLayoutInstance) {
+        // layout ещё не построен (например, карта не успела инициализироваться)
+        return;
+    }
+    arrowLayoutInstance.setRotation(angle);
+}
+
+
+// ======================================================
+// 5. ГИБРИДНЫЙ ПОВОРОТ СТРЕЛКИ (теперь управляет Canvas)
 // ======================================================
 
 function rotateMarker(prev, curr, forcedAngle = null) {
@@ -95,7 +172,7 @@ function rotateMarker(prev, curr, forcedAngle = null) {
         angle = forcedAngle;
     }
 
-    // 2) Компас активен
+    // 2) Компас активен (оставляем на будущее — когда захочешь задействовать)
     else if (compassActive && compassAngle !== null) {
         angle = compassAngle;
     }
@@ -111,13 +188,14 @@ function rotateMarker(prev, curr, forcedAngle = null) {
     }
 
     if (angle !== null) {
-        userMarker.options.set("iconImageRotation", angle);
+        // Раньше здесь был iconImageRotation — теперь вращаем Canvas‑стрелку
+        rotateArrow(angle);
     }
 }
 
 
 // ======================================================
-// 5. ПЕРЕМЕЩЕНИЕ МАРКЕРА
+// 6. ПЕРЕМЕЩЕНИЕ МАРКЕРА
 // ======================================================
 
 function moveMarker(coords, forcedAngle = null) {
@@ -129,7 +207,7 @@ function moveMarker(coords, forcedAngle = null) {
 
 
 // ======================================================
-// 6. СИМУЛЯЦИЯ
+// 7. СИМУЛЯЦИЯ
 // ======================================================
 
 function simulateNextStep() {
@@ -181,8 +259,10 @@ function startSimulation() {
 
     setTimeout(simulateNextStep, 2000);
 }
+
+
 // ======================================================
-// 7. КОМПАС
+// 8. КОМПАС
 // ======================================================
 
 function initCompass() {
@@ -240,7 +320,7 @@ function handleCompass(e) {
 
 
 // ======================================================
-// 8. ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// 9. ИНИЦИАЛИЗАЦИЯ КАРТЫ
 // ======================================================
 
 function initMap() {
@@ -252,15 +332,17 @@ function initMap() {
         controls: []
     });
 
+    // === ЗАМЕНА: вместо default#image используем наш Canvas‑layout ===
     userMarker = new ymaps.Placemark(
         initialCenter,
         {},
         {
-            iconLayout: "default#image",
-            iconImageHref: "arrow.png",
-            iconImageSize: [40, 40],
-            iconImageOffset: [-20, -20],
-            iconImageRotation: true
+            iconLayout: ArrowLayout, // кастомный layout со стрелкой
+            iconShape: {
+                type: 'Circle',
+                radius: 30,
+                coordinates: [30, 30]
+            }
         }
     );
 
