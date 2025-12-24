@@ -72,8 +72,19 @@ function moveMarker(coords) {
         const angle = calculateAngle(lastCoords, coords);
         arrowEl.style.transform = `rotate(${angle}deg)`;
     }
+
     lastCoords = coords;
+
     userMarker.setLngLat([coords[1], coords[0]]);
+
+    // --- FOLLOW THE ARROW DURING SIMULATION ---
+    if (simulationActive) {
+        map.easeTo({
+            center: [coords[1], coords[0]],
+            duration: 500
+        });
+    }
+
     checkZones(coords);
 }
 
@@ -240,4 +251,5 @@ async function initMap() {
 }
 
 document.addEventListener("DOMContentLoaded", initMap);
+
 
