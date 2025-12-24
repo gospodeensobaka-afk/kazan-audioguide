@@ -135,8 +135,9 @@ async function initMap() {
             .setLngLat(initialCenter)
             .addTo(map);
 
-        const circleFeatures = [];
-        const squareFeatures = [];        points.forEach(p => {
+        const circleFeatures = [];        const circleFeatures = [];
+
+        points.forEach(p => {
             zones.push({
                 id: p.id,
                 name: p.name,
@@ -148,6 +149,7 @@ async function initMap() {
                 audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
             });
 
+            // --- AUDIO CIRCLES ---
             if (p.type === "audio") {
                 circleFeatures.push({
                     type: "Feature",
@@ -159,28 +161,30 @@ async function initMap() {
                 });
             }
 
+            // --- PNG ICON INSTEAD OF SQUARE ---
             if (p.type === "square") {
-                console.log("КВАДРАТ:", p.id, p.lat, p.lng);
 
-                const size = 0.000045; // ~5 метров
+                const el = document.createElement("div");
+                el.style.width = "40px";
+                el.style.height = "40px";
+                el.style.display = "flex";
+                el.style.alignItems = "center";
+                el.style.justifyContent = "center";
 
-                squareFeatures.push({
-                    type: "Feature",
-                    properties: { id: p.id },
-                    geometry: {
-                        type: "Polygon",
-                        coordinates: [[
-                            [p.lng - size, p.lat - size],
-                            [p.lng + size, p.lat - size],
-                            [p.lng + size, p.lat + size],
-                            [p.lng - size, p.lat + size],
-                            [p.lng - size, p.lat - size]
-                        ]]
-                    }
-                });
+                const img = document.createElement("img");
+                img.src = "icons/left.png";   // ← твоя PNG
+                img.style.width = "32px";
+                img.style.height = "32px";
+
+                el.appendChild(img);
+
+                new maplibregl.Marker({ element: el })
+                    .setLngLat([p.lng, p.lat])
+                    .addTo(map);
             }
         });
 
+        // --- AUDIO CIRCLES SOURCE ---
         map.addSource("audio-circles", {
             type: "geojson",
             data: {
@@ -209,27 +213,7 @@ async function initMap() {
                 ],
                 "circle-stroke-width": 2
             }
-        });
-
-        map.addSource("blue-squares", {
-            type: "geojson",
-            data: {
-                type: "FeatureCollection",
-                features: squareFeatures
-            }
-        });
-
-        map.addLayer({
-            id: "blue-squares-layer",
-            type: "fill",
-            source: "blue-squares",
-            paint: {
-                "fill-color": "rgba(0,0,255,0.3)",
-                "fill-outline-color": "rgba(0,0,255,0.6)"
-            }
-        });
-
-        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        });        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
 
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
