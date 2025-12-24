@@ -80,6 +80,14 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
+            // Меняем цвет круга
+            map.setPaintProperty("audio-circles-layer", "circle-color", [
+                "case",
+                ["==", ["get", "id"], z.id],
+                "rgba(0,255,0,0.25)",
+                "rgba(255,0,0,0.15)"
+            ]);
+
             if (z.audio) playZoneAudio(z.audio);
         }
     });
@@ -153,11 +161,10 @@ async function initMap() {
     });
 
     map.on("load", async () => {
-        // Загружаем точки и маршрут
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
 
-        // Маршрут
+        // --- Маршрут ---
         map.addSource("route", { type: "geojson", data: route });
         map.addLayer({
             id: "route-line",
@@ -169,20 +176,23 @@ async function initMap() {
             }
         });
 
-        // Маркер пользователя (стрелка)
+        // --- Маркер пользователя (стрелка) ---
         arrowEl = document.createElement("img");
         arrowEl.src = "arrow.png";
         arrowEl.style.width = "40px";
         arrowEl.style.height = "40px";
-        arrowEl.style.transform = "rotate(0deg)";
         arrowEl.style.transformOrigin = "center center";
 
         userMarker = new maplibregl.Marker({ element: arrowEl })
             .setLngLat(initialCenter)
             .addTo(map);
 
-        // Точки
+        // --- Круги и квадраты ---
+        const circleFeatures = [];
+        const squareFeatures = [];
+
         points.forEach(p => {
+            // Маркеры
             const el = document.createElement("div");
             el.style.width = "16px";
             el.style.height = "16px";
@@ -202,6 +212,38 @@ async function initMap() {
                 .setLngLat([p.lng, p.lat])
                 .addTo(map);
 
+            // Круги
+            if (p.type === "audio") {
+                circleFeatures.push({
+                    type: "Feature",
+                    properties: { id: p.id },
+                    geometry: {
+                        type: "Point",
+                        coordinates: [p.lng, p.lat]
+                    }
+                });
+            }
+
+            // Квадраты
+            if (p.type === "square") {
+                const size = 0.00015;
+                squareFeatures.push({
+                    type: "Feature",
+                    properties: { id: p.id },
+                    geometry: {
+                        type: "Polygon",
+                        coordinates: [[
+                            [p.lng - size, p.lat - size],
+                            [p.lng + size, p.lat - size],
+                            [p.lng + size, p.lat + size],
+                            [p.lng - size, p.lat + size],
+                            [p.lng - size, p.lat - size]
+                        ]]
+                    }
+                });
+            }
+
+            // Логика зон
             zones.push({
                 id: p.id,
                 name: p.name,
@@ -213,10 +255,52 @@ async function initMap() {
             });
         });
 
-        // Симуляция
+        // --- Источник кругов ---
+        map.addSource("audio-circles", {
+            type: "geojson",
+            data: {
+                type: "FeatureCollection",
+                features: circleFeatures
+            }
+        });
+
+        // --- Слой кругов ---
+        map.addLayer({
+            id: "audio-circles-layer",
+            type: "circle",
+            source: "audio-circles",
+            paint: {
+                "circle-radius": 20,
+                "circle-color": "rgba(255,0,0,0.15)",
+                "circle-stroke-color": "rgba(255,0,0,0.4)",
+                "circle-stroke-width": 2
+            }
+        });
+
+        // --- Источник квадратов ---
+        map.addSource("blue-squares", {
+            type: "geojson",
+            data: {
+                type: "FeatureCollection",
+                features: squareFeatures
+            }
+        });
+
+        // --- Слой квадратов ---
+        map.addLayer({
+            id: "blue-squares-layer",
+            type: "fill",
+            source: "blue-squares",
+            paint: {
+                "fill-color": "rgba(0,0,255,0.3)",
+                "fill-outline-color": "rgba(0,0,255,0.6)"
+            }
+        });
+
+        // --- Симуляция ---
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
 
-        // GPS
+        // --- GPS ---
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 pos => {
@@ -231,22 +315,17 @@ async function initMap() {
         console.log("Карта готова");
     });
 
-    // Кнопка симуляции
     document.getElementById("simulate").onclick = startSimulation;
 
-    // Кнопка включения звука
-    const btnAudio = document.getElementById("enableAudio");
-    if (btnAudio) {
-        btnAudio.onclick = () => {
-            const a = new Audio("audio/1.mp3");
-            a.play()
-                .then(() => {
-                    audioEnabled = true;
-                    console.log("Аудио разрешено");
-                })
-                .catch(() => console.log("Ошибка разрешения аудио"));
-        };
-    }
+    document.getElementById("enableAudio").onclick = () => {
+        const a = new Audio("audio/1.mp3");
+        a.play()
+            .then(() => {
+                audioEnabled = true;
+                console.log("Аудио разрешено");
+            })
+            .catch(() => console.log("Ошибка разрешения аудио"));
+    };
 }
 
 document.addEventListener("DOMContentLoaded", initMap);
