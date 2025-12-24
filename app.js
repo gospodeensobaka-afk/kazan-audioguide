@@ -1,7 +1,3 @@
-// ======================================================
-// 1. ГЛОБАЛЬНОЕ СОСТОЯНИЕ
-// ======================================================
-
 let map;
 let userMarker = null;
 let arrowEl = null;
@@ -18,22 +14,14 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
-
-// ======================================================
-// 2. УТИЛИТЫ
-// ======================================================
-
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
     const dLon = (b[1] - a[1]) * Math.PI / 180;
-
     const lat1 = a[0] * Math.PI / 180;
     const lat2 = b[0] * Math.PI / 180;
-
     const x = dLon * Math.cos((lat1 + lat2) / 2);
     const y = dLat;
-
     return Math.sqrt(x * x + y * y) * R;
 }
 
@@ -43,31 +31,18 @@ function calculateAngle(prev, curr) {
     return Math.atan2(dx, dy) * (180 / Math.PI);
 }
 
-
-// ======================================================
-// 3. АУДИО
-// ======================================================
-
 function playZoneAudio(src) {
     if (!audioEnabled) return;
     if (audioPlaying) return;
-
     const audio = new Audio(src);
     audioPlaying = true;
-
     audio.play().catch(() => audioPlaying = false);
     audio.onended = () => audioPlaying = false;
 }
 
-
-// ======================================================
-// 4. ЗОНЫ
-// ======================================================
-
 function updateCircleColors() {
     const source = map.getSource("audio-circles");
     if (!source) return;
-
     source.setData({
         type: "FeatureCollection",
         features: zones
@@ -75,10 +50,7 @@ function updateCircleColors() {
             .map(z => ({
                 type: "Feature",
                 properties: { id: z.id, visited: z.visited },
-                geometry: {
-                    type: "Point",
-                    coordinates: [z.lng, z.lat]
-                }
+                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
             }))
     });
 }
@@ -86,9 +58,7 @@ function updateCircleColors() {
 function checkZones(coords) {
     zones.forEach(z => {
         if (z.type !== "audio") return;
-
         const dist = distance(coords, [z.lat, z.lng]);
-
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
             updateCircleColors();
@@ -97,65 +67,41 @@ function checkZones(coords) {
     });
 }
 
-
-// ======================================================
-// 5. ДВИЖЕНИЕ МАРКЕРА
-// ======================================================
-
 function moveMarker(coords) {
     if (lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
         arrowEl.style.transform = `rotate(${angle}deg)`;
     }
-
     lastCoords = coords;
-
     userMarker.setLngLat([coords[1], coords[0]]);
     checkZones(coords);
 }
 
-
-// ======================================================
-// 6. СИМУЛЯЦИЯ
-// ======================================================
-
 function simulateNextStep() {
     if (!simulationActive) return;
-
     if (simulationIndex >= simulationPoints.length) {
         simulationActive = false;
         gpsActive = true;
         return;
     }
-
     const next = simulationPoints[simulationIndex];
     simulationIndex++;
-
     moveMarker(next);
-
     setTimeout(simulateNextStep, 1200);
 }
 
 function startSimulation() {
     if (!simulationPoints.length) return;
-
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
-
     moveMarker(simulationPoints[0]);
     map.easeTo({
         center: [simulationPoints[0][1], simulationPoints[0][0]],
         duration: 500
     });
-
     setTimeout(simulateNextStep, 1200);
 }
-
-
-// ======================================================
-// 7. ИНИЦИАЛИЗАЦИЯ КАРТЫ
-// ======================================================
 
 async function initMap() {
     const initialCenter = [49.082118, 55.826584];
@@ -171,19 +117,14 @@ async function initMap() {
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
 
-        // --- Маршрут ---
         map.addSource("route", { type: "geojson", data: route });
         map.addLayer({
             id: "route-line",
             type: "line",
             source: "route",
-            paint: {
-                "line-color": "#007aff",
-                "line-width": 4
-            }
+            paint: { "line-color": "#007aff", "line-width": 4 }
         });
 
-        // --- Маркер пользователя (стрелка) ---
         arrowEl = document.createElement("img");
         arrowEl.src = "arrow.png";
         arrowEl.style.width = "40px";
@@ -194,11 +135,8 @@ async function initMap() {
             .setLngLat(initialCenter)
             .addTo(map);
 
-        // --- Подготовка геометрии ---
         const circleFeatures = [];
-        const squareFeatures = [];
-
-        points.forEach(p => {
+        const squareFeatures = [];        points.forEach(p => {
             zones.push({
                 id: p.id,
                 name: p.name,
@@ -222,7 +160,10 @@ async function initMap() {
             }
 
             if (p.type === "square") {
-                const size = 0.00007; // ~7.7 метров, гарантированно квадрат
+                console.log("КВАДРАТ:", p.id, p.lat, p.lng);
+
+                const size = 0.000045; // ~5 метров
+
                 squareFeatures.push({
                     type: "Feature",
                     properties: { id: p.id },
@@ -240,7 +181,6 @@ async function initMap() {
             }
         });
 
-        // --- Источник кругов ---
         map.addSource("audio-circles", {
             type: "geojson",
             data: {
@@ -249,7 +189,6 @@ async function initMap() {
             }
         });
 
-        // --- Слой кругов ---
         map.addLayer({
             id: "audio-circles-layer",
             type: "circle",
@@ -259,8 +198,8 @@ async function initMap() {
                 "circle-color": [
                     "case",
                     ["boolean", ["get", "visited"], false],
-                    "rgba(0,255,0,0.25)",   // зелёный
-                    "rgba(255,0,0,0.15)"    // красный
+                    "rgba(0,255,0,0.25)",
+                    "rgba(255,0,0,0.15)"
                 ],
                 "circle-stroke-color": [
                     "case",
@@ -272,7 +211,6 @@ async function initMap() {
             }
         });
 
-        // --- Источник квадратов ---
         map.addSource("blue-squares", {
             type: "geojson",
             data: {
@@ -281,7 +219,6 @@ async function initMap() {
             }
         });
 
-        // --- Слой квадратов ---
         map.addLayer({
             id: "blue-squares-layer",
             type: "fill",
@@ -292,10 +229,8 @@ async function initMap() {
             }
         });
 
-        // --- Симуляция ---
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
 
-        // --- GPS ---
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 pos => {
