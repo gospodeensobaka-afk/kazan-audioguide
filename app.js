@@ -183,7 +183,7 @@ async function initMap() {
                 el.style.justifyContent = "center";
 
                 const img = document.createElement("img");
-                img.src = "icons/left.png";   // ← твоя PNG
+                img.src = "https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png";   // ← твоя PNG
                 img.style.width = "32px";
                 img.style.height = "32px";
 
@@ -251,5 +251,6 @@ async function initMap() {
 }
 
 document.addEventListener("DOMContentLoaded", initMap);
+
 
 
