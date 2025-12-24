@@ -14,10 +14,9 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
-// --- ROUTE COLORING ---
+// NEW: route coloring
 let passedCoords = [];
 let remainingCoords = [];
-let fullRoute = null;
 
 function distance(a, b) {
     const R = 6371000;
@@ -80,35 +79,26 @@ function checkZones(coords) {
 
     userMarker.setLngLat([coords[1], coords[0]]);
 
-    // --- SMART ROUTE COLORING ---
-    const current = [coords[1], coords[0]]; // [lng, lat]
+    // --- UPDATE ROUTE COLORS ---
+    passedCoords.push([coords[1], coords[0]]);
+    remainingCoords.shift();
 
-    // ищем ближайшую точку маршрута
-    let closestIndex = 0;
-    let minDist = Infinity;
+    const passedSource = map.getSource("route-passed");
+    const remainingSource = map.getSource("route-remaining");
 
-    fullRoute.forEach((pt, i) => {
-        const d = distance([current[1], current[0]], [pt[1], pt[0]]);
-        if (d < minDist) {
-            minDist = d;
-            closestIndex = i;
-        }
-    });
+    if (passedSource) {
+        passedSource.setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: passedCoords }
+        });
+    }
 
-    // делим маршрут на пройденный и оставшийся
-    passedCoords = fullRoute.slice(0, closestIndex + 1);
-    remainingCoords = fullRoute.slice(closestIndex);
-
-    // обновляем слои
-    map.getSource("route-passed").setData({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: passedCoords }
-    });
-
-    map.getSource("route-remaining").setData({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: remainingCoords }
-    });
+    if (remainingSource) {
+        remainingSource.setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: remainingCoords }
+        });
+    }
 
     // --- FOLLOW THE ARROW DURING SIMULATION ---
     if (simulationActive) {
@@ -136,14 +126,13 @@ function simulateNextStep() {
 
 function startSimulation() {
     if (!simulationPoints.length) return;
-
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
 
-    // сбрасываем раскраску маршрута
+    // reset route coloring
     passedCoords = [];
-    remainingCoords = [...fullRoute];
+    remainingCoords = simulationPoints.map(c => [c[1], c[0]]);
 
     moveMarker(simulationPoints[0]);
 
@@ -169,11 +158,9 @@ async function initMap() {
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
 
-        // сохраняем полный маршрут
-        fullRoute = route.geometry.coordinates.map(c => [c[0], c[1]]);
-
-        // симуляция использует lat/lng
+        // prepare route arrays
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        remainingCoords = route.geometry.coordinates.map(c => [c[0], c[1]]);
 
         // --- ROUTE SOURCES (PASSED + REMAINING) ---
         map.addSource("route-passed", {
@@ -198,7 +185,7 @@ async function initMap() {
             type: "geojson",
             data: {
                 type: "Feature",
-                geometry: { type: "LineString", coordinates: fullRoute }
+                geometry: { type: "LineString", coordinates: remainingCoords }
             }
         });
 
@@ -294,3 +281,35 @@ async function initMap() {
         arrowEl.src = "arrow.png";
         arrowEl.style.width = "40px";
         arrowEl.style.height = "40px";
+        arrowEl.style.transformOrigin = "center center";
+
+        userMarker = new maplibregl.Marker({ element: arrowEl })
+            .setLngLat(initialCenter)
+            .addTo(map);
+
+        // --- GPS TRACKING ---
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                pos => {
+                    if (!gpsActive) return;
+                    moveMarker([pos.coords.latitude, pos.coords.longitude]);
+                },
+                err => console.log("GPS error:", err),
+                { enableHighAccuracy: true }
+            );
+        }
+
+        console.log("Карта готова");
+    });
+
+    document.getElementById("simulate").onclick = startSimulation;
+
+    document.getElementById("enableAudio").onclick = () => {
+        const a = new Audio("audio/1.mp3");
+        a.play()
+            .then(() => audioEnabled = true)
+            .catch(() => console.log("Ошибка разрешения аудио"));
+    };
+}
+
+document.addEventListener("DOMContentLoaded", initMap);
