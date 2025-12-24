@@ -1,0 +1,23 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+#simulate {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 10px 14px;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    z-index: 10;
+}
