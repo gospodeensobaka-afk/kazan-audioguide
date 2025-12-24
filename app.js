@@ -222,7 +222,7 @@ async function initMap() {
             }
 
             if (p.type === "square") {
-                const size = 0.00009; // ~10 метров
+                const size = 0.00007; // ~7.7 метров, гарантированно квадрат
                 squareFeatures.push({
                     type: "Feature",
                     properties: { id: p.id },
