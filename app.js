@@ -14,6 +14,10 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
+// NEW: route coloring
+let passedCoords = [];
+let remainingCoords = [];
+
 function distance(a, b) {
     const R = 6371000;
     const dLat = (b[0] - a[0]) * Math.PI / 180;
@@ -65,9 +69,7 @@ function checkZones(coords) {
             if (z.audio) playZoneAudio(z.audio);
         }
     });
-}
-
-function moveMarker(coords) {
+}function moveMarker(coords) {
     if (lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
         arrowEl.style.transform = `rotate(${angle}deg)`;
@@ -76,6 +78,27 @@ function moveMarker(coords) {
     lastCoords = coords;
 
     userMarker.setLngLat([coords[1], coords[0]]);
+
+    // --- UPDATE ROUTE COLORS ---
+    passedCoords.push([coords[1], coords[0]]);
+    remainingCoords.shift();
+
+    const passedSource = map.getSource("route-passed");
+    const remainingSource = map.getSource("route-remaining");
+
+    if (passedSource) {
+        passedSource.setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: passedCoords }
+        });
+    }
+
+    if (remainingSource) {
+        remainingSource.setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: remainingCoords }
+        });
+    }
 
     // --- FOLLOW THE ARROW DURING SIMULATION ---
     if (simulationActive) {
@@ -106,11 +129,18 @@ function startSimulation() {
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
+
+    // reset route coloring
+    passedCoords = [];
+    remainingCoords = simulationPoints.map(c => [c[1], c[0]]);
+
     moveMarker(simulationPoints[0]);
+
     map.easeTo({
         center: [simulationPoints[0][1], simulationPoints[0][0]],
         duration: 500
     });
+
     setTimeout(simulateNextStep, 1200);
 }
 
@@ -128,24 +158,46 @@ async function initMap() {
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
 
-        map.addSource("route", { type: "geojson", data: route });
-        map.addLayer({
-            id: "route-line",
-            type: "line",
-            source: "route",
-            paint: { "line-color": "#007aff", "line-width": 4 }
+        // prepare route arrays
+        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        remainingCoords = route.geometry.coordinates.map(c => [c[0], c[1]]);
+
+        // --- ROUTE SOURCES (PASSED + REMAINING) ---
+        map.addSource("route-passed", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: [] }
+            }
         });
 
-        arrowEl = document.createElement("img");
-        arrowEl.src = "arrow.png";
-        arrowEl.style.width = "40px";
-        arrowEl.style.height = "40px";
-        arrowEl.style.transformOrigin = "center center";
+        map.addLayer({
+            id: "route-passed-line",
+            type: "line",
+            source: "route-passed",
+            paint: {
+                "line-color": "#888888",
+                "line-width": 4
+            }
+        });
 
-        userMarker = new maplibregl.Marker({ element: arrowEl })
-            .setLngLat(initialCenter)
-            .addTo(map);
+        map.addSource("route-remaining", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: remainingCoords }
+            }
+        });
 
+        map.addLayer({
+            id: "route-remaining-line",
+            type: "line",
+            source: "route-remaining",
+            paint: {
+                "line-color": "#007aff",
+                "line-width": 4
+            }
+        });        // --- AUDIO CIRCLES ---
         const circleFeatures = [];
 
         points.forEach(p => {
@@ -160,7 +212,6 @@ async function initMap() {
                 audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
             });
 
-            // --- AUDIO CIRCLES ---
             if (p.type === "audio") {
                 circleFeatures.push({
                     type: "Feature",
@@ -172,9 +223,8 @@ async function initMap() {
                 });
             }
 
-            // --- PNG ICON INSTEAD OF SQUARE ---
+            // --- PNG ICONS FOR SQUARE POINTS ---
             if (p.type === "square") {
-
                 const el = document.createElement("div");
                 el.style.width = "40px";
                 el.style.height = "40px";
@@ -183,7 +233,7 @@ async function initMap() {
                 el.style.justifyContent = "center";
 
                 const img = document.createElement("img");
-                img.src = "https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png";   // ← твоя PNG
+                img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
                 img.style.width = "32px";
                 img.style.height = "32px";
 
@@ -224,8 +274,20 @@ async function initMap() {
                 ],
                 "circle-stroke-width": 2
             }
-        });        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        });
 
+        // --- USER ARROW MARKER ---
+        arrowEl = document.createElement("img");
+        arrowEl.src = "arrow.png";
+        arrowEl.style.width = "40px";
+        arrowEl.style.height = "40px";
+        arrowEl.style.transformOrigin = "center center";
+
+        userMarker = new maplibregl.Marker({ element: arrowEl })
+            .setLngLat(initialCenter)
+            .addTo(map);
+
+        // --- GPS TRACKING ---
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 pos => {
@@ -251,6 +313,3 @@ async function initMap() {
 }
 
 document.addEventListener("DOMContentLoaded", initMap);
-
-
-
