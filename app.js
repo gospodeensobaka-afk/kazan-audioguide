@@ -4,6 +4,7 @@
 
 let map;
 let userMarker = null;
+let arrowEl = null;
 
 let lastCoords = null;
 let zones = [];
@@ -14,29 +15,13 @@ let simulationIndex = 0;
 
 let gpsActive = true;
 
-// Флаг, чтобы не накладывались аудио
 let audioPlaying = false;
-
-// Флаг, что пользователь разрешил звук
 let audioEnabled = false;
 
 
 // ======================================================
 // 2. УТИЛИТЫ
 // ======================================================
-
-function log(t) {
-    const el = document.getElementById("debug");
-    if (el) {
-        el.textContent += t + "\n";
-        el.scrollTop = el.scrollHeight;
-    }
-}
-
-function setStatus(t) {
-    const el = document.getElementById("status");
-    if (el) el.textContent = t;
-}
 
 function distance(a, b) {
     const R = 6371000;
@@ -65,32 +50,21 @@ function calculateAngle(prev, curr) {
 
 function playZoneAudio(src) {
     if (!audioEnabled) {
-        log("Аудио заблокировано браузером — нажми кнопку 'Включить звук'");
+        console.log("Аудио заблокировано — нажми кнопку 'Включить звук'");
         return;
     }
 
-    if (audioPlaying) {
-        log("Аудио уже играет — новое не запускаем");
-        return;
-    }
-
-    log("Запуск аудио: " + src);
+    if (audioPlaying) return;
 
     const audio = new Audio(src);
     audioPlaying = true;
 
-    audio.play()
-        .then(() => {
-            log("Аудио успешно проигрывается");
-        })
-        .catch(err => {
-            log("Ошибка аудио: " + err.message);
-            audioPlaying = false;
-        });
+    audio.play().catch(() => {
+        audioPlaying = false;
+    });
 
     audio.onended = () => {
         audioPlaying = false;
-        log("Аудио завершено");
     };
 }
 
@@ -101,26 +75,12 @@ function playZoneAudio(src) {
 
 function checkZones(coords) {
     zones.forEach(z => {
-        const dist = distance(coords, [z.lat, z.lon]);
+        const dist = distance(coords, [z.lat, z.lng]);
 
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
-            z.circle.options.set({
-                fillColor: "rgba(0,255,0,0.15)",
-                strokeColor: "rgba(0,255,0,0.4)"
-            });
-
-            log("Вход в зону: " + z.name);
-
-            if (z.audio) {
-                playZoneAudio(z.audio);
-            }
-
-            if (z.isLast) {
-                setStatus("Финальная точка достигнута!");
-                log("Финальная точка достигнута.");
-            }
+            if (z.audio) playZoneAudio(z.audio);
         }
     });
 }
@@ -133,29 +93,26 @@ function checkZones(coords) {
 function moveMarker(coords) {
     if (lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
-        userMarker.options.set("iconImageRotation", angle);
+        arrowEl.style.transform = `rotate(${angle}deg)`;
     }
 
     lastCoords = coords;
-    userMarker.geometry.setCoordinates(coords);
 
+    userMarker.setLngLat([coords[1], coords[0]]);
     checkZones(coords);
 }
 
 
 // ======================================================
-// 6. СИМУЛЯЦИЯ (ТОЛЬКО ДО ПЕРВОЙ ТОЧКИ)
+// 6. СИМУЛЯЦИЯ
 // ======================================================
 
 function simulateNextStep() {
     if (!simulationActive) return;
 
-    // Останавливаемся строго на первой точке
-    if (simulationIndex >= 2) {
+    if (simulationIndex >= simulationPoints.length) {
         simulationActive = false;
         gpsActive = true;
-        setStatus("Симуляция завершена (до первой точки)");
-        log("Симуляция завершена");
         return;
     }
 
@@ -164,28 +121,20 @@ function simulateNextStep() {
 
     moveMarker(next);
 
-    setTimeout(simulateNextStep, 2000);
+    setTimeout(simulateNextStep, 1200);
 }
 
 function startSimulation() {
-    if (!simulationPoints.length) {
-        setStatus("Нет точек для симуляции");
-        log("Нет точек для симуляции");
-        return;
-    }
+    if (!simulationPoints.length) return;
 
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
 
-    const start = simulationPoints[0];
-    moveMarker(start);
-    map.setCenter(start, 15);
+    moveMarker(simulationPoints[0]);
+    map.easeTo({ center: [simulationPoints[0][1], simulationPoints[0][0]], duration: 500 });
 
-    setStatus("Симуляция запущена (до первой точки)");
-    log("Симуляция запущена");
-
-    setTimeout(simulateNextStep, 2000);
+    setTimeout(simulateNextStep, 1200);
 }
 
 
@@ -193,126 +142,111 @@ function startSimulation() {
 // 7. ИНИЦИАЛИЗАЦИЯ КАРТЫ
 // ======================================================
 
-function initMap() {
-    const initialCenter = [55.826584, 49.082118];
+async function initMap() {
+    const initialCenter = [49.082118, 55.826584];
 
-    map = new ymaps.Map("map", {
+    map = new maplibregl.Map({
+        container: "map",
+        style: "style.json",
         center: initialCenter,
-        zoom: 15,
-        controls: []
+        zoom: 18
     });
 
-    userMarker = new ymaps.Placemark(
-        initialCenter,
-        {},
-        {
-            iconLayout: "default#image",
-            iconImageHref: "arrow.png",
-            iconImageSize: [40, 40],
-            iconImageOffset: [-20, -20],
-            iconRotate: true
-        }
-    );
+    map.on("load", async () => {
+        // Загружаем точки и маршрут
+        const points = await fetch("points.json").then(r => r.json());
+        const route = await fetch("route.json").then(r => r.json());
 
-    map.geoObjects.add(userMarker);
-
-    fetch("points.json")
-        .then(r => r.json())
-        .then(points => {
-            const sorted = points.slice().sort((a, b) => a.id - b.id);
-
-            sorted.forEach(p => {
-                const label = new ymaps.Placemark(
-                    [p.lat, p.lon],
-                    { iconContent: p.id },
-                    {
-                        preset: "islands#blueCircleIcon",
-                        iconColor: "#1E90FF"
-                    }
-                );
-                map.geoObjects.add(label);
-            });
-
-            sorted.forEach((p, index) => {
-                const circle = new ymaps.Circle(
-                    [[p.lat, p.lon], p.radius],
-                    {},
-                    {
-                        fillColor: "rgba(255,0,0,0.15)",
-                        strokeColor: "rgba(255,0,0,0.4)",
-                        strokeWidth: 2
-                    }
-                );
-
-                map.geoObjects.add(circle);
-
-                // Автоматически назначаем аудио по id
-                const audioFile =
-                    p.id === 1 ? "audio/start.mp3" : `audio/${p.id - 1}.mp3`;
-
-                zones.push({
-                    id: p.id,
-                    name: p.name,
-                    lat: p.lat,
-                    lon: p.lon,
-                    radius: p.radius,
-                    circle: circle,
-                    visited: false,
-                    isLast: index === sorted.length - 1,
-                    audio: audioFile
-                });
-            });
-
-            simulationPoints = sorted.map(p => [p.lat, p.lon]);
-
-            const routeLine = new ymaps.Polyline(
-                simulationPoints,
-                {},
-                {
-                    strokeColor: "#1E90FF",
-                    strokeWidth: 4,
-                    strokeOpacity: 0.8
-                }
-            );
-
-            map.geoObjects.add(routeLine);
-
-            setStatus("Готово к симуляции");
-            log("Точки и маршрут загружены");
+        // Маршрут
+        map.addSource("route", { type: "geojson", data: route });
+        map.addLayer({
+            id: "route-line",
+            type: "line",
+            source: "route",
+            paint: {
+                "line-color": "#007aff",
+                "line-width": 4
+            }
         });
 
-    const btnSim = document.getElementById("simulate");
-    if (btnSim) btnSim.addEventListener("click", startSimulation);
+        // Маркер пользователя (стрелка)
+        arrowEl = document.createElement("img");
+        arrowEl.src = "arrow.png";
+        arrowEl.style.width = "40px";
+        arrowEl.style.height = "40px";
+        arrowEl.style.transform = "rotate(0deg)";
+        arrowEl.style.transformOrigin = "center center";
+
+        userMarker = new maplibregl.Marker({ element: arrowEl })
+            .setLngLat(initialCenter)
+            .addTo(map);
+
+        // Точки
+        points.forEach(p => {
+            const el = document.createElement("div");
+            el.style.width = "16px";
+            el.style.height = "16px";
+
+            if (p.type === "audio") {
+                el.style.background = "red";
+                el.style.borderRadius = "50%";
+            }
+            if (p.type === "square") {
+                el.style.background = "blue";
+            }
+            if (p.type === "image") {
+                el.style.background = "gray";
+            }
+
+            new maplibregl.Marker(el)
+                .setLngLat([p.lng, p.lat])
+                .addTo(map);
+
+            zones.push({
+                id: p.id,
+                name: p.name,
+                lat: p.lat,
+                lng: p.lng,
+                radius: p.radius || 20,
+                visited: false,
+                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
+            });
+        });
+
+        // Симуляция
+        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+        // GPS
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+                pos => {
+                    if (!gpsActive) return;
+                    moveMarker([pos.coords.latitude, pos.coords.longitude]);
+                },
+                err => console.log("GPS error:", err),
+                { enableHighAccuracy: true }
+            );
+        }
+
+        console.log("Карта готова");
+    });
+
+    // Кнопка симуляции
+    document.getElementById("simulate").onclick = startSimulation;
 
     // Кнопка включения звука
     const btnAudio = document.getElementById("enableAudio");
     if (btnAudio) {
-        btnAudio.addEventListener("click", () => {
-            const a = new Audio("audio/start.mp3");
+        btnAudio.onclick = () => {
+            const a = new Audio("audio/1.mp3");
             a.play()
                 .then(() => {
                     audioEnabled = true;
-                    log("Аудио разрешено браузером");
+                    console.log("Аудио разрешено");
                 })
-                .catch(err => log("Ошибка разрешения аудио: " + err.message));
-        });
+                .catch(() => console.log("Ошибка разрешения аудио"));
+        };
     }
-
-    if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
-            pos => {
-                if (!gpsActive) return;
-                moveMarker([pos.coords.latitude, pos.coords.longitude]);
-            },
-            err => log("Ошибка GPS: " + err.message),
-            { enableHighAccuracy: true }
-        );
-    }
-
-    setStatus("Карта инициализирована");
-    log("Карта инициализирована");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    ymaps.ready(initMap);
-});
+document.addEventListener("DOMContentLoaded", initMap);
