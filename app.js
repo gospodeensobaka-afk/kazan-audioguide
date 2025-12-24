@@ -1,3 +1,7 @@
+// ========================================================
+// =============== GLOBAL VARIABLES & STATE ===============
+// ========================================================
+
 let map;
 let userMarker = null;
 let arrowEl = null;
@@ -17,6 +21,13 @@ let audioEnabled = false;
 // --- ROUTE COLORING ---
 let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
 
+// ================= END GLOBAL VARIABLES =================
+
+
+
+// ========================================================
+// ===================== UTILITIES ========================
+// ========================================================
 
 function distance(a, b) {
     const R = 6371000;
@@ -34,6 +45,14 @@ function calculateAngle(prev, curr) {
     const dy = curr[0] - prev[0];
     return Math.atan2(dx, dy) * (180 / Math.PI);
 }
+
+// =================== END UTILITIES ======================
+
+
+
+// ========================================================
+// ===================== AUDIO ZONES =======================
+// ========================================================
 
 function playZoneAudio(src) {
     if (!audioEnabled) return;
@@ -69,7 +88,13 @@ function checkZones(coords) {
             if (z.audio) playZoneAudio(z.audio);
         }
     });
-}function moveMarker(coords) {
+}
+
+// =================== END AUDIO ZONES ====================// ========================================================
+// ===================== MOVE MARKER =======================
+// ========================================================
+
+function moveMarker(coords) {
     // coords = [lat, lng]
 
     // --- ROTATE ARROW ---
@@ -126,6 +151,14 @@ function checkZones(coords) {
     checkZones(coords);
 }
 
+// =================== END MOVE MARKER ====================
+
+
+
+// ========================================================
+// ================== SIMULATION STEP ======================
+// ========================================================
+
 function simulateNextStep() {
     if (!simulationActive) return;
     if (simulationIndex >= simulationPoints.length) {
@@ -141,6 +174,14 @@ function simulateNextStep() {
 
     setTimeout(simulateNextStep, 1200);
 }
+
+// ================ END SIMULATION STEP ===================
+
+
+
+// ========================================================
+// ================== START SIMULATION =====================
+// ========================================================
 
 function startSimulation() {
     if (!simulationPoints.length) return;
@@ -161,6 +202,14 @@ function startSimulation() {
 
     setTimeout(simulateNextStep, 1200);
 }
+
+// ================ END START SIMULATION ==================
+
+
+
+// ========================================================
+// ======================= INIT MAP ========================
+// ========================================================
 
 async function initMap() {
     const initialCenter = [49.082118, 55.826584];
@@ -336,4 +385,14 @@ async function initMap() {
     }
 }
 
+// ===================== END INIT MAP =====================
+
+
+
+// ========================================================
+// ====================== DOM EVENTS =======================
+// ========================================================
+
 document.addEventListener("DOMContentLoaded", initMap);
+
+// ==================== END DOM EVENTS ====================
