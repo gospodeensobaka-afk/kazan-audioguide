@@ -49,23 +49,14 @@ function calculateAngle(prev, curr) {
 // ======================================================
 
 function playZoneAudio(src) {
-    if (!audioEnabled) {
-        console.log("Аудио заблокировано — нажми кнопку 'Включить звук'");
-        return;
-    }
-
+    if (!audioEnabled) return;
     if (audioPlaying) return;
 
     const audio = new Audio(src);
     audioPlaying = true;
 
-    audio.play().catch(() => {
-        audioPlaying = false;
-    });
-
-    audio.onended = () => {
-        audioPlaying = false;
-    };
+    audio.play().catch(() => audioPlaying = false);
+    audio.onended = () => audioPlaying = false;
 }
 
 
@@ -100,9 +91,7 @@ function checkZones(coords) {
 
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
-
             updateCircleColors();
-
             if (z.audio) playZoneAudio(z.audio);
         }
     });
@@ -155,7 +144,10 @@ function startSimulation() {
     simulationIndex = 0;
 
     moveMarker(simulationPoints[0]);
-    map.easeTo({ center: [simulationPoints[0][1], simulationPoints[0][0]], duration: 500 });
+    map.easeTo({
+        center: [simulationPoints[0][1], simulationPoints[0][0]],
+        duration: 500
+    });
 
     setTimeout(simulateNextStep, 1200);
 }
@@ -230,7 +222,7 @@ async function initMap() {
             }
 
             if (p.type === "square") {
-                const size = 0.00015;
+                const size = 0.00009; // ~10 метров
                 squareFeatures.push({
                     type: "Feature",
                     properties: { id: p.id },
@@ -267,8 +259,8 @@ async function initMap() {
                 "circle-color": [
                     "case",
                     ["boolean", ["get", "visited"], false],
-                    "rgba(0,255,0,0.25)",
-                    "rgba(255,0,0,0.15)"
+                    "rgba(0,255,0,0.25)",   // зелёный
+                    "rgba(255,0,0,0.15)"    // красный
                 ],
                 "circle-stroke-color": [
                     "case",
@@ -323,10 +315,7 @@ async function initMap() {
     document.getElementById("enableAudio").onclick = () => {
         const a = new Audio("audio/1.mp3");
         a.play()
-            .then(() => {
-                audioEnabled = true;
-                console.log("Аудио разрешено");
-            })
+            .then(() => audioEnabled = true)
             .catch(() => console.log("Ошибка разрешения аудио"));
     };
 }
