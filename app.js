@@ -14,9 +14,9 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
-// NEW: route coloring
-let passedCoords = [];
-let remainingCoords = [];
+// --- ROUTE COLORING ---
+let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
+
 
 function distance(a, b) {
     const R = 6371000;
@@ -70,37 +70,52 @@ function checkZones(coords) {
         }
     });
 }function moveMarker(coords) {
+    // coords = [lat, lng]
+
+    // --- ROTATE ARROW ---
     if (lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
         arrowEl.style.transform = `rotate(${angle}deg)`;
     }
-
     lastCoords = coords;
 
+    // --- MOVE MARKER ---
     userMarker.setLngLat([coords[1], coords[0]]);
 
-    // --- UPDATE ROUTE COLORS ---
-    passedCoords.push([coords[1], coords[0]]);
-    remainingCoords.shift();
+    // --- SMART ROUTE COLORING ---
+    const currentLngLat = [coords[1], coords[0]]; // [lng, lat]
 
-    const passedSource = map.getSource("route-passed");
-    const remainingSource = map.getSource("route-remaining");
+    // ищем ближайшую точку маршрута
+    let closestIndex = 0;
+    let minDist = Infinity;
 
-    if (passedSource) {
-        passedSource.setData({
+    fullRoute.forEach((pt, i) => {
+        const d = distance([currentLngLat[1], currentLngLat[0]], [pt.coord[1], pt.coord[0]]);
+        if (d < minDist) {
+            minDist = d;
+            closestIndex = i;
+        }
+    });
+
+    // отмечаем пройденные точки
+    fullRoute.forEach((pt, i) => {
+        pt.passed = i <= closestIndex;
+    });
+
+    // обновляем маршрут
+    map.getSource("route-colored").setData({
+        type: "FeatureCollection",
+        features: fullRoute.map(pt => ({
             type: "Feature",
-            geometry: { type: "LineString", coordinates: passedCoords }
-        });
-    }
+            properties: { passed: pt.passed },
+            geometry: {
+                type: "Point",
+                coordinates: pt.coord
+            }
+        }))
+    });
 
-    if (remainingSource) {
-        remainingSource.setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: remainingCoords }
-        });
-    }
-
-    // --- FOLLOW THE ARROW DURING SIMULATION ---
+    // --- FOLLOW CAMERA DURING SIMULATION ---
     if (simulationActive) {
         map.easeTo({
             center: [coords[1], coords[0]],
@@ -118,21 +133,24 @@ function simulateNextStep() {
         gpsActive = true;
         return;
     }
+
     const next = simulationPoints[simulationIndex];
     simulationIndex++;
+
     moveMarker(next);
+
     setTimeout(simulateNextStep, 1200);
 }
 
 function startSimulation() {
     if (!simulationPoints.length) return;
+
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
 
-    // reset route coloring
-    passedCoords = [];
-    remainingCoords = simulationPoints.map(c => [c[1], c[0]]);
+    // сбрасываем раскраску
+    fullRoute.forEach(pt => pt.passed = false);
 
     moveMarker(simulationPoints[0]);
 
@@ -158,44 +176,45 @@ async function initMap() {
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
 
-        // prepare route arrays
+        // --- PREPARE FULL ROUTE ---
+        fullRoute = route.geometry.coordinates.map(c => ({
+            coord: [c[0], c[1]], // [lng, lat]
+            passed: false
+        }));
+
+        // симуляция использует lat/lng
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
-        remainingCoords = route.geometry.coordinates.map(c => [c[0], c[1]]);
 
-        // --- ROUTE SOURCES (PASSED + REMAINING) ---
-        map.addSource("route-passed", {
+        // --- ROUTE SOURCE (POINTS WITH passed=true/false) ---
+        map.addSource("route-colored", {
             type: "geojson",
             data: {
-                type: "Feature",
-                geometry: { type: "LineString", coordinates: [] }
+                type: "FeatureCollection",
+                features: fullRoute.map(pt => ({
+                    type: "Feature",
+                    properties: { passed: false },
+                    geometry: { type: "Point", coordinates: pt.coord }
+                }))
             }
         });
 
+        // --- ROUTE LAYER (ONE LINE, COLOR DEPENDS ON passed) ---
         map.addLayer({
-            id: "route-passed-line",
+            id: "route-colored-line",
             type: "line",
-            source: "route-passed",
+            source: "route-colored",
+            layout: {
+                "line-join": "round",
+                "line-cap": "round"
+            },
             paint: {
-                "line-color": "#888888",
-                "line-width": 4
-            }
-        });
-
-        map.addSource("route-remaining", {
-            type: "geojson",
-            data: {
-                type: "Feature",
-                geometry: { type: "LineString", coordinates: remainingCoords }
-            }
-        });
-
-        map.addLayer({
-            id: "route-remaining-line",
-            type: "line",
-            source: "route-remaining",
-            paint: {
-                "line-color": "#007aff",
-                "line-width": 4
+                "line-width": 4,
+                "line-color": [
+                    "case",
+                    ["boolean", ["get", "passed"], false],
+                    "#888888",   // пройденное — серое
+                    "#007aff"    // впереди — синее
+                ]
             }
         });        // --- AUDIO CIRCLES ---
         const circleFeatures = [];
@@ -302,14 +321,19 @@ async function initMap() {
         console.log("Карта готова");
     });
 
-    document.getElementById("simulate").onclick = startSimulation;
+    // --- BUTTONS ---
+    const simBtn = document.getElementById("simulate");
+    if (simBtn) simBtn.onclick = startSimulation;
 
-    document.getElementById("enableAudio").onclick = () => {
-        const a = new Audio("audio/1.mp3");
-        a.play()
-            .then(() => audioEnabled = true)
-            .catch(() => console.log("Ошибка разрешения аудио"));
-    };
+    const audioBtn = document.getElementById("enableAudio");
+    if (audioBtn) {
+        audioBtn.onclick = () => {
+            const a = new Audio("audio/1.mp3");
+            a.play()
+                .then(() => audioEnabled = true)
+                .catch(() => console.log("Ошибка разрешения аудио"));
+        };
+    }
 }
 
 document.addEventListener("DOMContentLoaded", initMap);
