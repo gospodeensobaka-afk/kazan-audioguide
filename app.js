@@ -135,7 +135,7 @@ async function initMap() {
             .setLngLat(initialCenter)
             .addTo(map);
 
-        const circleFeatures = [];        const circleFeatures = [];
+        const circleFeatures = [];
 
         points.forEach(p => {
             zones.push({
@@ -240,3 +240,4 @@ async function initMap() {
 }
 
 document.addEventListener("DOMContentLoaded", initMap);
+
