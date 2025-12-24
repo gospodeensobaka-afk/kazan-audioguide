@@ -73,20 +73,35 @@ function playZoneAudio(src) {
 // 4. ЗОНЫ
 // ======================================================
 
+function updateCircleColors() {
+    const source = map.getSource("audio-circles");
+    if (!source) return;
+
+    source.setData({
+        type: "FeatureCollection",
+        features: zones
+            .filter(z => z.type === "audio")
+            .map(z => ({
+                type: "Feature",
+                properties: { id: z.id, visited: z.visited },
+                geometry: {
+                    type: "Point",
+                    coordinates: [z.lng, z.lat]
+                }
+            }))
+    });
+}
+
 function checkZones(coords) {
     zones.forEach(z => {
+        if (z.type !== "audio") return;
+
         const dist = distance(coords, [z.lat, z.lng]);
 
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
 
-            // Меняем цвет круга
-            map.setPaintProperty("audio-circles-layer", "circle-color", [
-                "case",
-                ["==", ["get", "id"], z.id],
-                "rgba(0,255,0,0.25)",
-                "rgba(255,0,0,0.15)"
-            ]);
+            updateCircleColors();
 
             if (z.audio) playZoneAudio(z.audio);
         }
@@ -187,36 +202,26 @@ async function initMap() {
             .setLngLat(initialCenter)
             .addTo(map);
 
-        // --- Круги и квадраты ---
+        // --- Подготовка геометрии ---
         const circleFeatures = [];
         const squareFeatures = [];
 
         points.forEach(p => {
-            // Маркеры
-            const el = document.createElement("div");
-            el.style.width = "16px";
-            el.style.height = "16px";
+            zones.push({
+                id: p.id,
+                name: p.name,
+                lat: p.lat,
+                lng: p.lng,
+                radius: p.radius || 20,
+                visited: false,
+                type: p.type,
+                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
+            });
 
-            if (p.type === "audio") {
-                el.style.background = "red";
-                el.style.borderRadius = "50%";
-            }
-            if (p.type === "square") {
-                el.style.background = "blue";
-            }
-            if (p.type === "image") {
-                el.style.background = "gray";
-            }
-
-            new maplibregl.Marker(el)
-                .setLngLat([p.lng, p.lat])
-                .addTo(map);
-
-            // Круги
             if (p.type === "audio") {
                 circleFeatures.push({
                     type: "Feature",
-                    properties: { id: p.id },
+                    properties: { id: p.id, visited: false },
                     geometry: {
                         type: "Point",
                         coordinates: [p.lng, p.lat]
@@ -224,7 +229,6 @@ async function initMap() {
                 });
             }
 
-            // Квадраты
             if (p.type === "square") {
                 const size = 0.00015;
                 squareFeatures.push({
@@ -242,17 +246,6 @@ async function initMap() {
                     }
                 });
             }
-
-            // Логика зон
-            zones.push({
-                id: p.id,
-                name: p.name,
-                lat: p.lat,
-                lng: p.lng,
-                radius: p.radius || 20,
-                visited: false,
-                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
-            });
         });
 
         // --- Источник кругов ---
@@ -271,8 +264,18 @@ async function initMap() {
             source: "audio-circles",
             paint: {
                 "circle-radius": 20,
-                "circle-color": "rgba(255,0,0,0.15)",
-                "circle-stroke-color": "rgba(255,0,0,0.4)",
+                "circle-color": [
+                    "case",
+                    ["boolean", ["get", "visited"], false],
+                    "rgba(0,255,0,0.25)",
+                    "rgba(255,0,0,0.15)"
+                ],
+                "circle-stroke-color": [
+                    "case",
+                    ["boolean", ["get", "visited"], false],
+                    "rgba(0,255,0,0.6)",
+                    "rgba(255,0,0,0.4)"
+                ],
                 "circle-stroke-width": 2
             }
         });
