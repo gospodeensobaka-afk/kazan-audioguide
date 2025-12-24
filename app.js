@@ -90,7 +90,10 @@ function checkZones(coords) {
     });
 }
 
-// =================== END AUDIO ZONES ====================// ========================================================
+// =================== END AUDIO ZONES ====================
+
+
+
 // ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
@@ -149,53 +152,6 @@ function moveMarker(coords) {
 }
 
 // =================== END MOVE MARKER ====================
-    userMarker.setLngLat([coords[1], coords[0]]);
-
-    // --- SMART ROUTE COLORING ---
-    const currentLngLat = [coords[1], coords[0]]; // [lng, lat]
-
-    // ищем ближайшую точку маршрута
-    let closestIndex = 0;
-    let minDist = Infinity;
-
-    fullRoute.forEach((pt, i) => {
-        const d = distance([currentLngLat[1], currentLngLat[0]], [pt.coord[1], pt.coord[0]]);
-        if (d < minDist) {
-            minDist = d;
-            closestIndex = i;
-        }
-    });
-
-    // отмечаем пройденные точки
-    fullRoute.forEach((pt, i) => {
-        pt.passed = i <= closestIndex;
-    });
-
-    // обновляем маршрут
-    map.getSource("route-colored").setData({
-        type: "FeatureCollection",
-        features: fullRoute.map(pt => ({
-            type: "Feature",
-            properties: { passed: pt.passed },
-            geometry: {
-                type: "Point",
-                coordinates: pt.coord
-            }
-        }))
-    });
-
-    // --- FOLLOW CAMERA DURING SIMULATION ---
-    if (simulationActive) {
-        map.easeTo({
-            center: [coords[1], coords[0]],
-            duration: 500
-        });
-    }
-
-    checkZones(coords);
-}
-
-// =================== END MOVE MARKER ====================
 
 
 
@@ -233,9 +189,6 @@ function startSimulation() {
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
-
-    // сбрасываем раскраску
-    fullRoute.forEach(pt => pt.passed = false);
 
     moveMarker(simulationPoints[0]);
 
@@ -278,51 +231,51 @@ async function initMap() {
         // симуляция использует lat/lng
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
 
-       // --- ROUTE SOURCES (TWO LINESTRINGS) ---
-map.addSource("route-passed", {
-    type: "geojson",
-    data: {
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: [] }
-    }
-});
+        // --- ROUTE SOURCES (TWO LINESTRINGS) ---
+        map.addSource("route-passed", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: [] }
+            }
+        });
 
-map.addSource("route-remaining", {
-    type: "geojson",
-    data: {
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: fullRoute.map(pt => pt.coord) }
-    }
-});
+        map.addSource("route-remaining", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: fullRoute.map(pt => pt.coord) }
+            }
+        });
 
-// --- ROUTE LAYERS ---
-map.addLayer({
-    id: "route-passed-line",
-    type: "line",
-    source: "route-passed",
-    layout: {
-        "line-join": "round",
-        "line-cap": "round"
-    },
-    paint: {
-        "line-width": 4,
-        "line-color": "#888888"   // серый
-    }
-});
+        // --- ROUTE LAYERS ---
+        map.addLayer({
+            id: "route-passed-line",
+            type: "line",
+            source: "route-passed",
+            layout: {
+                "line-join": "round",
+                "line-cap": "round"
+            },
+            paint: {
+                "line-width": 4,
+                "line-color": "#888888"
+            }
+        });
 
-map.addLayer({
-    id: "route-remaining-line",
-    type: "line",
-    source: "route-remaining",
-    layout: {
-        "line-join": "round",
-        "line-cap": "round"
-    },
-    paint: {
-        "line-width": 4,
-        "line-color": "#007aff"   // синий
-    }
-});        // --- AUDIO CIRCLES ---
+        map.addLayer({
+            id: "route-remaining-line",
+            type: "line",
+            source: "route-remaining",
+            layout: {
+                "line-join": "round",
+                "line-cap": "round"
+            },
+            paint: {
+                "line-width": 4,
+                "line-color": "#007aff"
+            }
+        });        // --- AUDIO CIRCLES ---
         const circleFeatures = [];
 
         points.forEach(p => {
@@ -453,4 +406,3 @@ map.addLayer({
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END DOM EVENTS ====================
-
