@@ -489,6 +489,10 @@ async function initMap() {
             startCompass();
         };
     }
+
+    // --- FORCE SUPER DEBUG PANEL TO APPEAR ---
+    ensureSuperDebug();
+    debugUpdate("init", 0, "INIT");
 }
 
 // ===================== END INIT MAP =====================
