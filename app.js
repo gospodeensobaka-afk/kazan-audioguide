@@ -64,50 +64,6 @@ function calculateAngle(prev, curr) {
 
 
 // ========================================================
-// ===================== AUDIO ZONES =======================
-// ========================================================
-
-function playZoneAudio(src) {
-    if (!audioEnabled) return;
-    if (audioPlaying) return;
-    const audio = new Audio(src);
-    audioPlaying = true;
-    audio.play().catch(() => audioPlaying = false);
-    audio.onended = () => audioPlaying = false;
-}
-
-function updateCircleColors() {
-    const source = map.getSource("audio-circles");
-    if (!source) return;
-    source.setData({
-        type: "FeatureCollection",
-        features: zones
-            .filter(z => z.type === "audio")
-            .map(z => ({
-                type: "Feature",
-                properties: { id: z.id, visited: z.visited },
-                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
-            }))
-    });
-}
-
-function checkZones(coords) {
-    zones.forEach(z => {
-        if (z.type !== "audio") return;
-        const dist = distance(coords, [z.lat, z.lng]);
-        if (dist <= z.radius && !z.visited) {
-            z.visited = true;
-            updateCircleColors();
-            if (z.audio) playZoneAudio(z.audio);
-        }
-    });
-}
-
-// =================== END AUDIO ZONES ====================
-
-
-
-// ========================================================
 // ===================== SUPER DEBUG =======================
 // ========================================================
 
@@ -186,9 +142,13 @@ function handleIOSCompass(e) {
     const heading = e.webkitCompassHeading;
     compassUpdates++;
 
-    // --- KEEP ARROW IN CENTER OF MAP ---
+    // --- KEEP ARROW IN CENTER OF MAP + FORCE RENDER ---
     const center = map.getCenter();
-    userMarker.setLngLat([center.lng, center.lat]);
+    const offset = 0.0000001;
+    userMarker.setLngLat([center.lng + offset, center.lat + offset]);
+    setTimeout(() => {
+        userMarker.setLngLat([center.lng, center.lat]);
+    }, 0);
 
     smoothRotate(heading);
     debugUpdate("compass", heading);
@@ -240,7 +200,7 @@ function startCompass() {
     debugUpdate("compass", NaN, "IOS_ONLY");
 }
 
-// =================== END COMPASS LOGIC ===================    // ========================================================
+// =================== END COMPASS LOGIC ===================// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
