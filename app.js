@@ -18,8 +18,9 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
-let compassActive = false;   // <--- добавили
-let compassAngle = 0;        // <--- плавный угол
+let compassActive = false;      // <--- iOS компас включён?
+let compassAngle = 0;           // <--- плавный угол
+let compassUpdates = 0;         // <--- счётчик обновлений
 
 // --- ROUTE COLORING ---
 let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
@@ -98,31 +99,81 @@ function checkZones(coords) {
 
 
 // ========================================================
-// ===================== NEW COMPASS =======================
+// ===================== iOS COMPASS =======================
 // ========================================================
 
-// Плавный поворот стрелки
+// Плавный поворот стрелки (без рывков и мигания)
 function smoothRotate(target) {
-    compassAngle = compassAngle * 0.8 + target * 0.2;
+    compassAngle = compassAngle * 0.85 + target * 0.15;
     arrowEl.style.transform = `rotate(${compassAngle}deg)`;
-    arrowEl.style.visibility = "visible";
+    arrowEl.style.visibility = "visible"; // <--- стрелка никогда не пропадает
 }
 
-// Основной обработчик — работает в WebView
-function handleCompass(e) {
+// Обработчик iOS компаса
+function handleIOSCompass(e) {
     if (!compassActive) return;
-    if (e.alpha == null) return;
+    if (e.webkitCompassHeading == null) return;
 
-    const deg = 360 - e.alpha; // направление устройства
-    smoothRotate(deg);
+    const heading = e.webkitCompassHeading; // 0–360°
+    compassUpdates++;
+
+    smoothRotate(heading);
+
+    // обновляем отладку
+    const dbg = document.getElementById("compassDebug");
+    if (dbg) {
+        dbg.textContent = `Compass: ${Math.round(heading)}° | updates: ${compassUpdates} | active`;
+    }
 }
 
+// Включение компаса
 function startCompass() {
     compassActive = true;
-    window.addEventListener("deviceorientation", handleCompass);
+
+    // создаём отладочную панель
+    let dbg = document.getElementById("compassDebug");
+    if (!dbg) {
+        dbg = document.createElement("div");
+        dbg.id = "compassDebug";
+        dbg.style.position = "fixed";
+        dbg.style.bottom = "0";
+        dbg.style.left = "0";
+        dbg.style.width = "100%";
+        dbg.style.padding = "6px 10px";
+        dbg.style.background = "rgba(0,0,0,0.55)";
+        dbg.style.color = "white";
+        dbg.style.fontSize = "14px";
+        dbg.style.fontFamily = "monospace";
+        dbg.style.zIndex = "9999";
+        dbg.style.textAlign = "center";
+        dbg.textContent = "Compass: waiting for data…";
+        document.body.appendChild(dbg);
+    }
+
+    // iOS permission
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+
+        DeviceOrientationEvent.requestPermission()
+            .then(state => {
+                if (state === "granted") {
+                    window.addEventListener("deviceorientation", handleIOSCompass);
+                } else {
+                    dbg.textContent = "Compass: permission denied";
+                }
+            })
+            .catch(() => {
+                dbg.textContent = "Compass: error requesting permission";
+            });
+
+        return;
+    }
+
+    // если не iOS — просто пишем что компас недоступен
+    dbg.textContent = "Compass: iOS only";
 }
 
-// =================== END COMPASS ========================// ========================================================
+// =================== END iOS COMPASS ====================// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
@@ -134,6 +185,7 @@ function moveMarker(coords) {
     if (!compassActive && lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
         arrowEl.style.transform = `rotate(${angle}deg)`;
+        arrowEl.style.visibility = "visible"; // стрелка всегда видима
     }
 
     lastCoords = coords;
@@ -390,7 +442,7 @@ async function initMap() {
         arrowEl.style.width = "40px";
         arrowEl.style.height = "40px";
         arrowEl.style.transformOrigin = "center center";
-        arrowEl.style.visibility = "visible";
+        arrowEl.style.visibility = "visible"; // стрелка всегда видима
 
         userMarker = new maplibregl.Marker({ element: arrowEl })
             .setLngLat(initialCenter)
