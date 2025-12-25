@@ -18,7 +18,8 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
-let compassActive = false; // <--- добавили
+let compassActive = false;   // <--- добавили
+let compassAngle = 0;        // <--- плавный угол
 
 // --- ROUTE COLORING ---
 let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
@@ -97,86 +98,42 @@ function checkZones(coords) {
 
 
 // ========================================================
-// ===================== COMPASS HANDLER ==================
+// ===================== NEW COMPASS =======================
 // ========================================================
 
-function safeRotate(deg) {
-    if (typeof deg !== "number" || isNaN(deg)) return;
-    arrowEl.style.transform = `rotate(${Math.round(deg)}deg)`;
+// Плавный поворот стрелки
+function smoothRotate(target) {
+    compassAngle = compassAngle * 0.8 + target * 0.2;
+    arrowEl.style.transform = `rotate(${compassAngle}deg)`;
     arrowEl.style.visibility = "visible";
+}
+
+// Основной обработчик — работает в WebView
+function handleCompass(e) {
+    if (!compassActive) return;
+    if (e.alpha == null) return;
+
+    const deg = 360 - e.alpha; // направление устройства
+    smoothRotate(deg);
 }
 
 function startCompass() {
     compassActive = true;
-
-    // --- iOS ---
-    if (typeof DeviceOrientationEvent !== "undefined" &&
-        typeof DeviceOrientationEvent.requestPermission === "function") {
-
-        DeviceOrientationEvent.requestPermission()
-            .then(state => {
-                if (state === "granted") {
-                    window.addEventListener("deviceorientation", handleCompassIOS);
-                }
-            })
-            .catch(err => console.log("iOS compass error:", err));
-
-        return;
-    }
-
-    // --- ANDROID (новые) ---
-    if ("AbsoluteOrientationSensor" in window) {
-        try {
-            const sensor = new AbsoluteOrientationSensor({ frequency: 30 });
-            sensor.addEventListener("reading", () => {
-                const q = sensor.quaternion;
-                if (!q) return;
-
-                const yaw = Math.atan2(
-                    2 * (q[0] * q[3] + q[1] * q[2]),
-                    1 - 2 * (q[2] * q[2] + q[3] * q[3])
-                );
-
-                const deg = -yaw * (180 / Math.PI);
-                safeRotate(deg);
-            });
-            sensor.start();
-            return;
-        } catch (e) {
-            console.log("Android AbsoluteOrientationSensor error:", e);
-        }
-    }
-
-    // --- ANDROID fallback ---
-    window.addEventListener("deviceorientationabsolute", handleCompassAndroid);
+    window.addEventListener("deviceorientation", handleCompass);
 }
 
-function handleCompassIOS(e) {
-    if (!compassActive) return;
-    if (e.webkitCompassHeading != null) {
-        safeRotate(e.webkitCompassHeading);
-    }
-}
-
-function handleCompassAndroid(e) {
-    if (!compassActive) return;
-    if (e.alpha != null) {
-        const deg = 360 - e.alpha;
-        safeRotate(deg);
-    }
-}
-
-// =================== END COMPASS HANDLER =================// ========================================================
+// =================== END COMPASS ========================// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
 function moveMarker(coords) {
     // coords = [lat, lng]
 
-    // --- ROTATE ARROW (GPS only if compass OFF) ---
+    // --- ROTATE ARROW ---
+    // GPS вращает стрелку ТОЛЬКО если компас выключен
     if (!compassActive && lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
-        safeRotate(angle);
+        arrowEl.style.transform = `rotate(${angle}deg)`;
     }
 
     lastCoords = coords;
