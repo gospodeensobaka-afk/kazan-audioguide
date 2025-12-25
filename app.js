@@ -34,9 +34,6 @@ let gpsUpdates = 0;
 let arrowPngStatus = "init";
 let iconsPngStatus = "init";
 
-// --- DEBUG PANEL STATE ---
-let debugVisible = false;
-
 // ================= END GLOBAL VARIABLES =================
 
 
@@ -134,21 +131,13 @@ function ensureSuperDebug() {
         dbg.style.fontFamily = "monospace";
         dbg.style.zIndex = "99999";
         dbg.style.whiteSpace = "pre-line";
-        dbg.style.display = "none"; // hidden by default
+        dbg.style.display = "block"; // ALWAYS VISIBLE
         document.body.appendChild(dbg);
     }
     return dbg;
 }
 
-function toggleDebug() {
-    debugVisible = !debugVisible;
-    const dbg = ensureSuperDebug();
-    dbg.style.display = debugVisible ? "block" : "none";
-}
-
 function debugUpdate(source, angle, error = "none") {
-    if (!debugVisible) return;
-
     const dbg = ensureSuperDebug();
 
     if (!arrowEl) {
@@ -593,10 +582,7 @@ async function initMap() {
     const compassBtn = document.getElementById("enableCompass");
     if (compassBtn) compassBtn.onclick = startCompass;
 
-    const debugBtn = document.getElementById("debugToggle");
-    if (debugBtn) debugBtn.onclick = toggleDebug;
-
-    // --- INIT DEBUG PANEL (hidden) ---
+    // --- INIT DEBUG PANEL (always visible) ---
     ensureSuperDebug();
     debugUpdate("init", 0, "INIT");
 }
