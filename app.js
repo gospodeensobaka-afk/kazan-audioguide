@@ -19,7 +19,7 @@ let audioPlaying = false;
 let audioEnabled = false;
 
 // --- ROUTE COLORING ---
-let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
+let fullRoute = [];
 
 // --- COMPASS STATE ---
 let compassActive = false;
@@ -33,9 +33,6 @@ let gpsUpdates = 0;
 // --- PNG STATUS ---
 let arrowPngStatus = "init";
 let iconsPngStatus = "init";
-
-// ================= END GLOBAL VARIABLES =================
-
 
 
 // ========================================================
@@ -58,9 +55,6 @@ function calculateAngle(prev, curr) {
     const dy = curr[0] - prev[0];
     return Math.atan2(dx, dy) * (180 / Math.PI);
 }
-
-// =================== END UTILITIES ======================
-
 
 
 // ========================================================
@@ -107,9 +101,6 @@ function checkZones(coords) {
     });
 }
 
-// =================== END AUDIO ZONES ====================
-
-
 
 // ========================================================
 // ===================== SUPER DEBUG =======================
@@ -131,7 +122,7 @@ function ensureSuperDebug() {
         dbg.style.fontFamily = "monospace";
         dbg.style.zIndex = "99999";
         dbg.style.whiteSpace = "pre-line";
-        dbg.style.display = "block"; // ALWAYS VISIBLE
+        dbg.style.display = "block";
         document.body.appendChild(dbg);
     }
     return dbg;
@@ -145,10 +136,8 @@ function debugUpdate(source, angle, error = "none") {
         return;
     }
 
-    // what we set
     const tr = arrowEl.style.transform || "none";
 
-    // what browser applied
     let computed = "none";
     try {
         computed = window.getComputedStyle(arrowEl).transform;
@@ -156,15 +145,12 @@ function debugUpdate(source, angle, error = "none") {
         computed = "error";
     }
 
-    // force reflow values
     const ow = arrowEl.offsetWidth;
     const oh = arrowEl.offsetHeight;
 
-    // bounding box raw
     const rect = arrowEl.getBoundingClientRect();
     const boxRaw = `x:${rect.x.toFixed(1)}, y:${rect.y.toFixed(1)}, w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
 
-    // style props
     const vis = arrowEl.style.visibility || "undefined";
     const wc = arrowEl.style.willChange || "none";
     const to = arrowEl.style.transformOrigin || "none";
@@ -199,9 +185,6 @@ arrow=${arrowPngStatus}, icons=${iconsPngStatus}
 `;
 }
 
-// =================== END SUPER DEBUG ====================
-
-
 
 // ========================================================
 // ===================== COMPASS LOGIC =====================
@@ -222,13 +205,7 @@ function handleIOSCompass(e) {
     compassAngle = heading;
     compassUpdates++;
 
-    // keep arrow on lastCoords + force render
-    const offset = 0.0000001;
-    userMarker.setLngLat([lastCoords[1] + offset, lastCoords[0] + offset]);
-    setTimeout(() => {
-        userMarker.setLngLat([lastCoords[1], lastCoords[0]]);
-    }, 0);
-
+    // ❗️ ВАРИАНТ 1 — БЕЗ микросдвига
     if (arrowEl) {
         arrowEl.style.transform = `rotate(${compassAngle}deg)`;
         arrowEl.style.visibility = "visible";
@@ -260,9 +237,7 @@ function startCompass() {
     }
 
     debugUpdate("compass", NaN, "IOS_ONLY");
-}
-
-// =================== END COMPASS LOGIC ===================// ========================================================
+}// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
