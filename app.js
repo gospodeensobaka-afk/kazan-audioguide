@@ -64,6 +64,60 @@ function calculateAngle(prev, curr) {
 
 
 // ========================================================
+// ===================== AUDIO ZONES =======================
+// ========================================================
+
+function playZoneAudio(src) {
+    if (!audioEnabled) return;
+    if (audioPlaying) return;
+
+    const audio = new Audio(src);
+    audioPlaying = true;
+
+    audio.play()
+        .catch(() => { audioPlaying = false; });
+
+    audio.onended = () => {
+        audioPlaying = false;
+    };
+}
+
+function updateCircleColors() {
+    const source = map.getSource("audio-circles");
+    if (!source) return;
+
+    source.setData({
+        type: "FeatureCollection",
+        features: zones
+            .filter(z => z.type === "audio")
+            .map(z => ({
+                type: "Feature",
+                properties: { id: z.id, visited: z.visited },
+                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
+            }))
+    });
+}
+
+function checkZones(coords) {
+    zones.forEach(z => {
+        if (z.type !== "audio") return;
+
+        const dist = distance(coords, [z.lat, z.lng]);
+        if (dist <= z.radius && !z.visited) {
+            z.visited = true;
+            updateCircleColors();
+            if (z.audio) {
+                playZoneAudio(z.audio);
+            }
+        }
+    });
+}
+
+// =================== END AUDIO ZONES ====================
+
+
+
+// ========================================================
 // ===================== SUPER DEBUG =======================
 // ========================================================
 
@@ -119,15 +173,7 @@ PNG: arrow=${arrowPngStatus}, icons=${iconsPngStatus}`;
 // ===================== COMPASS LOGIC =====================
 // ========================================================
 
-function smoothRotate(target) {
-    compassAngle = compassAngle * 0.85 + target * 0.15;
-
-    if (arrowEl) {
-        arrowEl.style.transform = `rotate(${compassAngle}deg)`;
-        arrowEl.style.visibility = "visible";
-    }
-}
-
+// без сглаживания, крутим сразу по heading
 function handleIOSCompass(e) {
     if (!compassActive) return;
     if (!map || !userMarker || !lastCoords) {
@@ -139,18 +185,23 @@ function handleIOSCompass(e) {
         return;
     }
 
-    const heading = e.webkitCompassHeading;
+    const heading = e.webkitCompassHeading; // 0 = север, по часовой
+    compassAngle = heading;
     compassUpdates++;
 
-    // --- KEEP ARROW ON LAST GPS POSITION + FORCE RENDER ---
+    // --- держим стрелку на lastCoords и форсим рендер ---
     const offset = 0.0000001;
     userMarker.setLngLat([lastCoords[1] + offset, lastCoords[0] + offset]);
     setTimeout(() => {
         userMarker.setLngLat([lastCoords[1], lastCoords[0]]);
     }, 0);
 
-    smoothRotate(heading);
-    debugUpdate("compass", heading);
+    if (arrowEl) {
+        arrowEl.style.transform = `rotate(${compassAngle}deg)`;
+        arrowEl.style.visibility = "visible";
+    }
+
+    debugUpdate("compass", compassAngle);
 }
 
 function startCompass() {
