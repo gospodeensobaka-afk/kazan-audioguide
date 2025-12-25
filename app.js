@@ -22,9 +22,9 @@ let audioEnabled = false;
 let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
 
 // --- COMPASS STATE ---
-let compassActive = false;      // включён ли компас
-let compassAngle = 0;           // плавный угол
-let compassUpdates = 0;         // количество обновлений компаса
+let compassActive = false;
+let compassAngle = 0;
+let compassUpdates = 0;
 
 // --- GPS DEBUG ---
 let gpsAngleLast = null;
@@ -66,12 +66,19 @@ function debugUpdate(source, angle, error = "none") {
     const vis = arrowEl?.style?.visibility || "undefined";
     const tr = arrowEl?.style?.transform || "none";
 
+    let bbox = "no-arrow";
+    if (arrowEl) {
+        const r = arrowEl.getBoundingClientRect();
+        bbox = `x:${Math.round(r.x)}, y:${Math.round(r.y)}, w:${Math.round(r.width)}, h:${Math.round(r.height)}`;
+    }
+
     dbg.textContent =
 `SRC: ${source} | ANG: ${isNaN(angle) ? "NaN" : Math.round(angle)}° | VIS: ${vis}
 CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(compassAngle)}° | UPD: ${compassUpdates}
 GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
 ERR: ${error}
-TR: ${tr}`;
+TR: ${tr}
+BOX: ${bbox}`;
 }
 
 // =================== END SUPER DEBUG ====================
@@ -82,7 +89,6 @@ TR: ${tr}`;
 // ===================== COMPASS LOGIC =====================
 // ========================================================
 
-// Плавный поворот стрелки (без рывков)
 function smoothRotate(target) {
     compassAngle = compassAngle * 0.85 + target * 0.15;
 
@@ -92,7 +98,6 @@ function smoothRotate(target) {
     }
 }
 
-// Обработчик iOS компаса
 function handleIOSCompass(e) {
     if (!compassActive) return;
     if (e.webkitCompassHeading == null) {
@@ -100,19 +105,16 @@ function handleIOSCompass(e) {
         return;
     }
 
-    const heading = e.webkitCompassHeading; // 0–360°
+    const heading = e.webkitCompassHeading;
     compassUpdates++;
 
     smoothRotate(heading);
-
     debugUpdate("compass", heading);
 }
 
-// Включение компаса
 function startCompass() {
     compassActive = true;
 
-    // создаём обычную отладку компаса
     let dbg = document.getElementById("compassDebug");
     if (!dbg) {
         dbg = document.createElement("div");
@@ -132,7 +134,6 @@ function startCompass() {
         document.body.appendChild(dbg);
     }
 
-    // iOS permission
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function") {
 
@@ -312,7 +313,7 @@ async function initMap() {
         // симуляция использует lat/lng
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
 
-        // --- ROUTE SOURCES (TWO LINESTRINGS) ---
+        // --- ROUTE SOURCES ---
         map.addSource("route-passed", {
             type: "geojson",
             data: {
@@ -334,28 +335,16 @@ async function initMap() {
             id: "route-passed-line",
             type: "line",
             source: "route-passed",
-            layout: {
-                "line-join": "round",
-                "line-cap": "round"
-            },
-            paint: {
-                "line-width": 4,
-                "line-color": "#888888"
-            }
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-width": 4, "line-color": "#888888" }
         });
 
         map.addLayer({
             id: "route-remaining-line",
             type: "line",
             source: "route-remaining",
-            layout: {
-                "line-join": "round",
-                "line-cap": "round"
-            },
-            paint: {
-                "line-width": 4,
-                "line-color": "#007aff"
-            }
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-width": 4, "line-color": "#007aff" }
         });
 
         // --- AUDIO CIRCLES ---
@@ -377,10 +366,7 @@ async function initMap() {
                 circleFeatures.push({
                     type: "Feature",
                     properties: { id: p.id, visited: false },
-                    geometry: {
-                        type: "Point",
-                        coordinates: [p.lng, p.lat]
-                    }
+                    geometry: { type: "Point", coordinates: [p.lng, p.lat] }
                 });
             }
 
@@ -411,10 +397,7 @@ async function initMap() {
         // --- AUDIO CIRCLES SOURCE ---
         map.addSource("audio-circles", {
             type: "geojson",
-            data: {
-                type: "FeatureCollection",
-                features: circleFeatures
-            }
+            data: { type: "FeatureCollection", features: circleFeatures }
         });
 
         map.addLayer({
