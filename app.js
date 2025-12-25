@@ -74,7 +74,7 @@ function startCompass() {
         return;
     }
 
-    // --- ANDROID (новые) ---
+    // --- ANDROID ---
     if ("AbsoluteOrientationSensor" in window) {
         try {
             const sensor = new AbsoluteOrientationSensor({ frequency: 30 });
@@ -87,8 +87,10 @@ function startCompass() {
                     1 - 2 * (q[2] * q[2] + q[3] * q[3])
                 );
 
-                const deg = -yaw * (180 / Math.PI);
+                const deg = Math.round(-yaw * (180 / Math.PI));
                 arrowEl.style.transform = `rotate(${deg}deg)`;
+                arrowEl.style.visibility = "visible";
+                console.log("Компас (Android):", deg);
             });
             sensor.start();
             return;
@@ -97,70 +99,31 @@ function startCompass() {
         }
     }
 
-    // --- ANDROID fallback ---
+    // --- FALLBACK ---
     window.addEventListener("deviceorientationabsolute", handleCompassAndroid);
 }
 
 function handleCompassIOS(e) {
     if (!compassActive) return;
-    if (e.webkitCompassHeading) {
-        arrowEl.style.transform = `rotate(${e.webkitCompassHeading}deg)`;
+    if (e.webkitCompassHeading != null) {
+        const deg = Math.round(e.webkitCompassHeading);
+        arrowEl.style.transform = `rotate(${deg}deg)`;
+        arrowEl.style.visibility = "visible";
+        console.log("Компас (iOS):", deg);
     }
 }
 
 function handleCompassAndroid(e) {
     if (!compassActive) return;
     if (e.alpha != null) {
-        const deg = 360 - e.alpha;
+        const deg = Math.round(360 - e.alpha);
         arrowEl.style.transform = `rotate(${deg}deg)`;
+        arrowEl.style.visibility = "visible";
+        console.log("Компас (fallback):", deg);
     }
 }
 
-// =================== END COMPASS HANDLER =================
-
-
-
-// ========================================================
-// ===================== AUDIO ZONES =======================
-// ========================================================
-
-function playZoneAudio(src) {
-    if (!audioEnabled) return;
-    if (audioPlaying) return;
-    const audio = new Audio(src);
-    audioPlaying = true;
-    audio.play().catch(() => audioPlaying = false);
-    audio.onended = () => audioPlaying = false;
-}
-
-function updateCircleColors() {
-    const source = map.getSource("audio-circles");
-    if (!source) return;
-    source.setData({
-        type: "FeatureCollection",
-        features: zones
-            .filter(z => z.type === "audio")
-            .map(z => ({
-                type: "Feature",
-                properties: { id: z.id, visited: z.visited },
-                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
-            }))
-    });
-}
-
-function checkZones(coords) {
-    zones.forEach(z => {
-        if (z.type !== "audio") return;
-        const dist = distance(coords, [z.lat, z.lng]);
-        if (dist <= z.radius && !z.visited) {
-            z.visited = true;
-            updateCircleColors();
-            if (z.audio) playZoneAudio(z.audio);
-        }
-    });
-}
-
-// =================== END AUDIO ZONES ====================// ========================================================
+// =================== END COMPASS HANDLER =================// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
@@ -170,7 +133,9 @@ function moveMarker(coords) {
     // --- ROTATE ARROW (если компас выключен) ---
     if (!compassActive && lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
-        arrowEl.style.transform = `rotate(${angle}deg)`;
+        const deg = Math.round(angle);
+        arrowEl.style.transform = `rotate(${deg}deg)`;
+        arrowEl.style.visibility = "visible";
     }
     lastCoords = coords;
 
@@ -426,6 +391,7 @@ async function initMap() {
         arrowEl.style.width = "40px";
         arrowEl.style.height = "40px";
         arrowEl.style.transformOrigin = "center center";
+        arrowEl.style.visibility = "visible";
 
         userMarker = new maplibregl.Marker({ element: arrowEl })
             .setLngLat(initialCenter)
