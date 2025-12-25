@@ -205,14 +205,22 @@ function handleIOSCompass(e) {
     compassAngle = heading;
     compassUpdates++;
 
-    // ❗️ ВАРИАНТ 1 — БЕЗ микросдвига
-    if (arrowEl) {
-        arrowEl.style.transform = `rotate(${compassAngle}deg)`;
-        arrowEl.style.visibility = "visible";
-        arrowEl.style.willChange = "transform";
-    }
+    // --- ВАРИАНТ А: МИКРОСДВИГ + ПОТОМ ROTATE ---
+    const offset = 0.0000001;
 
-    debugUpdate("compass", compassAngle);
+    userMarker.setLngLat([lastCoords[1] + offset, lastCoords[0] + offset]);
+
+    setTimeout(() => {
+        userMarker.setLngLat([lastCoords[1], lastCoords[0]]);
+
+        if (arrowEl) {
+            arrowEl.style.transform = `rotate(${compassAngle}deg)`;
+            arrowEl.style.visibility = "visible";
+            arrowEl.style.willChange = "transform";
+        }
+
+        debugUpdate("compass", compassAngle);
+    }, 20);
 }
 
 function startCompass() {
