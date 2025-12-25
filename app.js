@@ -130,8 +130,8 @@ function smoothRotate(target) {
 
 function handleIOSCompass(e) {
     if (!compassActive) return;
-    if (!map || !userMarker) {
-        debugUpdate("compass", NaN, "NO_MAP_OR_MARKER");
+    if (!map || !userMarker || !lastCoords) {
+        debugUpdate("compass", NaN, "NO_MAP_OR_COORDS");
         return;
     }
     if (e.webkitCompassHeading == null) {
@@ -142,12 +142,11 @@ function handleIOSCompass(e) {
     const heading = e.webkitCompassHeading;
     compassUpdates++;
 
-    // --- KEEP ARROW IN CENTER OF MAP + FORCE RENDER ---
-    const center = map.getCenter();
+    // --- KEEP ARROW ON LAST GPS POSITION + FORCE RENDER ---
     const offset = 0.0000001;
-    userMarker.setLngLat([center.lng + offset, center.lat + offset]);
+    userMarker.setLngLat([lastCoords[1] + offset, lastCoords[0] + offset]);
     setTimeout(() => {
-        userMarker.setLngLat([center.lng, center.lat]);
+        userMarker.setLngLat([lastCoords[1], lastCoords[0]]);
     }, 0);
 
     smoothRotate(heading);
@@ -223,9 +222,10 @@ function moveMarker(coords) {
         debugUpdate("gps", angle);
     }
 
+    // --- UPDATE LAST COORDS ---
     lastCoords = coords;
 
-    // --- MOVE MARKER ---
+    // --- MOVE MARKER TO REAL POSITION ---
     userMarker.setLngLat([coords[1], coords[0]]);
 
     // --- FIND CLOSEST ROUTE POINT ---
@@ -265,6 +265,7 @@ function moveMarker(coords) {
         });
     }
 
+    // --- AUDIO ZONES ---
     checkZones(coords);
 
     // --- ALWAYS SHOW ARROW ---
