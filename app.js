@@ -34,6 +34,9 @@ let gpsUpdates = 0;
 let arrowPngStatus = "init";
 let iconsPngStatus = "init";
 
+// --- DEBUG PANEL STATE ---
+let debugVisible = false;
+
 // ================= END GLOBAL VARIABLES =================
 
 
@@ -74,12 +77,8 @@ function playZoneAudio(src) {
     const audio = new Audio(src);
     audioPlaying = true;
 
-    audio.play()
-        .catch(() => { audioPlaying = false; });
-
-    audio.onended = () => {
-        audioPlaying = false;
-    };
+    audio.play().catch(() => { audioPlaying = false; });
+    audio.onended = () => { audioPlaying = false; };
 }
 
 function updateCircleColors() {
@@ -106,9 +105,7 @@ function checkZones(coords) {
         if (dist <= z.radius && !z.visited) {
             z.visited = true;
             updateCircleColors();
-            if (z.audio) {
-                playZoneAudio(z.audio);
-            }
+            if (z.audio) playZoneAudio(z.audio);
         }
     });
 }
@@ -133,36 +130,84 @@ function ensureSuperDebug() {
         dbg.style.padding = "8px 10px";
         dbg.style.background = "rgba(0,0,0,0.75)";
         dbg.style.color = "white";
-        dbg.style.fontSize = "13px";
+        dbg.style.fontSize = "12px";
         dbg.style.fontFamily = "monospace";
         dbg.style.zIndex = "99999";
         dbg.style.whiteSpace = "pre-line";
-        dbg.textContent = "DEBUG INIT";
+        dbg.style.display = "none"; // hidden by default
         document.body.appendChild(dbg);
     }
     return dbg;
 }
 
+function toggleDebug() {
+    debugVisible = !debugVisible;
+    const dbg = ensureSuperDebug();
+    dbg.style.display = debugVisible ? "block" : "none";
+}
+
 function debugUpdate(source, angle, error = "none") {
+    if (!debugVisible) return;
+
     const dbg = ensureSuperDebug();
 
-    const vis = arrowEl?.style?.visibility || "undefined";
-    const tr = arrowEl?.style?.transform || "none";
-
-    let bbox = "no-arrow";
-    if (arrowEl) {
-        const r = arrowEl.getBoundingClientRect();
-        bbox = `x:${Math.round(r.x)}, y:${Math.round(r.y)}, w:${Math.round(r.width)}, h:${Math.round(r.height)}`;
+    if (!arrowEl) {
+        dbg.textContent = "NO ARROW ELEMENT";
+        return;
     }
 
+    // what we set
+    const tr = arrowEl.style.transform || "none";
+
+    // what browser applied
+    let computed = "none";
+    try {
+        computed = window.getComputedStyle(arrowEl).transform;
+    } catch(e) {
+        computed = "error";
+    }
+
+    // force reflow values
+    const ow = arrowEl.offsetWidth;
+    const oh = arrowEl.offsetHeight;
+
+    // bounding box raw
+    const rect = arrowEl.getBoundingClientRect();
+    const boxRaw = `x:${rect.x.toFixed(1)}, y:${rect.y.toFixed(1)}, w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
+
+    // style props
+    const vis = arrowEl.style.visibility || "undefined";
+    const wc = arrowEl.style.willChange || "none";
+    const to = arrowEl.style.transformOrigin || "none";
+    const pos = arrowEl.style.position || "static";
+    const top = arrowEl.style.top || "auto";
+    const left = arrowEl.style.left || "auto";
+
     dbg.textContent =
-`SRC: ${source} | ANG: ${isNaN(angle) ? "NaN" : Math.round(angle)}° | VIS: ${vis}
+`SRC: ${source} | ANG: ${isNaN(angle) ? "NaN" : Math.round(angle)}° | ERR: ${error}
+
+--- TRANSFORM ---
+SET:   ${tr}
+COMP:  ${computed}
+
+--- LAYOUT ---
+offset: ${ow}x${oh}
+BOX:    ${boxRaw}
+
+--- STYLE ---
+VIS: ${vis}
+willChange: ${wc}
+origin: ${to}
+position: ${pos}
+top/left: ${top} / ${left}
+
+--- STATE ---
 CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(compassAngle)}° | UPD: ${compassUpdates}
 GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
-ERR: ${error}
-TR: ${tr}
-BOX: ${bbox}
-PNG: arrow=${arrowPngStatus}, icons=${iconsPngStatus}`;
+
+--- PNG ---
+arrow=${arrowPngStatus}, icons=${iconsPngStatus}
+`;
 }
 
 // =================== END SUPER DEBUG ====================
@@ -173,7 +218,6 @@ PNG: arrow=${arrowPngStatus}, icons=${iconsPngStatus}`;
 // ===================== COMPASS LOGIC =====================
 // ========================================================
 
-// без сглаживания, крутим сразу по heading
 function handleIOSCompass(e) {
     if (!compassActive) return;
     if (!map || !userMarker || !lastCoords) {
@@ -185,11 +229,11 @@ function handleIOSCompass(e) {
         return;
     }
 
-    const heading = e.webkitCompassHeading; // 0 = север, по часовой
+    const heading = e.webkitCompassHeading;
     compassAngle = heading;
     compassUpdates++;
 
-    // --- держим стрелку на lastCoords и форсим рендер ---
+    // keep arrow on lastCoords + force render
     const offset = 0.0000001;
     userMarker.setLngLat([lastCoords[1] + offset, lastCoords[0] + offset]);
     setTimeout(() => {
@@ -199,6 +243,7 @@ function handleIOSCompass(e) {
     if (arrowEl) {
         arrowEl.style.transform = `rotate(${compassAngle}deg)`;
         arrowEl.style.visibility = "visible";
+        arrowEl.style.willChange = "transform";
     }
 
     debugUpdate("compass", compassAngle);
@@ -206,25 +251,6 @@ function handleIOSCompass(e) {
 
 function startCompass() {
     compassActive = true;
-
-    let dbg = document.getElementById("compassDebug");
-    if (!dbg) {
-        dbg = document.createElement("div");
-        dbg.id = "compassDebug";
-        dbg.style.position = "fixed";
-        dbg.style.bottom = "60px";
-        dbg.style.left = "0";
-        dbg.style.width = "100%";
-        dbg.style.padding = "6px 10px";
-        dbg.style.background = "rgba(0,0,0,0.55)";
-        dbg.style.color = "white";
-        dbg.style.fontSize = "14px";
-        dbg.style.fontFamily = "monospace";
-        dbg.style.zIndex = "9999";
-        dbg.style.textAlign = "center";
-        dbg.textContent = "Compass: waiting…";
-        document.body.appendChild(dbg);
-    }
 
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function") {
@@ -234,19 +260,16 @@ function startCompass() {
                 if (state === "granted") {
                     window.addEventListener("deviceorientation", handleIOSCompass);
                 } else {
-                    dbg.textContent = "Compass: permission denied";
                     debugUpdate("compass", NaN, "PERMISSION_DENIED");
                 }
             })
             .catch(() => {
-                dbg.textContent = "Compass: error requesting permission";
                 debugUpdate("compass", NaN, "PERMISSION_ERROR");
             });
 
         return;
     }
 
-    dbg.textContent = "Compass: iOS only";
     debugUpdate("compass", NaN, "IOS_ONLY");
 }
 
@@ -268,6 +291,7 @@ function moveMarker(coords) {
         if (arrowEl) {
             arrowEl.style.transform = `rotate(${angle}deg)`;
             arrowEl.style.visibility = "visible";
+            arrowEl.style.willChange = "transform";
         }
 
         debugUpdate("gps", angle);
@@ -528,6 +552,7 @@ async function initMap() {
         arrowEl.style.height = "40px";
         arrowEl.style.transformOrigin = "center center";
         arrowEl.style.visibility = "visible";
+        arrowEl.style.willChange = "transform";
 
         arrowEl.onload = () => { arrowPngStatus = "ok"; };
         arrowEl.onerror = () => { arrowPngStatus = "error"; debugUpdate("none", null, "ARROW_PNG_FAIL"); };
@@ -566,13 +591,12 @@ async function initMap() {
     }
 
     const compassBtn = document.getElementById("enableCompass");
-    if (compassBtn) {
-        compassBtn.onclick = () => {
-            startCompass();
-        };
-    }
+    if (compassBtn) compassBtn.onclick = startCompass;
 
-    // --- FORCE SUPER DEBUG PANEL TO APPEAR ---
+    const debugBtn = document.getElementById("debugToggle");
+    if (debugBtn) debugBtn.onclick = toggleDebug;
+
+    // --- INIT DEBUG PANEL (hidden) ---
     ensureSuperDebug();
     debugUpdate("init", 0, "INIT");
 }
