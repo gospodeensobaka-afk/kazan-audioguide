@@ -18,6 +18,8 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
+let compassActive = false;
+
 // --- ROUTE COLORING ---
 let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
 
@@ -47,6 +49,74 @@ function calculateAngle(prev, curr) {
 }
 
 // =================== END UTILITIES ======================
+
+
+
+// ========================================================
+// ===================== COMPASS HANDLER ==================
+// ========================================================
+
+function startCompass() {
+    compassActive = true;
+
+    // --- iOS ---
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+
+        DeviceOrientationEvent.requestPermission()
+            .then(state => {
+                if (state === "granted") {
+                    window.addEventListener("deviceorientation", handleCompassIOS);
+                }
+            })
+            .catch(err => console.log("iOS compass error:", err));
+
+        return;
+    }
+
+    // --- ANDROID (новые) ---
+    if ("AbsoluteOrientationSensor" in window) {
+        try {
+            const sensor = new AbsoluteOrientationSensor({ frequency: 30 });
+            sensor.addEventListener("reading", () => {
+                const q = sensor.quaternion;
+                if (!q) return;
+
+                const yaw = Math.atan2(
+                    2 * (q[0] * q[3] + q[1] * q[2]),
+                    1 - 2 * (q[2] * q[2] + q[3] * q[3])
+                );
+
+                const deg = -yaw * (180 / Math.PI);
+                arrowEl.style.transform = `rotate(${deg}deg)`;
+            });
+            sensor.start();
+            return;
+        } catch (e) {
+            console.log("Android AbsoluteOrientationSensor error:", e);
+        }
+    }
+
+    // --- ANDROID fallback ---
+    window.addEventListener("deviceorientationabsolute", handleCompassAndroid);
+}
+
+function handleCompassIOS(e) {
+    if (!compassActive) return;
+    if (e.webkitCompassHeading) {
+        arrowEl.style.transform = `rotate(${e.webkitCompassHeading}deg)`;
+    }
+}
+
+function handleCompassAndroid(e) {
+    if (!compassActive) return;
+    if (e.alpha != null) {
+        const deg = 360 - e.alpha;
+        arrowEl.style.transform = `rotate(${deg}deg)`;
+    }
+}
+
+// =================== END COMPASS HANDLER =================
 
 
 
@@ -90,19 +160,15 @@ function checkZones(coords) {
     });
 }
 
-// =================== END AUDIO ZONES ====================
-
-
-
-// ========================================================
+// =================== END AUDIO ZONES ====================// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
 function moveMarker(coords) {
     // coords = [lat, lng]
 
-    // --- ROTATE ARROW ---
-    if (lastCoords) {
+    // --- ROTATE ARROW (если компас выключен) ---
+    if (!compassActive && lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
         arrowEl.style.transform = `rotate(${angle}deg)`;
     }
@@ -391,6 +457,14 @@ async function initMap() {
             a.play()
                 .then(() => audioEnabled = true)
                 .catch(() => console.log("Ошибка разрешения аудио"));
+        };
+    }
+
+    const compassBtn = document.getElementById("enableCompass");
+    if (compassBtn) {
+        compassBtn.onclick = () => {
+            startCompass();
+            console.log("Компас включён");
         };
     }
 }
