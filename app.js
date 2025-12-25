@@ -30,7 +30,80 @@ let compassUpdates = 0;
 let gpsAngleLast = null;
 let gpsUpdates = 0;
 
+// --- PNG STATUS ---
+let arrowPngStatus = "init";
+let iconsPngStatus = "init";
+
 // ================= END GLOBAL VARIABLES =================
+
+
+
+// ========================================================
+// ===================== UTILITIES ========================
+// ========================================================
+
+function distance(a, b) {
+    const R = 6371000;
+    const dLat = (b[0] - a[0]) * Math.PI / 180;
+    const dLon = (b[1] - a[1]) * Math.PI / 180;
+    const lat1 = a[0] * Math.PI / 180;
+    const lat2 = b[0] * Math.PI / 180;
+    const x = dLon * Math.cos((lat1 + lat2) / 2);
+    const y = dLat;
+    return Math.sqrt(x * x + y * y) * R;
+}
+
+function calculateAngle(prev, curr) {
+    const dx = curr[1] - prev[1];
+    const dy = curr[0] - prev[0];
+    return Math.atan2(dx, dy) * (180 / Math.PI);
+}
+
+// =================== END UTILITIES ======================
+
+
+
+// ========================================================
+// ===================== AUDIO ZONES =======================
+// ========================================================
+
+function playZoneAudio(src) {
+    if (!audioEnabled) return;
+    if (audioPlaying) return;
+    const audio = new Audio(src);
+    audioPlaying = true;
+    audio.play().catch(() => audioPlaying = false);
+    audio.onended = () => audioPlaying = false;
+}
+
+function updateCircleColors() {
+    const source = map.getSource("audio-circles");
+    if (!source) return;
+    source.setData({
+        type: "FeatureCollection",
+        features: zones
+            .filter(z => z.type === "audio")
+            .map(z => ({
+                type: "Feature",
+                properties: { id: z.id, visited: z.visited },
+                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
+            }))
+    });
+}
+
+function checkZones(coords) {
+    zones.forEach(z => {
+        if (z.type !== "audio") return;
+        const dist = distance(coords, [z.lat, z.lng]);
+        if (dist <= z.radius && !z.visited) {
+            z.visited = true;
+            updateCircleColors();
+            if (z.audio) playZoneAudio(z.audio);
+        }
+    });
+}
+
+// =================== END AUDIO ZONES ====================
 
 
 
@@ -78,7 +151,8 @@ CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(compassAngle)}°
 GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
 ERR: ${error}
 TR: ${tr}
-BOX: ${bbox}`;
+BOX: ${bbox}
+PNG: arrow=${arrowPngStatus}, icons=${iconsPngStatus}`;
 }
 
 // =================== END SUPER DEBUG ====================
@@ -384,7 +458,8 @@ async function initMap() {
                 img.style.width = "32px";
                 img.style.height = "32px";
 
-                img.onerror = () => debugUpdate("none", null, "PNG_LOAD_FAIL");
+                img.onload = () => { iconsPngStatus = "ok"; };
+                img.onerror = () => { iconsPngStatus = "error"; debugUpdate("none", null, "PNG_LOAD_FAIL"); };
 
                 el.appendChild(img);
 
@@ -430,7 +505,8 @@ async function initMap() {
         arrowEl.style.transformOrigin = "center center";
         arrowEl.style.visibility = "visible";
 
-        arrowEl.onerror = () => debugUpdate("none", null, "ARROW_PNG_FAIL");
+        arrowEl.onload = () => { arrowPngStatus = "ok"; };
+        arrowEl.onerror = () => { arrowPngStatus = "error"; debugUpdate("none", null, "ARROW_PNG_FAIL"); };
 
         userMarker = new maplibregl.Marker({ element: arrowEl })
             .setLngLat(initialCenter)
@@ -465,7 +541,6 @@ async function initMap() {
         };
     }
 
-    // --- COMPASS BUTTON ---
     const compassBtn = document.getElementById("enableCompass");
     if (compassBtn) {
         compassBtn.onclick = () => {
