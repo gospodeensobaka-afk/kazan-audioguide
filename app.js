@@ -18,7 +18,7 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
-let compassActive = false;
+let compassActive = false; // <--- добавили
 
 // --- ROUTE COLORING ---
 let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
@@ -53,21 +53,61 @@ function calculateAngle(prev, curr) {
 
 
 // ========================================================
+// ===================== AUDIO ZONES =======================
+// ========================================================
+
+function playZoneAudio(src) {
+    if (!audioEnabled) return;
+    if (audioPlaying) return;
+    const audio = new Audio(src);
+    audioPlaying = true;
+    audio.play().catch(() => audioPlaying = false);
+    audio.onended = () => audioPlaying = false;
+}
+
+function updateCircleColors() {
+    const source = map.getSource("audio-circles");
+    if (!source) return;
+    source.setData({
+        type: "FeatureCollection",
+        features: zones
+            .filter(z => z.type === "audio")
+            .map(z => ({
+                type: "Feature",
+                properties: { id: z.id, visited: z.visited },
+                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
+            }))
+    });
+}
+
+function checkZones(coords) {
+    zones.forEach(z => {
+        if (z.type !== "audio") return;
+        const dist = distance(coords, [z.lat, z.lng]);
+        if (dist <= z.radius && !z.visited) {
+            z.visited = true;
+            updateCircleColors();
+            if (z.audio) playZoneAudio(z.audio);
+        }
+    });
+}
+
+// =================== END AUDIO ZONES ====================
+
+
+
+// ========================================================
 // ===================== COMPASS HANDLER ==================
 // ========================================================
 
 function safeRotate(deg) {
-    if (typeof deg !== "number" || isNaN(deg)) {
-        console.log("⚠️ Некорректный угол, пропускаю rotate");
-        return;
-    }
+    if (typeof deg !== "number" || isNaN(deg)) return;
     arrowEl.style.transform = `rotate(${Math.round(deg)}deg)`;
     arrowEl.style.visibility = "visible";
 }
 
 function startCompass() {
     compassActive = true;
-    console.log("🧭 Компас включён");
 
     // --- iOS ---
     if (typeof DeviceOrientationEvent !== "undefined" &&
@@ -77,9 +117,6 @@ function startCompass() {
             .then(state => {
                 if (state === "granted") {
                     window.addEventListener("deviceorientation", handleCompassIOS);
-                    console.log("iOS компас разрешён");
-                } else {
-                    console.log("iOS компас отклонён");
                 }
             })
             .catch(err => console.log("iOS compass error:", err));
@@ -101,11 +138,9 @@ function startCompass() {
                 );
 
                 const deg = -yaw * (180 / Math.PI);
-                console.log("Android quaternion →", deg);
                 safeRotate(deg);
             });
             sensor.start();
-            console.log("Android AbsoluteOrientationSensor активирован");
             return;
         } catch (e) {
             console.log("Android AbsoluteOrientationSensor error:", e);
@@ -114,13 +149,11 @@ function startCompass() {
 
     // --- ANDROID fallback ---
     window.addEventListener("deviceorientationabsolute", handleCompassAndroid);
-    console.log("Fallback deviceorientationabsolute активирован");
 }
 
 function handleCompassIOS(e) {
     if (!compassActive) return;
     if (e.webkitCompassHeading != null) {
-        console.log("iOS heading:", e.webkitCompassHeading);
         safeRotate(e.webkitCompassHeading);
     }
 }
@@ -129,7 +162,6 @@ function handleCompassAndroid(e) {
     if (!compassActive) return;
     if (e.alpha != null) {
         const deg = 360 - e.alpha;
-        console.log("Android fallback alpha:", deg);
         safeRotate(deg);
     }
 }
@@ -141,16 +173,10 @@ function handleCompassAndroid(e) {
 function moveMarker(coords) {
     // coords = [lat, lng]
 
-    // --- ROTATE ARROW (если компас выключен) ---
+    // --- ROTATE ARROW (GPS only if compass OFF) ---
     if (!compassActive && lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
-        console.log("GPS angle:", angle);
-
-        if (!isNaN(angle)) {
-            safeRotate(angle);
-        } else {
-            console.log("⚠️ GPS angle NaN, rotate пропущен");
-        }
+        safeRotate(angle);
     }
 
     lastCoords = coords;
@@ -159,6 +185,8 @@ function moveMarker(coords) {
     userMarker.setLngLat([coords[1], coords[0]]);
 
     // --- FIND CLOSEST ROUTE POINT ---
+    const current = [coords[1], coords[0]]; // [lng, lat]
+
     let closestIndex = 0;
     let minDist = Infinity;
 
@@ -193,7 +221,6 @@ function moveMarker(coords) {
         });
     }
 
-    // --- AUDIO ZONES ---
     checkZones(coords);
 }
 
@@ -207,18 +234,15 @@ function moveMarker(coords) {
 
 function simulateNextStep() {
     if (!simulationActive) return;
-
     if (simulationIndex >= simulationPoints.length) {
         simulationActive = false;
         gpsActive = true;
-        console.log("Симуляция завершена");
         return;
     }
 
     const next = simulationPoints[simulationIndex];
     simulationIndex++;
 
-    console.log("Sim step:", next);
     moveMarker(next);
 
     setTimeout(simulateNextStep, 1200);
@@ -233,16 +257,11 @@ function simulateNextStep() {
 // ========================================================
 
 function startSimulation() {
-    if (!simulationPoints.length) {
-        console.log("⚠️ Нет точек симуляции");
-        return;
-    }
+    if (!simulationPoints.length) return;
 
     simulationActive = true;
     gpsActive = false;
     simulationIndex = 0;
-
-    console.log("Симуляция старт");
 
     moveMarker(simulationPoints[0]);
 
@@ -273,12 +292,8 @@ async function initMap() {
     });
 
     map.on("load", async () => {
-        console.log("Карта загружена");
-
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
-
-        console.log("Точек маршрута:", route.geometry.coordinates.length);
 
         // --- PREPARE FULL ROUTE ---
         fullRoute = route.geometry.coordinates.map(c => ({
@@ -288,8 +303,6 @@ async function initMap() {
 
         // симуляция использует lat/lng
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
-
-        console.log("Симуляция точек:", simulationPoints.length);
 
         // --- ROUTE SOURCES (TWO LINESTRINGS) ---
         map.addSource("route-passed", {
@@ -371,12 +384,9 @@ async function initMap() {
                 el.style.justifyContent = "center";
 
                 const img = document.createElement("img");
-                img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/${p.icon || "left"}.png`;
+                img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
                 img.style.width = "32px";
                 img.style.height = "32px";
-
-                img.onload = () => console.log("PNG загружен:", img.src);
-                img.onerror = () => console.log("⚠️ PNG ошибка:", img.src);
 
                 el.appendChild(img);
 
@@ -425,9 +435,6 @@ async function initMap() {
         arrowEl.style.transformOrigin = "center center";
         arrowEl.style.visibility = "visible";
 
-        arrowEl.onload = () => console.log("Стрелка загружена");
-        arrowEl.onerror = () => console.log("⚠️ Ошибка загрузки стрелки");
-
         userMarker = new maplibregl.Marker({ element: arrowEl })
             .setLngLat(initialCenter)
             .addTo(map);
@@ -437,7 +444,6 @@ async function initMap() {
             navigator.geolocation.watchPosition(
                 pos => {
                     if (!gpsActive) return;
-                    console.log("GPS:", pos.coords.latitude, pos.coords.longitude);
                     moveMarker([pos.coords.latitude, pos.coords.longitude]);
                 },
                 err => console.log("GPS error:", err),
@@ -457,10 +463,7 @@ async function initMap() {
         audioBtn.onclick = () => {
             const a = new Audio("audio/1.mp3");
             a.play()
-                .then(() => {
-                    audioEnabled = true;
-                    console.log("Аудио разрешено");
-                })
+                .then(() => audioEnabled = true)
                 .catch(() => console.log("Ошибка разрешения аудио"));
         };
     }
