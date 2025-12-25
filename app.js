@@ -18,125 +18,107 @@ let gpsActive = true;
 let audioPlaying = false;
 let audioEnabled = false;
 
-let compassActive = false;      // <--- iOS компас включён?
-let compassAngle = 0;           // <--- плавный угол
-let compassUpdates = 0;         // <--- счётчик обновлений
-
 // --- ROUTE COLORING ---
 let fullRoute = []; // [{coord:[lng,lat], passed:false}, ...]
+
+// --- COMPASS STATE ---
+let compassActive = false;      // включён ли компас
+let compassAngle = 0;           // плавный угол
+let compassUpdates = 0;         // количество обновлений компаса
+
+// --- GPS DEBUG ---
+let gpsAngleLast = null;
+let gpsUpdates = 0;
 
 // ================= END GLOBAL VARIABLES =================
 
 
 
 // ========================================================
-// ===================== UTILITIES ========================
+// ===================== SUPER DEBUG =======================
 // ========================================================
 
-function distance(a, b) {
-    const R = 6371000;
-    const dLat = (b[0] - a[0]) * Math.PI / 180;
-    const dLon = (b[1] - a[1]) * Math.PI / 180;
-    const lat1 = a[0] * Math.PI / 180;
-    const lat2 = b[0] * Math.PI / 180;
-    const x = dLon * Math.cos((lat1 + lat2) / 2);
-    const y = dLat;
-    return Math.sqrt(x * x + y * y) * R;
+function ensureSuperDebug() {
+    let dbg = document.getElementById("superDebug");
+    if (!dbg) {
+        dbg = document.createElement("div");
+        dbg.id = "superDebug";
+        dbg.style.position = "fixed";
+        dbg.style.bottom = "0";
+        dbg.style.left = "0";
+        dbg.style.width = "100%";
+        dbg.style.padding = "8px 10px";
+        dbg.style.background = "rgba(0,0,0,0.75)";
+        dbg.style.color = "white";
+        dbg.style.fontSize = "13px";
+        dbg.style.fontFamily = "monospace";
+        dbg.style.zIndex = "99999";
+        dbg.style.whiteSpace = "pre-line";
+        dbg.textContent = "DEBUG INIT";
+        document.body.appendChild(dbg);
+    }
+    return dbg;
 }
 
-function calculateAngle(prev, curr) {
-    const dx = curr[1] - prev[1];
-    const dy = curr[0] - prev[0];
-    return Math.atan2(dx, dy) * (180 / Math.PI);
+function debugUpdate(source, angle, error = "none") {
+    const dbg = ensureSuperDebug();
+
+    const vis = arrowEl?.style?.visibility || "undefined";
+    const tr = arrowEl?.style?.transform || "none";
+
+    dbg.textContent =
+`SRC: ${source} | ANG: ${isNaN(angle) ? "NaN" : Math.round(angle)}° | VIS: ${vis}
+CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(compassAngle)}° | UPD: ${compassUpdates}
+GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
+ERR: ${error}
+TR: ${tr}`;
 }
 
-// =================== END UTILITIES ======================
-
-
-
-// ========================================================
-// ===================== AUDIO ZONES =======================
-// ========================================================
-
-function playZoneAudio(src) {
-    if (!audioEnabled) return;
-    if (audioPlaying) return;
-    const audio = new Audio(src);
-    audioPlaying = true;
-    audio.play().catch(() => audioPlaying = false);
-    audio.onended = () => audioPlaying = false;
-}
-
-function updateCircleColors() {
-    const source = map.getSource("audio-circles");
-    if (!source) return;
-    source.setData({
-        type: "FeatureCollection",
-        features: zones
-            .filter(z => z.type === "audio")
-            .map(z => ({
-                type: "Feature",
-                properties: { id: z.id, visited: z.visited },
-                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
-            }))
-    });
-}
-
-function checkZones(coords) {
-    zones.forEach(z => {
-        if (z.type !== "audio") return;
-        const dist = distance(coords, [z.lat, z.lng]);
-        if (dist <= z.radius && !z.visited) {
-            z.visited = true;
-            updateCircleColors();
-            if (z.audio) playZoneAudio(z.audio);
-        }
-    });
-}
-
-// =================== END AUDIO ZONES ====================
+// =================== END SUPER DEBUG ====================
 
 
 
 // ========================================================
-// ===================== iOS COMPASS =======================
+// ===================== COMPASS LOGIC =====================
 // ========================================================
 
-// Плавный поворот стрелки (без рывков и мигания)
+// Плавный поворот стрелки (без рывков)
 function smoothRotate(target) {
     compassAngle = compassAngle * 0.85 + target * 0.15;
-    arrowEl.style.transform = `rotate(${compassAngle}deg)`;
-    arrowEl.style.visibility = "visible"; // <--- стрелка никогда не пропадает
+
+    if (arrowEl) {
+        arrowEl.style.transform = `rotate(${compassAngle}deg)`;
+        arrowEl.style.visibility = "visible";
+    }
 }
 
 // Обработчик iOS компаса
 function handleIOSCompass(e) {
     if (!compassActive) return;
-    if (e.webkitCompassHeading == null) return;
+    if (e.webkitCompassHeading == null) {
+        debugUpdate("compass", NaN, "NO_HEADING");
+        return;
+    }
 
     const heading = e.webkitCompassHeading; // 0–360°
     compassUpdates++;
 
     smoothRotate(heading);
 
-    // обновляем отладку
-    const dbg = document.getElementById("compassDebug");
-    if (dbg) {
-        dbg.textContent = `Compass: ${Math.round(heading)}° | updates: ${compassUpdates} | active`;
-    }
+    debugUpdate("compass", heading);
 }
 
 // Включение компаса
 function startCompass() {
     compassActive = true;
 
-    // создаём отладочную панель
+    // создаём обычную отладку компаса
     let dbg = document.getElementById("compassDebug");
     if (!dbg) {
         dbg = document.createElement("div");
         dbg.id = "compassDebug";
         dbg.style.position = "fixed";
-        dbg.style.bottom = "0";
+        dbg.style.bottom = "60px";
         dbg.style.left = "0";
         dbg.style.width = "100%";
         dbg.style.padding = "6px 10px";
@@ -146,7 +128,7 @@ function startCompass() {
         dbg.style.fontFamily = "monospace";
         dbg.style.zIndex = "9999";
         dbg.style.textAlign = "center";
-        dbg.textContent = "Compass: waiting for data…";
+        dbg.textContent = "Compass: waiting…";
         document.body.appendChild(dbg);
     }
 
@@ -160,32 +142,42 @@ function startCompass() {
                     window.addEventListener("deviceorientation", handleIOSCompass);
                 } else {
                     dbg.textContent = "Compass: permission denied";
+                    debugUpdate("compass", NaN, "PERMISSION_DENIED");
                 }
             })
             .catch(() => {
                 dbg.textContent = "Compass: error requesting permission";
+                debugUpdate("compass", NaN, "PERMISSION_ERROR");
             });
 
         return;
     }
 
-    // если не iOS — просто пишем что компас недоступен
     dbg.textContent = "Compass: iOS only";
+    debugUpdate("compass", NaN, "IOS_ONLY");
 }
 
-// =================== END iOS COMPASS ====================// ========================================================
+// =================== END COMPASS LOGIC ===================// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
 function moveMarker(coords) {
     // coords = [lat, lng]
 
-    // --- ROTATE ARROW ---
+    // --- ROTATE ARROW (GPS) ---
     // GPS вращает стрелку ТОЛЬКО если компас выключен
     if (!compassActive && lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
-        arrowEl.style.transform = `rotate(${angle}deg)`;
-        arrowEl.style.visibility = "visible"; // стрелка всегда видима
+
+        gpsAngleLast = Math.round(angle);
+        gpsUpdates++;
+
+        if (arrowEl) {
+            arrowEl.style.transform = `rotate(${angle}deg)`;
+            arrowEl.style.visibility = "visible";
+        }
+
+        debugUpdate("gps", angle);
     }
 
     lastCoords = coords;
@@ -231,6 +223,17 @@ function moveMarker(coords) {
     }
 
     checkZones(coords);
+
+    // --- ALWAYS SHOW ARROW ---
+    if (arrowEl) {
+        arrowEl.style.visibility = "visible";
+    }
+
+    // --- FINAL DEBUG UPDATE ---
+    debugUpdate(
+        compassActive ? "compass" : "gps",
+        compassActive ? compassAngle : gpsAngleLast
+    );
 }
 
 // =================== END MOVE MARKER ====================
@@ -282,11 +285,7 @@ function startSimulation() {
     setTimeout(simulateNextStep, 1200);
 }
 
-// ================ END START SIMULATION ==================
-
-
-
-// ========================================================
+// ================ END START SIMULATION ==================// ========================================================
 // ======================= INIT MAP ========================
 // ========================================================
 
@@ -357,7 +356,9 @@ async function initMap() {
                 "line-width": 4,
                 "line-color": "#007aff"
             }
-        });        // --- AUDIO CIRCLES ---
+        });
+
+        // --- AUDIO CIRCLES ---
         const circleFeatures = [];
 
         points.forEach(p => {
@@ -396,6 +397,8 @@ async function initMap() {
                 img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
                 img.style.width = "32px";
                 img.style.height = "32px";
+
+                img.onerror = () => debugUpdate("none", null, "PNG_LOAD_FAIL");
 
                 el.appendChild(img);
 
@@ -442,7 +445,9 @@ async function initMap() {
         arrowEl.style.width = "40px";
         arrowEl.style.height = "40px";
         arrowEl.style.transformOrigin = "center center";
-        arrowEl.style.visibility = "visible"; // стрелка всегда видима
+        arrowEl.style.visibility = "visible";
+
+        arrowEl.onerror = () => debugUpdate("none", null, "ARROW_PNG_FAIL");
 
         userMarker = new maplibregl.Marker({ element: arrowEl })
             .setLngLat(initialCenter)
@@ -477,6 +482,7 @@ async function initMap() {
         };
     }
 
+    // --- COMPASS BUTTON ---
     const compassBtn = document.getElementById("enableCompass");
     if (compassBtn) {
         compassBtn.onclick = () => {
