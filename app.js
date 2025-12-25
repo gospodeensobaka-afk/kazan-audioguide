@@ -39,6 +39,75 @@ let iconsPngStatus = "init";
 
 
 // ========================================================
+// ===================== UTILITIES ========================
+// ========================================================
+
+function distance(a, b) {
+    const R = 6371000;
+    const dLat = (b[0] - a[0]) * Math.PI / 180;
+    const dLon = (b[1] - a[1]) * Math.PI / 180;
+    const lat1 = a[0] * Math.PI / 180;
+    const lat2 = b[0] * Math.PI / 180;
+    const x = dLon * Math.cos((lat1 + lat2) / 2);
+    const y = dLat;
+    return Math.sqrt(x * x + y * y) * R;
+}
+
+function calculateAngle(prev, curr) {
+    const dx = curr[1] - prev[1];
+    const dy = curr[0] - prev[0];
+    return Math.atan2(dx, dy) * (180 / Math.PI);
+}
+
+// =================== END UTILITIES ======================
+
+
+
+// ========================================================
+// ===================== AUDIO ZONES =======================
+// ========================================================
+
+function playZoneAudio(src) {
+    if (!audioEnabled) return;
+    if (audioPlaying) return;
+    const audio = new Audio(src);
+    audioPlaying = true;
+    audio.play().catch(() => audioPlaying = false);
+    audio.onended = () => audioPlaying = false;
+}
+
+function updateCircleColors() {
+    const source = map.getSource("audio-circles");
+    if (!source) return;
+    source.setData({
+        type: "FeatureCollection",
+        features: zones
+            .filter(z => z.type === "audio")
+            .map(z => ({
+                type: "Feature",
+                properties: { id: z.id, visited: z.visited },
+                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
+            }))
+    });
+}
+
+function checkZones(coords) {
+    zones.forEach(z => {
+        if (z.type !== "audio") return;
+        const dist = distance(coords, [z.lat, z.lng]);
+        if (dist <= z.radius && !z.visited) {
+            z.visited = true;
+            updateCircleColors();
+            if (z.audio) playZoneAudio(z.audio);
+        }
+    });
+}
+
+// =================== END AUDIO ZONES ====================
+
+
+
+// ========================================================
 // ===================== SUPER DEBUG =======================
 // ========================================================
 
@@ -105,6 +174,10 @@ function smoothRotate(target) {
 
 function handleIOSCompass(e) {
     if (!compassActive) return;
+    if (!map || !userMarker) {
+        debugUpdate("compass", NaN, "NO_MAP_OR_MARKER");
+        return;
+    }
     if (e.webkitCompassHeading == null) {
         debugUpdate("compass", NaN, "NO_HEADING");
         return;
@@ -113,7 +186,7 @@ function handleIOSCompass(e) {
     const heading = e.webkitCompassHeading;
     compassUpdates++;
 
-    // --- KEEP ARROW IN CENTER ---
+    // --- KEEP ARROW IN CENTER OF MAP ---
     const center = map.getCenter();
     userMarker.setLngLat([center.lng, center.lat]);
 
@@ -167,7 +240,7 @@ function startCompass() {
     debugUpdate("compass", NaN, "IOS_ONLY");
 }
 
-// =================== END COMPASS LOGIC ===================// ========================================================
+// =================== END COMPASS LOGIC ===================    // ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
