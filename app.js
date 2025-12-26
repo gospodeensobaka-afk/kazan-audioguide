@@ -3,10 +3,8 @@
 // ========================================================
 
 let map;
-let userMarker = null;
-let arrowEl = null;
-
-let lastCoords = null;
+let arrowEl = null;            // DOM-стрелка
+let lastCoords = null;         // [lat, lng]
 let zones = [];
 
 let simulationActive = false;
@@ -30,7 +28,7 @@ let compassUpdates = 0;
 let gpsAngleLast = null;
 let gpsUpdates = 0;
 
-// --- PNG STATUS ---
+// --- PNG STATUS (по сути: стрелка / иконки загрузились?) ---
 let arrowPngStatus = "init";
 let iconsPngStatus = "init";
 
@@ -141,7 +139,7 @@ function debugUpdate(source, angle, error = "none") {
     let computed = "none";
     try {
         computed = window.getComputedStyle(arrowEl).transform;
-    } catch(e) {
+    } catch (e) {
         computed = "error";
     }
 
@@ -187,12 +185,47 @@ arrow=${arrowPngStatus}, icons=${iconsPngStatus}
 
 
 // ========================================================
+// ============= DOM-СТРЕЛКА: ПОЗИЦИЯ И ПОВОРОТ ============
+// ========================================================
+
+// Обновить позицию стрелки по координатам [lat, lng]
+function updateArrowPositionFromCoords(coords) {
+    if (!map || !arrowEl || !coords) return;
+
+    const lngLat = [coords[1], coords[0]];
+    const p = map.project(lngLat); // { x, y }
+
+    arrowEl.style.left = `${p.x}px`;
+    arrowEl.style.top = `${p.y}px`;
+}
+
+// Обновить transform стрелки с текущим углом
+function applyArrowTransform(angle) {
+    if (!arrowEl) return;
+    const a = isNaN(angle) ? 0 : angle;
+    arrowEl.style.transform = `translate(-50%, -50%) rotate(${a}deg)`;
+    arrowEl.style.visibility = "visible";
+    arrowEl.style.willChange = "transform";
+}
+
+// При движении карты перерасчитать позицию стрелки
+function handleMapMove() {
+    if (!lastCoords) return;
+    updateArrowPositionFromCoords(lastCoords);
+
+    const src = compassActive ? "compass" : "gps";
+    const ang = compassActive ? compassAngle : gpsAngleLast;
+    debugUpdate(src, ang);
+}
+
+
+// ========================================================
 // ===================== COMPASS LOGIC =====================
 // ========================================================
 
 function handleIOSCompass(e) {
     if (!compassActive) return;
-    if (!map || !userMarker || !lastCoords) {
+    if (!map || !arrowEl || !lastCoords) {
         debugUpdate("compass", NaN, "NO_MAP_OR_COORDS");
         return;
     }
@@ -205,22 +238,8 @@ function handleIOSCompass(e) {
     compassAngle = heading;
     compassUpdates++;
 
-    // --- ВАРИАНТ А: МИКРОСДВИГ + ПОТОМ ROTATE ---
-    const offset = 0.0000001;
-
-    userMarker.setLngLat([lastCoords[1] + offset, lastCoords[0] + offset]);
-
-    setTimeout(() => {
-        userMarker.setLngLat([lastCoords[1], lastCoords[0]]);
-
-        if (arrowEl) {
-            arrowEl.style.transform = `rotate(${compassAngle}deg)`;
-            arrowEl.style.visibility = "visible";
-            arrowEl.style.willChange = "transform";
-        }
-
-        debugUpdate("compass", compassAngle);
-    }, 20);
+    applyArrowTransform(compassAngle);
+    debugUpdate("compass", compassAngle);
 }
 
 function startCompass() {
@@ -252,37 +271,32 @@ function startCompass() {
 function moveMarker(coords) {
     // coords = [lat, lng]
 
-    // --- ROTATE ARROW (GPS) ---
-    // GPS вращает стрелку ТОЛЬКО если компас выключен
+    // --- ROTATE ARROW (GPS), если компас выключен ---
     if (!compassActive && lastCoords) {
         const angle = calculateAngle(lastCoords, coords);
 
         gpsAngleLast = Math.round(angle);
         gpsUpdates++;
 
-        if (arrowEl) {
-            arrowEl.style.transform = `rotate(${angle}deg)`;
-            arrowEl.style.visibility = "visible";
-            arrowEl.style.willChange = "transform";
-        }
-
+        applyArrowTransform(angle);
         debugUpdate("gps", angle);
     }
 
     // --- UPDATE LAST COORDS ---
     lastCoords = coords;
 
-    // --- MOVE MARKER TO REAL POSITION ---
-    userMarker.setLngLat([coords[1], coords[0]]);
+    // --- ПОЗИЦИЯ СТРЕЛКИ (DOM) ---
+    updateArrowPositionFromCoords(coords);
 
     // --- FIND CLOSEST ROUTE POINT ---
-    const current = [coords[1], coords[0]]; // [lng, lat]
-
     let closestIndex = 0;
     let minDist = Infinity;
 
     fullRoute.forEach((pt, i) => {
-        const d = distance([pt.coord[1], pt.coord[0]], [coords[0], coords[1]]);
+        const d = distance(
+            [pt.coord[1], pt.coord[0]], // [lat, lng] из [lng, lat]
+            [coords[0], coords[1]]
+        );
         if (d < minDist) {
             minDist = d;
             closestIndex = i;
@@ -314,11 +328,6 @@ function moveMarker(coords) {
 
     // --- AUDIO ZONES ---
     checkZones(coords);
-
-    // --- ALWAYS SHOW ARROW ---
-    if (arrowEl) {
-        arrowEl.style.visibility = "visible";
-    }
 
     // --- FINAL DEBUG UPDATE ---
     debugUpdate(
@@ -365,7 +374,7 @@ function startSimulation() {
     simulationActive = true;
     gpsActive = false;
 
-    // --- COMPASS MUST NOT INTERFERE WITH SIMULATION ---
+    // компас не должен мешать симуляции
     compassActive = false;
 
     simulationIndex = 0;
@@ -393,6 +402,12 @@ async function initMap() {
         center: initialCenter,
         zoom: 18
     });
+
+    // стрелку будем класть внутрь контейнера карты
+    const mapContainer = document.getElementById("map");
+    if (mapContainer && getComputedStyle(mapContainer).position === "static") {
+        mapContainer.style.position = "relative";
+    }
 
     map.on("load", async () => {
         const points = await fetch("points.json").then(r => r.json());
@@ -479,7 +494,10 @@ async function initMap() {
                 img.style.height = "32px";
 
                 img.onload = () => { iconsPngStatus = "ok"; };
-                img.onerror = () => { iconsPngStatus = "error"; debugUpdate("none", null, "PNG_LOAD_FAIL"); };
+                img.onerror = () => {
+                    iconsPngStatus = "error";
+                    debugUpdate("none", null, "PNG_LOAD_FAIL");
+                };
 
                 el.appendChild(img);
 
@@ -517,7 +535,7 @@ async function initMap() {
             }
         });
 
-        // --- USER ARROW MARKER ---
+        // --- DOM USER ARROW (ВМЕСТО MARKER) ---
         arrowEl = document.createElement("img");
         arrowEl.src = "arrow.png";
         arrowEl.style.width = "40px";
@@ -525,13 +543,24 @@ async function initMap() {
         arrowEl.style.transformOrigin = "center center";
         arrowEl.style.visibility = "visible";
         arrowEl.style.willChange = "transform";
+        arrowEl.style.position = "absolute";
+        arrowEl.style.left = "50%";
+        arrowEl.style.top = "50%";
+        arrowEl.style.pointerEvents = "none";
+        arrowEl.style.zIndex = "9999";
+        applyArrowTransform(0);
 
         arrowEl.onload = () => { arrowPngStatus = "ok"; };
-        arrowEl.onerror = () => { arrowPngStatus = "error"; debugUpdate("none", null, "ARROW_PNG_FAIL"); };
+        arrowEl.onerror = () => {
+            arrowPngStatus = "error";
+            debugUpdate("none", null, "ARROW_PNG_FAIL");
+        };
 
-        userMarker = new maplibregl.Marker({ element: arrowEl })
-            .setLngLat(initialCenter)
-            .addTo(map);
+        if (mapContainer) {
+            mapContainer.appendChild(arrowEl);
+        } else {
+            document.body.appendChild(arrowEl);
+        }
 
         // --- GPS TRACKING ---
         if (navigator.geolocation) {
@@ -544,6 +573,9 @@ async function initMap() {
                 { enableHighAccuracy: true }
             );
         }
+
+        // --- ПРИ ДВИЖЕНИИ КАРТЫ ОБНОВЛЯЕМ ПОЗИЦИЮ СТРЕЛКИ ---
+        map.on("move", handleMapMove);
 
         console.log("Карта готова");
     });
