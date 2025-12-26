@@ -235,16 +235,26 @@ function handleIOSCompass(e) {
         return;
     }
 
+    // 1) Сырые данные от компаса (0° = север)
     const raw = normalizeAngle(e.webkitCompassHeading);
     compassAngle = raw;
 
-    // S1 smoothing
+    // 2) Плавное сглаживание (S1)
     smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
-
     compassUpdates++;
 
-    applyArrowTransform(smoothAngle);
-    debugUpdate("compass", smoothAngle);
+    // 3) Учитываем поворот карты
+    // map.getBearing() — текущий угол поворота карты (0° = север наверху)
+    const mapBearing = typeof map.getBearing === "function" ? map.getBearing() : 0;
+
+    // стрелка должна показывать, куда смотрит телефон ОТНОСИТЕЛЬНО ЭКРАНА
+    const corrected = normalizeAngle(smoothAngle - mapBearing);
+
+    // 4) Применяем скорректированный угол к стрелке
+    applyArrowTransform(corrected);
+
+    // 5) В отладку отдаём именно corrected
+    debugUpdate("compass", corrected);
 }
 
 function startCompass() {
@@ -641,3 +651,4 @@ async function initMap() {
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END DOM EVENTS ====================
+
