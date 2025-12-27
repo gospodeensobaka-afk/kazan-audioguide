@@ -18,11 +18,12 @@ let audioEnabled = false;
 let audioPlaying = false;
 
 // --- ROUTE COLORING ---
-let fullRoute = [];
+let fullRoute = [];            // полный маршрут (всегда синий)
+let passedRoute = [];          // пройденные сегменты (серый)
 
 // --- COMPASS STATE ---
 let compassActive = false;
-let smoothAngle = 0;           // сглаженный угол (S1)
+let smoothAngle = 0;
 let compassUpdates = 0;
 
 // --- GPS DEBUG ---
@@ -41,7 +42,7 @@ let lastRouteSegmentIndex = null;
 let lastZoneDebug = "";
 
 // --- ROUTE HITBOX (метров) ---
-const ROUTE_HITBOX_METERS = 6; // "хитбокс" вокруг маршрута
+const ROUTE_HITBOX_METERS = 6;
 
 
 // ========================================================
@@ -80,8 +81,6 @@ function latLngToXY(lat, lng) {
 
 // информация о ближайшей точке на отрезке маршрута к точке пользователя
 function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
-    // pointLatLng: [lat, lng]
-    // aLngLat / bLngLat: [lng, lat]
     const p = latLngToXY(pointLatLng[0], pointLatLng[1]);
     const a = latLngToXY(aLngLat[1], aLngLat[0]);
     const b = latLngToXY(bLngLat[1], bLngLat[0]);
@@ -107,7 +106,6 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     const dy = p.y - projY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    // обратная аппроксимация в [lng, lat]
     const invRad = 180 / (Math.PI * 6371000);
     const projLat = projY * invRad;
     const projLng = projX * invRad / Math.cos(projLat * Math.PI / 180);
@@ -147,7 +145,6 @@ function updateCircleColors() {
     });
 }
 
-// зона зеленеет и запускает аудио только после реального входа внутрь круга
 function checkZones(coords) {
     let closestZone = null;
     let closestDist = Infinity;
@@ -162,19 +159,14 @@ function checkZones(coords) {
             closestZone = { id: z.id, dist, visited: z.visited, entered: z.entered };
         }
 
-        // фиксируем факт входа внутрь круга
         if (!z.entered && dist <= z.radius) {
             z.entered = true;
         }
 
-        // зона становится зелёной и запускает аудио только после входа
         if (z.entered && !z.visited) {
             z.visited = true;
             updateCircleColors();
-
-            if (z.audio) {
-                playZoneAudio(z.audio);
-            }
+            if (z.audio) playZoneAudio(z.audio);
         }
     });
 
@@ -328,23 +320,17 @@ function handleIOSCompass(e) {
         return;
     }
 
-    // 1) Сырые данные от компаса (0° = север)
     const raw = normalizeAngle(e.webkitCompassHeading);
 
-    // 2) Плавное сглаживание (S1)
     smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
     compassUpdates++;
 
-    // 3) Учитываем поворот карты
     lastMapBearing = (typeof map.getBearing === "function") ? map.getBearing() : 0;
 
-    // стрелка должна показывать, куда смотрит телефон ОТНОСИТЕЛЬНО ЭКРАНА
     lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
 
-    // 4) Применяем скорректированный угол к стрелке
     applyArrowTransform(lastCorrectedAngle);
 
-    // 5) В отладку отдаём именно corrected
     debugUpdate("compass", lastCorrectedAngle);
 }
 
@@ -377,25 +363,23 @@ function startCompass() {
 function moveMarker(coords) {
     // coords = [lat, lng]
 
-    // --- ROTATE ARROW (GPS), если компас выключен ---
-    if (!compassActive && lastCoords) {
-        const angle = calculateAngle(lastCoords, coords);
-
-        gpsAngleLast = Math.round(angle);
-        gpsUpdates++;
-
-        applyArrowTransform(angle);
-        debugUpdate("gps", angle);
-    }
-
-    // --- UPDATE LAST COORDS ---
+    // --- Сохраняем предыдущие координаты ---
+    const prevCoords = lastCoords;
     lastCoords = coords;
 
-    // --- ПОЗИЦИЯ СТРЕЛКИ (DOM) ---
+    // --- Обновляем позицию стрелки ---
     updateArrowPositionFromCoords(coords);
 
+    // --- Поворот стрелки (GPS), если компас выключен ---
+    if (!compassActive && prevCoords) {
+        const angle = calculateAngle(prevCoords, coords);
+        gpsAngleLast = Math.round(angle);
+        gpsUpdates++;
+        applyArrowTransform(angle);
+    }
+
     // ========================================================
-    // ========== УМНАЯ ПЕРЕКРАСКА МАРШРУТА ПО СЕГМЕНТАМ ======
+    // ========== УМНАЯ ПЕРЕКРАСКА МАРШРУТА (A2 + S2) ==========
     // ========================================================
 
     let bestIndex = null;
@@ -403,17 +387,18 @@ function moveMarker(coords) {
     let bestProj = null;
     let bestT = 0;
 
+    // ищем ближайший сегмент
     if (fullRoute.length >= 2) {
         for (let i = 0; i < fullRoute.length - 1; i++) {
-            const a = fullRoute[i].coord;       // [lng, lat]
-            const b = fullRoute[i + 1].coord;   // [lng, lat]
+            const a = fullRoute[i].coord;
+            const b = fullRoute[i + 1].coord;
 
             const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
 
             if (info.dist < bestDist) {
                 bestDist = info.dist;
                 bestIndex = i;
-                bestProj = info.projLngLat; // [lng, lat]
+                bestProj = info.projLngLat;
                 bestT = info.t;
             }
         }
@@ -422,54 +407,54 @@ function moveMarker(coords) {
     lastRouteDist = bestDist;
     lastRouteSegmentIndex = bestIndex;
 
-    // --- ОБНОВЛЯЕМ МАРШРУТ ТОЛЬКО ЕСЛИ В ХИТБОКСЕ ---
-if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
+    // --- Перекрашиваем только если в хитбоксе ---
+    if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
 
-    const passedCoords = [];
-    const remainingCoords = [];
+        const passedCoords = [];
+        const remainingCoords = [];
 
-    // 1) Добавляем ВСЕ точки маршрута в remaining
-    for (let i = 0; i < fullRoute.length; i++) {
-        remainingCoords.push(fullRoute[i].coord);
+        // 1) Синий маршрут ВСЕГДА полный
+        for (let i = 0; i < fullRoute.length; i++) {
+            remainingCoords.push(fullRoute[i].coord);
+        }
+
+        // 2) Серый маршрут — только пройденные точки
+        for (let i = 0; i < bestIndex; i++) {
+            passedCoords.push(fullRoute[i].coord);
+        }
+
+        const a = fullRoute[bestIndex].coord;
+        const b = fullRoute[bestIndex + 1].coord;
+
+        if (bestT <= 0) {
+            // ещё не вошли в сегмент
+            passedCoords.push(a);
+
+        } else if (bestT >= 1) {
+            // дошли до конца сегмента
+            passedCoords.push(a, b);
+
+        } else {
+            // вошли в середину сегмента — режем его
+            const proj = bestProj; // [lng, lat]
+
+            passedCoords.push(a, proj);
+
+            // заменяем точку a в синем маршруте на proj
+            remainingCoords[bestIndex] = proj;
+        }
+
+        // обновляем слои
+        map.getSource("route-passed").setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: passedCoords }
+        });
+
+        map.getSource("route-remaining").setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: remainingCoords }
+        });
     }
-
-    // 2) Теперь формируем passedCoords
-    //    - все точки до сегмента
-    for (let i = 0; i < bestIndex; i++) {
-        passedCoords.push(fullRoute[i].coord);
-    }
-
-    const a = fullRoute[bestIndex].coord;
-    const b = fullRoute[bestIndex + 1].coord;
-
-    if (bestT <= 0) {
-        // ещё не вошли в сегмент
-        passedCoords.push(a);
-
-    } else if (bestT >= 1) {
-        // дошли до конца сегмента
-        passedCoords.push(a, b);
-
-    } else {
-        // вошли в середину сегмента — добавляем точку пересечения
-        const proj = bestProj; // [lng, lat]
-        passedCoords.push(a, proj);
-
-        // и заменяем точку a в remaining на proj
-        remainingCoords[bestIndex] = proj;
-    }
-
-    // 3) Обновляем слои
-    map.getSource("route-passed").setData({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: passedCoords }
-    });
-
-    map.getSource("route-remaining").setData({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: remainingCoords }
-    });
-}
 
     // ========================================================
     // ===================== FOLLOW CAMERA ====================
@@ -492,10 +477,9 @@ if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
     // ===================== FINAL DEBUG ======================
     // ========================================================
 
-    debugUpdate(
-        compassActive ? "compass" : "gps",
-        compassActive ? lastCorrectedAngle : gpsAngleLast
-    );
+    const src = compassActive ? "compass" : "gps";
+    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
+    debugUpdate(src, ang);
 }
 
 
@@ -529,8 +513,6 @@ function startSimulation() {
 
     simulationActive = true;
     gpsActive = false;
-
-    // компас не должен мешать симуляции
     compassActive = false;
 
     simulationIndex = 0;
@@ -557,7 +539,6 @@ async function initMap() {
         zoom: 18
     });
 
-    // стрелку кладём внутрь контейнера карты
     const mapContainer = document.getElementById("map");
     if (mapContainer && getComputedStyle(mapContainer).position === "static") {
         mapContainer.style.position = "relative";
@@ -572,9 +553,9 @@ async function initMap() {
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
 
-        // --- PREPARE FULL ROUTE ---
+        // полный маршрут (синий)
         fullRoute = route.geometry.coordinates.map(c => ({
-            coord: [c[0], c[1]] // [lng, lat]
+            coord: [c[0], c[1]]
         }));
 
         // симуляция использует lat/lng
@@ -585,6 +566,7 @@ async function initMap() {
         // ===================== ROUTE SOURCES ====================
         // ========================================================
 
+        // серый (пройденный)
         map.addSource("route-passed", {
             type: "geojson",
             data: {
@@ -593,6 +575,7 @@ async function initMap() {
             }
         });
 
+        // синий (всегда полный)
         map.addSource("route-remaining", {
             type: "geojson",
             data: {
@@ -609,20 +592,22 @@ async function initMap() {
         // ====================== ROUTE LAYERS =====================
         // ========================================================
 
-        map.addLayer({
-            id: "route-passed-line",
-            type: "line",
-            source: "route-passed",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-width": 4, "line-color": "#888888" }
-        });
-
+        // СИНИЙ — ВСЕГДА ПОЛНЫЙ
         map.addLayer({
             id: "route-remaining-line",
             type: "line",
             source: "route-remaining",
             layout: { "line-join": "round", "line-cap": "round" },
             paint: { "line-width": 4, "line-color": "#007aff" }
+        });
+
+        // СЕРЫЙ — ПОВЕРХ СИНЕГО (A2 + S2)
+        map.addLayer({
+            id: "route-passed-line",
+            type: "line",
+            source: "route-passed",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-width": 4, "line-color": "#333333" }
         });
 
 
@@ -653,7 +638,7 @@ async function initMap() {
                 });
             }
 
-            // --- PNG ICONS FOR SQUARE POINTS ---
+            // квадратные точки (PNG)
             if (p.type === "square") {
                 const el = document.createElement("div");
                 el.style.width = "40px";
@@ -681,7 +666,6 @@ async function initMap() {
             }
         });
 
-        // --- AUDIO CIRCLES SOURCE ---
         map.addSource("audio-circles", {
             type: "geojson",
             data: { type: "FeatureCollection", features: circleFeatures }
@@ -805,4 +789,3 @@ async function initMap() {
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END DOM EVENTS ====================
-
