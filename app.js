@@ -423,57 +423,53 @@ function moveMarker(coords) {
     lastRouteSegmentIndex = bestIndex;
 
     // --- ОБНОВЛЯЕМ МАРШРУТ ТОЛЬКО ЕСЛИ В ХИТБОКСЕ ---
-    if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
+if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
 
-        const passedCoords = [];
-        const remainingCoords = [];
+    const passedCoords = [];
+    const remainingCoords = [];
 
-        // все точки до сегмента — в пройденное
-        for (let i = 0; i < bestIndex; i++) {
-            passedCoords.push(fullRoute[i].coord);
-        }
-
-        const a = fullRoute[bestIndex].coord;
-        const b = fullRoute[bestIndex + 1].coord;
-
-        if (bestT <= 0) {
-            // мы ещё "до" сегмента
-            passedCoords.push(a);
-            remainingCoords.push(a, b);
-            for (let i = bestIndex + 2; i < fullRoute.length; i++) {
-                remainingCoords.push(fullRoute[i].coord);
-            }
-
-        } else if (bestT >= 1) {
-            // дошли до конца сегмента
-            passedCoords.push(a, b);
-            for (let i = bestIndex + 2; i < fullRoute.length; i++) {
-                remainingCoords.push(fullRoute[i].coord);
-            }
-
-        } else {
-            // вошли в середину сегмента — режем его
-            const proj = bestProj; // [lng, lat]
-
-            passedCoords.push(a, proj);
-
-            remainingCoords.push(proj, b);
-            for (let i = bestIndex + 2; i < fullRoute.length; i++) {
-                remainingCoords.push(fullRoute[i].coord);
-            }
-        }
-
-        // обновляем слои
-        map.getSource("route-passed").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: passedCoords }
-        });
-
-        map.getSource("route-remaining").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: remainingCoords }
-        });
+    // 1) Добавляем ВСЕ точки маршрута в remaining
+    for (let i = 0; i < fullRoute.length; i++) {
+        remainingCoords.push(fullRoute[i].coord);
     }
+
+    // 2) Теперь формируем passedCoords
+    //    - все точки до сегмента
+    for (let i = 0; i < bestIndex; i++) {
+        passedCoords.push(fullRoute[i].coord);
+    }
+
+    const a = fullRoute[bestIndex].coord;
+    const b = fullRoute[bestIndex + 1].coord;
+
+    if (bestT <= 0) {
+        // ещё не вошли в сегмент
+        passedCoords.push(a);
+
+    } else if (bestT >= 1) {
+        // дошли до конца сегмента
+        passedCoords.push(a, b);
+
+    } else {
+        // вошли в середину сегмента — добавляем точку пересечения
+        const proj = bestProj; // [lng, lat]
+        passedCoords.push(a, proj);
+
+        // и заменяем точку a в remaining на proj
+        remainingCoords[bestIndex] = proj;
+    }
+
+    // 3) Обновляем слои
+    map.getSource("route-passed").setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: passedCoords }
+    });
+
+    map.getSource("route-remaining").setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: remainingCoords }
+    });
+}
 
     // ========================================================
     // ===================== FOLLOW CAMERA ====================
@@ -809,3 +805,4 @@ async function initMap() {
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END DOM EVENTS ====================
+
