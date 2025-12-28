@@ -155,12 +155,10 @@ function checkZones(coords) {
             };
         }
 
-        // Вход в круг = вход в зону
         if (!z.entered && dist <= z.radius) {
             z.entered = true;
         }
 
-        // После входа → зелёный + аудио
         if (z.entered && !z.visited) {
             z.visited = true;
             updateCircleColors();
@@ -263,7 +261,6 @@ arrow=${arrowPngStatus}, icons=${iconsPngStatus}
 
 function updateArrowPositionFromCoords(coords) {
     if (!map || !arrowEl || !coords) return;
-
     const p = map.project([coords[1], coords[0]]);
     arrowEl.style.left = `${p.x}px`;
     arrowEl.style.top = `${p.y}px`;
@@ -302,7 +299,6 @@ function handleIOSCompass(e) {
     }
 
     const raw = normalizeAngle(e.webkitCompassHeading);
-
     smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
     compassUpdates++;
 
@@ -342,15 +338,11 @@ function startCompass() {
 // ========================================================
 
 function moveMarker(coords) {
-    // coords = [lat, lng]
-
     const prevCoords = lastCoords;
     lastCoords = coords;
 
-    // --- Обновляем позицию стрелки ---
     updateArrowPositionFromCoords(coords);
 
-    // --- Поворот стрелки по GPS, если компас выключен ---
     if (!compassActive && prevCoords) {
         const angle = calculateAngle(prevCoords, coords);
         gpsAngleLast = Math.round(angle);
@@ -361,17 +353,6 @@ function moveMarker(coords) {
     // ========================================================
     // ========== ПЕРЕКРАСКА МАРШРУТА (СТАРАЯ ХОРОШАЯ) =========
     // ========================================================
-    //
-    // ВАЖНО:
-    // - НИКАКИХ ПРОЕКЦИЙ
-    // - НИКАКИХ ПРОМЕЖУТОЧНЫХ ТОЧЕК
-    // - НИКАКИХ "ЛИНИЙ ОТ СТРЕЛКИ"
-    //
-    // Логика:
-    // 1) Находим ближайший сегмент
-    // 2) Если в хитбоксе — считаем, что этот сегмент пройден
-    // 3) Серый маршрут = все точки ДО текущего сегмента
-    // 4) Синий маршрут = весь маршрут
 
     let bestIndex = null;
     let bestDist = Infinity;
@@ -397,23 +378,18 @@ function moveMarker(coords) {
     lastRouteDist = bestDist;
     lastRouteSegmentIndex = bestIndex;
 
-    // --- Перекрашиваем только если реально в хитбоксе ---
     if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS) {
-
         const passedCoords = [];
         const remainingCoords = [];
 
-        // Синий маршрут — всегда полный
         for (let i = 0; i < fullRoute.length; i++) {
             remainingCoords.push(fullRoute[i].coord);
         }
 
-        // Серый маршрут — только узлы ДО текущего сегмента
         for (let i = 0; i <= bestIndex; i++) {
             passedCoords.push(fullRoute[i].coord);
         }
 
-        // Обновляем слои
         map.getSource("route-passed").setData({
             type: "Feature",
             geometry: { type: "LineString", coordinates: passedCoords }
@@ -494,7 +470,169 @@ function startSimulation() {
     });
 
     setTimeout(simulateNextStep, 1200);
-}        // ========================================================
+}// ========================================================
+// ======================= INIT MAP ========================
+// ========================================================
+
+async function initMap() {
+    const initialCenter = [49.082118, 55.826584];
+
+    map = new maplibregl.Map({
+        container: "map",
+        style: "style.json",
+        center: initialCenter,
+        zoom: 18
+    });
+
+    const mapContainer = document.getElementById("map");
+    if (mapContainer && getComputedStyle(mapContainer).position === "static") {
+        mapContainer.style.position = "relative";
+    }
+
+    map.on("load", async () => {
+
+        // ========================================================
+        // ======================= LOAD DATA ======================
+        // ========================================================
+
+        const points = await fetch("points.json").then(r => r.json());
+        const route = await fetch("route.json").then(r => r.json());
+
+        fullRoute = route.geometry.coordinates.map(c => ({
+            coord: [c[0], c[1]]
+        }));
+
+        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+
+        // ========================================================
+        // ===================== ROUTE SOURCES ====================
+        // ========================================================
+
+        map.addSource("route-passed", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: [] }
+            }
+        });
+
+        map.addSource("route-remaining", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: {
+                    type: "LineString",
+                    coordinates: fullRoute.map(pt => pt.coord)
+                }
+            }
+        });
+
+
+        // ========================================================
+        // ====================== ROUTE LAYERS =====================
+        // ========================================================
+
+        map.addLayer({
+            id: "route-remaining-line",
+            type: "line",
+            source: "route-remaining",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-width": 4, "line-color": "#007aff" }
+        });
+
+        map.addLayer({
+            id: "route-passed-line",
+            type: "line",
+            source: "route-passed",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-width": 4, "line-color": "#333333" }
+        });
+
+
+        // ========================================================
+        // ====================== AUDIO ZONES ======================
+        // ========================================================
+
+        const circleFeatures = [];
+
+        points.forEach(p => {
+            zones.push({
+                id: p.id,
+                name: p.name,
+                lat: p.lat,
+                lng: p.lng,
+                radius: p.radius || 20,
+                visited: false,
+                entered: false,
+                type: p.type,
+                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
+            });
+
+            if (p.type === "audio") {
+                circleFeatures.push({
+                    type: "Feature",
+                    properties: { id: p.id, visited: false },
+                    geometry: { type: "Point", coordinates: [p.lng, p.lat] }
+                });
+            }
+
+            if (p.type === "square") {
+                const el = document.createElement("div");
+                el.style.width = "40px";
+                el.style.height = "40px";
+                el.style.display = "flex";
+                el.style.alignItems = "center";
+                el.style.justifyContent = "center";
+
+                const img = document.createElement("img");
+                img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
+                img.style.width = "32px";
+                img.style.height = "32px";
+
+                img.onload = () => { iconsPngStatus = "ok"; };
+                img.onerror = () => {
+                    iconsPngStatus = "error";
+                    debugUpdate("none", null, "PNG_LOAD_FAIL");
+                };
+
+                el.appendChild(img);
+
+                new maplibregl.Marker({ element: el })
+                    .setLngLat([p.lng, p.lat])
+                    .addTo(map);
+            }
+        });
+
+        map.addSource("audio-circles", {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: circleFeatures }
+        });
+
+        map.addLayer({
+            id: "audio-circles-layer",
+            type: "circle",
+            source: "audio-circles",
+            paint: {
+                "circle-radius": 20,
+                "circle-color": [
+                    "case",
+                    ["boolean", ["get", "visited"], false],
+                    "rgba(0,255,0,0.25)",
+                    "rgba(255,0,0,0.15)"
+                ],
+                "circle-stroke-color": [
+                    "case",
+                    ["boolean", ["get", "visited"], false],
+                    "rgba(0,255,0,0.6)",
+                    "rgba(255,0,0,0.4)"
+                ],
+                "circle-stroke-width": 2
+            }
+        });
+
+
+        // ========================================================
         // ===================== DOM USER ARROW ===================
         // ========================================================
 
@@ -587,5 +725,3 @@ function startSimulation() {
 // ========================================================
 
 document.addEventListener("DOMContentLoaded", initMap);
-
-// ==================== END DOM EVENTS ====================
