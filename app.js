@@ -19,7 +19,7 @@ let audioPlaying = false;
 
 // --- ROUTE COLORING ---
 let fullRoute = [];            // полный маршрут (всегда синий)
-let passedRoute = [];          // пройденные сегменты (серый)
+let maxPassedIndex = -1;       // самый дальний достигнутый индекс
 
 // --- COMPASS STATE ---
 let compassActive = false;
@@ -43,6 +43,9 @@ let lastZoneDebug = "";
 
 // --- ROUTE HITBOX (метров) ---
 const ROUTE_HITBOX_METERS = 6;
+
+// --- ZONE TRIGGER FACTOR ---
+const ZONE_ENTER_FACTOR = 0.7;
 
 
 // ========================================================
@@ -70,7 +73,6 @@ function normalizeAngle(a) {
     return (a + 360) % 360;
 }
 
-// переводим географические координаты в "плоские" для работы с отрезками
 function latLngToXY(lat, lng) {
     const R = 6371000;
     const rad = Math.PI / 180;
@@ -79,7 +81,6 @@ function latLngToXY(lat, lng) {
     return { x, y };
 }
 
-// информация о ближайшей точке на отрезке маршрута к точке пользователя
 function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     const p = latLngToXY(pointLatLng[0], pointLatLng[1]);
     const a = latLngToXY(aLngLat[1], aLngLat[0]);
@@ -93,7 +94,7 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     const len2 = vx * vx + vy * vy;
     if (len2 === 0) {
         const dist = Math.sqrt(wx * wx + wy * wy);
-        return { dist, t: 0, projLngLat: [aLngLat[0], aLngLat[1]] };
+        return { dist, t: 0 };
     }
 
     let t = (wx * vx + wy * vy) / len2;
@@ -106,11 +107,7 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     const dy = p.y - projY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    const invRad = 180 / (Math.PI * 6371000);
-    const projLat = projY * invRad;
-    const projLng = projX * invRad / Math.cos(projLat * Math.PI / 180);
-
-    return { dist, t, projLngLat: [projLng, projLat] };
+    return { dist, t };
 }
 
 
@@ -159,7 +156,9 @@ function checkZones(coords) {
             closestZone = { id: z.id, dist, visited: z.visited, entered: z.entered };
         }
 
-        if (!z.entered && dist <= z.radius) {
+        const triggerRadius = (z.radius || 20) * ZONE_ENTER_FACTOR;
+
+        if (!z.entered && dist <= triggerRadius) {
             z.entered = true;
         }
 
@@ -177,7 +176,10 @@ function checkZones(coords) {
     } else {
         lastZoneDebug = "";
     }
-}// ========================================================
+}
+
+
+// ========================================================
 // ===================== SUPER DEBUG =======================
 // ========================================================
 
@@ -363,14 +365,13 @@ function startCompass() {
 function moveMarker(coords) {
     // coords = [lat, lng]
 
-    // --- Сохраняем предыдущие координаты ---
     const prevCoords = lastCoords;
     lastCoords = coords;
 
     // --- Обновляем позицию стрелки ---
     updateArrowPositionFromCoords(coords);
 
-    // --- Поворот стрелки (GPS), если компас выключен ---
+    // --- Поворот стрелки по GPS, если компас выключен ---
     if (!compassActive && prevCoords) {
         const angle = calculateAngle(prevCoords, coords);
         gpsAngleLast = Math.round(angle);
@@ -379,27 +380,26 @@ function moveMarker(coords) {
     }
 
     // ========================================================
-    // ========== УМНАЯ ПЕРЕКРАСКА МАРШРУТА (A2 + S2) ==========
+    // ========== УПРОЩЁННАЯ ПЕРЕКРАСКА МАРШРУТА ===============
     // ========================================================
 
     let bestIndex = null;
     let bestDist = Infinity;
-    let bestProj = null;
-    let bestT = 0;
 
-    // ищем ближайший сегмент
     if (fullRoute.length >= 2) {
         for (let i = 0; i < fullRoute.length - 1; i++) {
-            const a = fullRoute[i].coord;
-            const b = fullRoute[i + 1].coord;
+            const a = fullRoute[i].coord;       // [lng, lat]
+            const b = fullRoute[i + 1].coord;   // [lng, lat]
 
-            const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
+            const info = pointToSegmentInfo(
+                [coords[0], coords[1]],         // [lat, lng]
+                a,
+                b
+            );
 
             if (info.dist < bestDist) {
                 bestDist = info.dist;
                 bestIndex = i;
-                bestProj = info.projLngLat;
-                bestT = info.t;
             }
         }
     }
@@ -407,44 +407,26 @@ function moveMarker(coords) {
     lastRouteDist = bestDist;
     lastRouteSegmentIndex = bestIndex;
 
-    // --- Перекрашиваем только если в хитбоксе ---
-    if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
+    // обновляем maxPassedIndex — только вперёд
+    if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS) {
+        if (bestIndex > maxPassedIndex) {
+            maxPassedIndex = bestIndex;
+        }
+    }
+
+    // обновляем слои маршрута
+    if (maxPassedIndex >= 0) {
+        const remainingCoords = fullRoute.map(pt => pt.coord);
 
         const passedCoords = [];
-        const remainingCoords = [];
-
-        // 1) Синий маршрут ВСЕГДА полный
-        for (let i = 0; i < fullRoute.length; i++) {
-            remainingCoords.push(fullRoute[i].coord);
-        }
-
-        // 2) Серый маршрут — только пройденные точки
-        for (let i = 0; i < bestIndex; i++) {
+        for (let i = 0; i <= maxPassedIndex; i++) {
             passedCoords.push(fullRoute[i].coord);
         }
 
-        const a = fullRoute[bestIndex].coord;
-        const b = fullRoute[bestIndex + 1].coord;
+        // ⚠️ ВАЖНО: никаких проекций, никаких точек пользователя.
+        // Серый маршрут = только узлы маршрута.
+        // Это полностью убирает «линию от стрелки к маршруту».
 
-        if (bestT <= 0) {
-            // ещё не вошли в сегмент
-            passedCoords.push(a);
-
-        } else if (bestT >= 1) {
-            // дошли до конца сегмента
-            passedCoords.push(a, b);
-
-        } else {
-            // вошли в середину сегмента — режем его
-            const proj = bestProj; // [lng, lat]
-
-            passedCoords.push(a, proj);
-
-            // заменяем точку a в синем маршруте на proj
-            remainingCoords[bestIndex] = proj;
-        }
-
-        // обновляем слои
         map.getSource("route-passed").setData({
             type: "Feature",
             geometry: { type: "LineString", coordinates: passedCoords }
@@ -525,7 +507,10 @@ function startSimulation() {
     });
 
     setTimeout(simulateNextStep, 1200);
-}// ========================================================
+}
+
+
+// ========================================================
 // ======================= INIT MAP ========================
 // ========================================================
 
@@ -559,14 +544,10 @@ async function initMap() {
         }));
 
         // симуляция использует lat/lng
-        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
-
-
-        // ========================================================
+        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);        // ========================================================
         // ===================== ROUTE SOURCES ====================
         // ========================================================
 
-        // серый (пройденный)
         map.addSource("route-passed", {
             type: "geojson",
             data: {
@@ -575,7 +556,6 @@ async function initMap() {
             }
         });
 
-        // синий (всегда полный)
         map.addSource("route-remaining", {
             type: "geojson",
             data: {
@@ -592,7 +572,7 @@ async function initMap() {
         // ====================== ROUTE LAYERS =====================
         // ========================================================
 
-        // СИНИЙ — ВСЕГДА ПОЛНЫЙ
+        // СИНИЙ — полный маршрут
         map.addLayer({
             id: "route-remaining-line",
             type: "line",
@@ -601,7 +581,7 @@ async function initMap() {
             paint: { "line-width": 4, "line-color": "#007aff" }
         });
 
-        // СЕРЫЙ — ПОВЕРХ СИНЕГО (A2 + S2)
+        // СЕРЫЙ — пройденные сегменты
         map.addLayer({
             id: "route-passed-line",
             type: "line",
@@ -749,10 +729,7 @@ async function initMap() {
         map.on("move", handleMapMove);
 
         console.log("Карта готова");
-    });
-
-
-    // ========================================================
+    });    // ========================================================
     // ========================= BUTTONS ======================
     // ========================================================
 
