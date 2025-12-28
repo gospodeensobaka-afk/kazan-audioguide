@@ -175,6 +175,168 @@ function checkZones(coords) {
     } else {
         lastZoneDebug = "";
     }
+}
+
+
+// ========================================================
+// ===================== SUPER DEBUG =======================
+// ========================================================
+
+function ensureSuperDebug() {
+    let dbg = document.getElementById("superDebug");
+    if (!dbg) {
+        dbg = document.createElement("div");
+        dbg.id = "superDebug";
+        dbg.style.position = "fixed";
+        dbg.style.bottom = "0";
+        dbg.style.left = "0";
+        dbg.style.width = "100%";
+        dbg.style.padding = "8px 10px";
+        dbg.style.background = "rgba(0,0,0,0.75)";
+        dbg.style.color = "white";
+        dbg.style.fontSize = "12px";
+        dbg.style.fontFamily = "monospace";
+        dbg.style.zIndex = "99999";
+        dbg.style.whiteSpace = "pre-line";
+        dbg.style.display = "block";
+        document.body.appendChild(dbg);
+    }
+    return dbg;
+}
+
+function debugUpdate(source, angle, error = "none") {
+    const dbg = ensureSuperDebug();
+
+    if (!arrowEl) {
+        dbg.textContent = "NO ARROW ELEMENT";
+        return;
+    }
+
+    const tr = arrowEl.style.transform || "none";
+
+    let computed = "none";
+    try {
+        computed = window.getComputedStyle(arrowEl).transform;
+    } catch (e) {
+        computed = "error";
+    }
+
+    const rect = arrowEl.getBoundingClientRect();
+    const boxRaw =
+        `x:${rect.x.toFixed(1)}, y:${rect.y.toFixed(1)}, ` +
+        `w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
+
+    const routeDistStr = (lastRouteDist == null)
+        ? "n/a"
+        : `${lastRouteDist.toFixed(1)}m`;
+
+    const routeSegStr = (lastRouteSegmentIndex == null)
+        ? "n/a"
+        : `${lastRouteSegmentIndex}`;
+
+    dbg.textContent =
+`SRC: ${source} | ANG: ${Math.round(angle)}° | ERR: ${error}
+
+--- TRANSFORM ---
+SET:   ${tr}
+COMP:  ${computed}
+
+--- LAYOUT ---
+BOX:    ${boxRaw}
+
+--- STATE ---
+CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(smoothAngle)}° | UPD: ${compassUpdates}
+GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
+
+--- MAP / ROUTE ---
+routeDist: ${routeDistStr} | seg: ${routeSegStr}
+
+--- ZONE ---
+${lastZoneDebug}
+
+--- PNG ---
+arrow=${arrowPngStatus}, icons=${iconsPngStatus}
+`;
+}// ========================================================
+// ============= DOM-СТРЕЛКА: ПОЗИЦИЯ И ПОВОРОТ ============
+// ========================================================
+
+function updateArrowPositionFromCoords(coords) {
+    if (!map || !arrowEl || !coords) return;
+
+    const p = map.project([coords[1], coords[0]]);
+    arrowEl.style.left = `${p.x}px`;
+    arrowEl.style.top = `${p.y}px`;
+}
+
+function applyArrowTransform(angle) {
+    if (!arrowEl) return;
+    arrowEl.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+    arrowEl.style.visibility = "visible";
+    arrowEl.style.willChange = "transform";
+}
+
+function handleMapMove() {
+    if (!lastCoords) return;
+    updateArrowPositionFromCoords(lastCoords);
+
+    const src = compassActive ? "compass" : "gps";
+    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
+    debugUpdate(src, ang);
+}
+
+
+// ========================================================
+// ===================== COMPASS LOGIC =====================
+// ========================================================
+
+function handleIOSCompass(e) {
+    if (!compassActive) return;
+    if (!map || !arrowEl) {
+        debugUpdate("compass", NaN, "NO_MAP_OR_ARROW");
+        return;
+    }
+    if (e.webkitCompassHeading == null) {
+        debugUpdate("compass", NaN, "NO_HEADING");
+        return;
+    }
+
+    const raw = normalizeAngle(e.webkitCompassHeading);
+
+    smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
+    compassUpdates++;
+
+    lastMapBearing = map.getBearing ? map.getBearing() : 0;
+    lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
+
+    applyArrowTransform(lastCorrectedAngle);
+    debugUpdate("compass", lastCorrectedAngle);
+}
+
+function startCompass() {
+    compassActive = true;
+
+    // iOS 13+ permission
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+
+        DeviceOrientationEvent.requestPermission()
+            .then(state => {
+                if (state === "granted") {
+                    window.addEventListener("deviceorientation", handleIOSCompass);
+                } else {
+                    debugUpdate("compass", NaN, "PERMISSION_DENIED");
+                }
+            })
+            .catch(() => {
+                debugUpdate("compass", NaN, "PERMISSION_ERROR");
+            });
+
+        return;
+    }
+
+    // Android / Desktop fallback
+    debugUpdate("compass", NaN, "IOS_ONLY");
 }// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
@@ -332,173 +494,7 @@ function startSimulation() {
     });
 
     setTimeout(simulateNextStep, 1200);
-}// ========================================================
-// ======================= INIT MAP ========================
-// ========================================================
-
-async function initMap() {
-    const initialCenter = [49.082118, 55.826584];
-
-    map = new maplibregl.Map({
-        container: "map",
-        style: "style.json",
-        center: initialCenter,
-        zoom: 18
-    });
-
-    const mapContainer = document.getElementById("map");
-    if (mapContainer && getComputedStyle(mapContainer).position === "static") {
-        mapContainer.style.position = "relative";
-    }
-
-    map.on("load", async () => {
-
-        // ========================================================
-        // ======================= LOAD DATA ======================
-        // ========================================================
-
-        const points = await fetch("points.json").then(r => r.json());
-        const route = await fetch("route.json").then(r => r.json());
-
-        // полный маршрут (синий)
-        fullRoute = route.geometry.coordinates.map(c => ({
-            coord: [c[0], c[1]]
-        }));
-
-        // симуляция использует lat/lng
-        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
-
-
-        // ========================================================
-        // ===================== ROUTE SOURCES ====================
-        // ========================================================
-
-        // серый (пройденный)
-        map.addSource("route-passed", {
-            type: "geojson",
-            data: {
-                type: "Feature",
-                geometry: { type: "LineString", coordinates: [] }
-            }
-        });
-
-        // синий (всегда полный)
-        map.addSource("route-remaining", {
-            type: "geojson",
-            data: {
-                type: "Feature",
-                geometry: {
-                    type: "LineString",
-                    coordinates: fullRoute.map(pt => pt.coord)
-                }
-            }
-        });
-
-
-        // ========================================================
-        // ====================== ROUTE LAYERS =====================
-        // ========================================================
-
-        // СИНИЙ — ВСЕГДА ПОЛНЫЙ
-        map.addLayer({
-            id: "route-remaining-line",
-            type: "line",
-            source: "route-remaining",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-width": 4, "line-color": "#007aff" }
-        });
-
-        // СЕРЫЙ — ПОВЕРХ СИНЕГО
-        map.addLayer({
-            id: "route-passed-line",
-            type: "line",
-            source: "route-passed",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-width": 4, "line-color": "#333333" }
-        });
-
-
-        // ========================================================
-        // ====================== AUDIO ZONES ======================
-        // ========================================================
-
-        const circleFeatures = [];
-
-        points.forEach(p => {
-            zones.push({
-                id: p.id,
-                name: p.name,
-                lat: p.lat,
-                lng: p.lng,
-                radius: p.radius || 20,
-                visited: false,
-                entered: false,
-                type: p.type,
-                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
-            });
-
-            if (p.type === "audio") {
-                circleFeatures.push({
-                    type: "Feature",
-                    properties: { id: p.id, visited: false },
-                    geometry: { type: "Point", coordinates: [p.lng, p.lat] }
-                });
-            }
-
-            // квадратные точки (PNG)
-            if (p.type === "square") {
-                const el = document.createElement("div");
-                el.style.width = "40px";
-                el.style.height = "40px";
-                el.style.display = "flex";
-                el.style.alignItems = "center";
-                el.style.justifyContent = "center";
-
-                const img = document.createElement("img");
-                img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
-                img.style.width = "32px";
-                img.style.height = "32px";
-
-                img.onload = () => { iconsPngStatus = "ok"; };
-                img.onerror = () => {
-                    iconsPngStatus = "error";
-                    debugUpdate("none", null, "PNG_LOAD_FAIL");
-                };
-
-                el.appendChild(img);
-
-                new maplibregl.Marker({ element: el })
-                    .setLngLat([p.lng, p.lat])
-                    .addTo(map);
-            }
-        });
-
-        map.addSource("audio-circles", {
-            type: "geojson",
-            data: { type: "FeatureCollection", features: circleFeatures }
-        });
-
-        map.addLayer({
-            id: "audio-circles-layer",
-            type: "circle",
-            source: "audio-circles",
-            paint: {
-                "circle-radius": 20,
-                "circle-color": [
-                    "case",
-                    ["boolean", ["get", "visited"], false],
-                    "rgba(0,255,0,0.25)",
-                    "rgba(255,0,0,0.15)"
-                ],
-                "circle-stroke-color": [
-                    "case",
-                    ["boolean", ["get", "visited"], false],
-                    "rgba(0,255,0,0.6)",
-                    "rgba(255,0,0,0.4)"
-                ],
-                "circle-stroke-width": 2
-            }
-        });        // ========================================================
+}        // ========================================================
         // ===================== DOM USER ARROW ===================
         // ========================================================
 
