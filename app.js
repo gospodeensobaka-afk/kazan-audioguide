@@ -3,8 +3,11 @@
 // ========================================================
 
 let map;
-let arrowEl = null;            // DOM-стрелка
-let lastCoords = null;         // [lat, lng]
+let arrowEl = null;
+let lastCoords = null;
+let lastMoveTime = 0;
+let lastSpeed = 0;
+
 let zones = [];
 
 // SIMULATION
@@ -17,35 +20,33 @@ let gpsActive = true;
 let audioEnabled = false;
 let audioPlaying = false;
 
-// --- ROUTE COLORING ---
-let fullRoute = [];            // полный маршрут (всегда синий)
-let maxPassedIndex = -1;       // самый дальний достигнутый индекс
+// ROUTE
+let fullRoute = [];
+let maxPassedIndex = -1;
 
-// --- COMPASS STATE ---
+// COMPASS
 let compassActive = false;
 let smoothAngle = 0;
 let compassUpdates = 0;
 
-// --- GPS DEBUG ---
+// GPS DEBUG
 let gpsAngleLast = null;
 let gpsUpdates = 0;
 
-// --- PNG STATUS ---
+// PNG STATUS
 let arrowPngStatus = "init";
 let iconsPngStatus = "init";
 
-// --- MAP / ROUTE DEBUG ---
+// DEBUG
 let lastMapBearing = 0;
 let lastCorrectedAngle = 0;
 let lastRouteDist = null;
 let lastRouteSegmentIndex = null;
 let lastZoneDebug = "";
 
-// --- ROUTE HITBOX (метров) ---
+// CONSTANTS
 const ROUTE_HITBOX_METERS = 6;
-
-// --- ZONE TRIGGER FACTOR ---
-const ZONE_ENTER_FACTOR = 0.7;
+const ZONE_ENTER_FACTOR = 0.65; // более строгий триггер
 
 
 // ========================================================
@@ -92,10 +93,7 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     const wy = p.y - a.y;
 
     const len2 = vx * vx + vy * vy;
-    if (len2 === 0) {
-        const dist = Math.sqrt(wx * wx + wy * wy);
-        return { dist, t: 0 };
-    }
+    if (len2 === 0) return { dist: Math.sqrt(wx * wx + wy * wy), t: 0 };
 
     let t = (wx * vx + wy * vy) / len2;
     t = Math.max(0, Math.min(1, t));
@@ -122,8 +120,8 @@ function playZoneAudio(src) {
     const audio = new Audio(src);
     audioPlaying = true;
 
-    audio.play().catch(() => { audioPlaying = false; });
-    audio.onended = () => { audioPlaying = false; };
+    audio.play().catch(() => audioPlaying = false);
+    audio.onended = () => audioPlaying = false;
 }
 
 function updateCircleColors() {
@@ -158,7 +156,13 @@ function checkZones(coords) {
 
         const triggerRadius = (z.radius || 20) * ZONE_ENTER_FACTOR;
 
-        if (!z.entered && dist <= triggerRadius) {
+        // защита от ложных срабатываний
+        const movingToward =
+            lastCoords &&
+            calculateAngle(lastCoords, coords) &&
+            Math.abs(calculateAngle(coords, [z.lat, z.lng])) < 90;
+
+        if (!z.entered && dist <= triggerRadius && lastSpeed > 0.3 && movingToward) {
             z.entered = true;
         }
 
@@ -214,60 +218,36 @@ function debugUpdate(source, angle, error = "none") {
     }
 
     const tr = arrowEl.style.transform || "none";
-
     let computed = "none";
-    try {
-        computed = window.getComputedStyle(arrowEl).transform;
-    } catch (e) {
-        computed = "error";
-    }
 
-    const ow = arrowEl.offsetWidth;
-    const oh = arrowEl.offsetHeight;
+    try { computed = window.getComputedStyle(arrowEl).transform; }
+    catch { computed = "error"; }
 
     const rect = arrowEl.getBoundingClientRect();
     const boxRaw = `x:${rect.x.toFixed(1)}, y:${rect.y.toFixed(1)}, w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
 
-    const vis = arrowEl.style.visibility || "undefined";
-    const wc = arrowEl.style.willChange || "none";
-    const to = arrowEl.style.transformOrigin || "none";
-    const pos = arrowEl.style.position || "static";
-    const top = arrowEl.style.top || "auto";
-    const left = arrowEl.style.left || "auto";
-
-    const routeDistStr = (lastRouteDist == null) ? "n/a" : `${lastRouteDist.toFixed(1)}m`;
-    const routeSegStr = (lastRouteSegmentIndex == null) ? "n/a" : `${lastRouteSegmentIndex}`;
-    const zoneInfo = lastZoneDebug || "none";
+    const routeDistStr = lastRouteDist == null ? "n/a" : `${lastRouteDist.toFixed(1)}m`;
+    const routeSegStr = lastRouteSegmentIndex == null ? "n/a" : `${lastRouteSegmentIndex}`;
 
     dbg.textContent =
-`SRC: ${source} | ANG: ${isNaN(angle) ? "NaN" : Math.round(angle)}° | ERR: ${error}
+`SRC: ${source} | ANG: ${Math.round(angle)}° | ERR: ${error}
 
 --- TRANSFORM ---
 SET:   ${tr}
 COMP:  ${computed}
 
 --- LAYOUT ---
-offset: ${ow}x${oh}
-BOX:    ${boxRaw}
-
---- STYLE ---
-VIS: ${vis}
-willChange: ${wc}
-origin: ${to}
-position: ${pos}
-top/left: ${top} / ${left}
+BOX: ${boxRaw}
 
 --- STATE ---
 CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(smoothAngle)}° | UPD: ${compassUpdates}
 GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
 
 --- MAP / ROUTE ---
-bearing: ${Math.round(lastMapBearing)}°
-corrected: ${isNaN(lastCorrectedAngle) ? "NaN" : Math.round(lastCorrectedAngle)}°
 routeDist: ${routeDistStr} | seg: ${routeSegStr}
 
 --- ZONE ---
-${zoneInfo}
+${lastZoneDebug}
 
 --- PNG ---
 arrow=${arrowPngStatus}, icons=${iconsPngStatus}
@@ -282,19 +262,15 @@ arrow=${arrowPngStatus}, icons=${iconsPngStatus}
 function updateArrowPositionFromCoords(coords) {
     if (!map || !arrowEl || !coords) return;
 
-    const lngLat = [coords[1], coords[0]];
-    const p = map.project(lngLat);
-
+    const p = map.project([coords[1], coords[0]]);
     arrowEl.style.left = `${p.x}px`;
     arrowEl.style.top = `${p.y}px`;
 }
 
 function applyArrowTransform(angle) {
     if (!arrowEl) return;
-    const a = isNaN(angle) ? 0 : angle;
-    arrowEl.style.transform = `translate(-50%, -50%) rotate(${a}deg)`;
+    arrowEl.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
     arrowEl.style.visibility = "visible";
-    arrowEl.style.willChange = "transform";
 }
 
 function handleMapMove() {
@@ -313,26 +289,21 @@ function handleMapMove() {
 
 function handleIOSCompass(e) {
     if (!compassActive) return;
-    if (!map || !arrowEl) {
-        debugUpdate("compass", NaN, "NO_MAP_OR_ARROW");
-        return;
-    }
+    if (!map || !arrowEl) return;
+
     if (e.webkitCompassHeading == null) {
-        debugUpdate("compass", NaN, "NO_HEADING");
+        debugUpdate("compass", 0, "NO_HEADING");
         return;
     }
 
     const raw = normalizeAngle(e.webkitCompassHeading);
-
     smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
     compassUpdates++;
 
-    lastMapBearing = (typeof map.getBearing === "function") ? map.getBearing() : 0;
-
+    lastMapBearing = map.getBearing ? map.getBearing() : 0;
     lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
 
     applyArrowTransform(lastCorrectedAngle);
-
     debugUpdate("compass", lastCorrectedAngle);
 }
 
@@ -346,18 +317,10 @@ function startCompass() {
             .then(state => {
                 if (state === "granted") {
                     window.addEventListener("deviceorientation", handleIOSCompass);
-                } else {
-                    debugUpdate("compass", NaN, "PERMISSION_DENIED");
                 }
-            })
-            .catch(() => {
-                debugUpdate("compass", NaN, "PERMISSION_ERROR");
             });
-
         return;
     }
-
-    debugUpdate("compass", NaN, "IOS_ONLY");
 }// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
@@ -365,13 +328,23 @@ function startCompass() {
 function moveMarker(coords) {
     // coords = [lat, lng]
 
+    const now = performance.now();
+
+    // --- скорость движения ---
+    if (lastCoords) {
+        const dist = distance(lastCoords, coords);
+        const dt = (now - lastMoveTime) / 1000;
+        lastSpeed = dt > 0 ? dist / dt : 0;
+    }
+    lastMoveTime = now;
+
     const prevCoords = lastCoords;
     lastCoords = coords;
 
-    // --- Обновляем позицию стрелки ---
+    // --- позиция стрелки ---
     updateArrowPositionFromCoords(coords);
 
-    // --- Поворот стрелки по GPS, если компас выключен ---
+    // --- поворот стрелки по GPS ---
     if (!compassActive && prevCoords) {
         const angle = calculateAngle(prevCoords, coords);
         gpsAngleLast = Math.round(angle);
@@ -388,11 +361,11 @@ function moveMarker(coords) {
 
     if (fullRoute.length >= 2) {
         for (let i = 0; i < fullRoute.length - 1; i++) {
-            const a = fullRoute[i].coord;       // [lng, lat]
-            const b = fullRoute[i + 1].coord;   // [lng, lat]
+            const a = fullRoute[i].coord;
+            const b = fullRoute[i + 1].coord;
 
             const info = pointToSegmentInfo(
-                [coords[0], coords[1]],         // [lat, lng]
+                [coords[0], coords[1]],
                 a,
                 b
             );
@@ -407,14 +380,22 @@ function moveMarker(coords) {
     lastRouteDist = bestDist;
     lastRouteSegmentIndex = bestIndex;
 
-    // обновляем maxPassedIndex — только вперёд
+    // --- обновляем maxPassedIndex (только вперёд) ---
     if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS) {
         if (bestIndex > maxPassedIndex) {
             maxPassedIndex = bestIndex;
         }
     }
 
-    // обновляем слои маршрута
+    // --- если пользователь у последней точки — красим всё ---
+    const lastPoint = fullRoute[fullRoute.length - 1].coord;
+    const distToLast = distance(coords, [lastPoint[1], lastPoint[0]]);
+
+    if (distToLast <= ROUTE_HITBOX_METERS) {
+        maxPassedIndex = fullRoute.length - 1;
+    }
+
+    // --- обновляем слои маршрута ---
     if (maxPassedIndex >= 0) {
         const remainingCoords = fullRoute.map(pt => pt.coord);
 
@@ -423,9 +404,9 @@ function moveMarker(coords) {
             passedCoords.push(fullRoute[i].coord);
         }
 
-        // ⚠️ ВАЖНО: никаких проекций, никаких точек пользователя.
+        // ⚠️ НИКАКИХ проекций, НИКАКИХ точек пользователя.
         // Серый маршрут = только узлы маршрута.
-        // Это полностью убирает «линию от стрелки к маршруту».
+        // Это полностью исключает «линию от стрелки к маршруту».
 
         map.getSource("route-passed").setData({
             type: "Feature",
@@ -538,12 +519,10 @@ async function initMap() {
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
 
-        // полный маршрут (синий)
         fullRoute = route.geometry.coordinates.map(c => ({
             coord: [c[0], c[1]]
         }));
 
-        // симуляция использует lat/lng
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);        // ========================================================
         // ===================== ROUTE SOURCES ====================
         // ========================================================
