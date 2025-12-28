@@ -7,43 +7,34 @@ let arrowEl = null;
 let lastCoords = null;
 let zones = [];
 
-// SIMULATION
 let simulationActive = false;
 let simulationPoints = [];
 let simulationIndex = 0;
 
-// GPS & AUDIO
 let gpsActive = true;
 let audioEnabled = false;
 let audioPlaying = false;
 
-// ROUTE
-let fullRoute = [];            // полный маршрут (всегда синий)
-let passedRoute = [];          // пройденные сегменты (серый)
+let fullRoute = [];
+let passedRoute = [];
 
-// COMPASS
 let compassActive = false;
 let smoothAngle = 0;
 let compassUpdates = 0;
 
-// GPS DEBUG
 let gpsAngleLast = null;
 let gpsUpdates = 0;
 
-// PNG STATUS
 let arrowPngStatus = "init";
 let iconsPngStatus = "init";
 
-// DEBUG
 let lastMapBearing = 0;
 let lastCorrectedAngle = 0;
 let lastRouteDist = null;
 let lastRouteSegmentIndex = null;
 let lastZoneDebug = "";
 
-// CONSTANTS
 const ROUTE_HITBOX_METERS = 6;
-
 
 // ========================================================
 // ===================== UTILITIES ========================
@@ -89,7 +80,10 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     const wy = p.y - a.y;
 
     const len2 = vx * vx + vy * vy;
-    if (len2 === 0) return { dist: Math.sqrt(wx * wx + wy * wy), t: 0 };
+    if (len2 === 0) {
+        const dist = Math.sqrt(wx * wx + wy * wy);
+        return { dist, t: 0, projLngLat: [aLngLat[0], aLngLat[1]] };
+    }
 
     let t = (wx * vx + wy * vy) / len2;
     t = Math.max(0, Math.min(1, t));
@@ -101,21 +95,21 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     const dy = p.y - projY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    return { dist, t };
-}
+    const invRad = 180 / (Math.PI * 6371000);
+    const projLat = projY * invRad;
+    const projLng = projX * invRad / Math.cos(projLat * Math.PI / 180);
 
+    return { dist, t, projLngLat: [projLng, projLat] };
+}
 
 // ========================================================
 // ===================== AUDIO ZONES =======================
 // ========================================================
 
 function playZoneAudio(src) {
-    if (!audioEnabled) return;
-    if (audioPlaying) return;
-
+    if (!audioEnabled || audioPlaying) return;
     const audio = new Audio(src);
     audioPlaying = true;
-
     audio.play().catch(() => { audioPlaying = false; });
     audio.onended = () => { audioPlaying = false; };
 }
@@ -123,7 +117,6 @@ function playZoneAudio(src) {
 function updateCircleColors() {
     const source = map.getSource("audio-circles");
     if (!source) return;
-
     source.setData({
         type: "FeatureCollection",
         features: zones
@@ -147,22 +140,17 @@ function checkZones(coords) {
 
         if (dist < closestDist) {
             closestDist = dist;
-            closestZone = {
-                id: z.id,
-                dist,
-                visited: z.visited,
-                entered: z.entered
-            };
+            closestZone = { id: z.id, dist, visited: z.visited, entered: z.entered };
         }
 
+        // 🔧 Правка: зона активируется только при входе
         if (!z.entered && dist <= z.radius) {
             z.entered = true;
-        }
-
-        if (z.entered && !z.visited) {
-            z.visited = true;
-            updateCircleColors();
-            if (z.audio) playZoneAudio(z.audio);
+            if (!z.visited) {
+                z.visited = true;
+                updateCircleColors();
+                if (z.audio) playZoneAudio(z.audio);
+            }
         }
     });
 
@@ -174,7 +162,6 @@ function checkZones(coords) {
         lastZoneDebug = "";
     }
 }
-
 
 // ========================================================
 // ===================== SUPER DEBUG =======================
@@ -200,75 +187,24 @@ function ensureSuperDebug() {
         document.body.appendChild(dbg);
     }
     return dbg;
-}
-
-function debugUpdate(source, angle, error = "none") {
-    const dbg = ensureSuperDebug();
-
-    if (!arrowEl) {
-        dbg.textContent = "NO ARROW ELEMENT";
-        return;
-    }
-
-    const tr = arrowEl.style.transform || "none";
-
-    let computed = "none";
-    try {
-        computed = window.getComputedStyle(arrowEl).transform;
-    } catch (e) {
-        computed = "error";
-    }
-
-    const rect = arrowEl.getBoundingClientRect();
-    const boxRaw =
-        `x:${rect.x.toFixed(1)}, y:${rect.y.toFixed(1)}, ` +
-        `w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
-
-    const routeDistStr = (lastRouteDist == null)
-        ? "n/a"
-        : `${lastRouteDist.toFixed(1)}m`;
-
-    const routeSegStr = (lastRouteSegmentIndex == null)
-        ? "n/a"
-        : `${lastRouteSegmentIndex}`;
-
-    dbg.textContent =
-`SRC: ${source} | ANG: ${Math.round(angle)}° | ERR: ${error}
-
---- TRANSFORM ---
-SET:   ${tr}
-COMP:  ${computed}
-
---- LAYOUT ---
-BOX:    ${boxRaw}
-
---- STATE ---
-CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(smoothAngle)}° | UPD: ${compassUpdates}
-GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
-
---- MAP / ROUTE ---
-routeDist: ${routeDistStr} | seg: ${routeSegStr}
-
---- ZONE ---
-${lastZoneDebug}
-
---- PNG ---
-arrow=${arrowPngStatus}, icons=${iconsPngStatus}
-`;
 }// ========================================================
 // ============= DOM-СТРЕЛКА: ПОЗИЦИЯ И ПОВОРОТ ============
 // ========================================================
 
 function updateArrowPositionFromCoords(coords) {
     if (!map || !arrowEl || !coords) return;
-    const p = map.project([coords[1], coords[0]]);
+
+    const lngLat = [coords[1], coords[0]];
+    const p = map.project(lngLat);
+
     arrowEl.style.left = `${p.x}px`;
     arrowEl.style.top = `${p.y}px`;
 }
 
 function applyArrowTransform(angle) {
     if (!arrowEl) return;
-    arrowEl.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+    const a = isNaN(angle) ? 0 : angle;
+    arrowEl.style.transform = `translate(-50%, -50%) rotate(${a}deg)`;
     arrowEl.style.visibility = "visible";
     arrowEl.style.willChange = "transform";
 }
@@ -299,20 +235,22 @@ function handleIOSCompass(e) {
     }
 
     const raw = normalizeAngle(e.webkitCompassHeading);
+
     smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
     compassUpdates++;
 
-    lastMapBearing = map.getBearing ? map.getBearing() : 0;
+    lastMapBearing = (typeof map.getBearing === "function") ? map.getBearing() : 0;
+
     lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
 
     applyArrowTransform(lastCorrectedAngle);
+
     debugUpdate("compass", lastCorrectedAngle);
 }
 
 function startCompass() {
     compassActive = true;
 
-    // iOS 13+ permission
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function") {
 
@@ -331,9 +269,11 @@ function startCompass() {
         return;
     }
 
-    // Android / Desktop fallback
     debugUpdate("compass", NaN, "IOS_ONLY");
-}// ========================================================
+}
+
+
+// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
@@ -343,6 +283,7 @@ function moveMarker(coords) {
 
     updateArrowPositionFromCoords(coords);
 
+    // GPS‑поворот, если компас выключен
     if (!compassActive && prevCoords) {
         const angle = calculateAngle(prevCoords, coords);
         gpsAngleLast = Math.round(angle);
@@ -351,26 +292,26 @@ function moveMarker(coords) {
     }
 
     // ========================================================
-    // ========== ПЕРЕКРАСКА МАРШРУТА (СТАРАЯ ХОРОШАЯ) =========
+    // ========== УМНАЯ ПЕРЕКРАСКА МАРШРУТА (A2 + S2) ==========
     // ========================================================
 
     let bestIndex = null;
     let bestDist = Infinity;
+    let bestProj = null;
+    let bestT = 0;
 
     if (fullRoute.length >= 2) {
         for (let i = 0; i < fullRoute.length - 1; i++) {
             const a = fullRoute[i].coord;
             const b = fullRoute[i + 1].coord;
 
-            const info = pointToSegmentInfo(
-                [coords[0], coords[1]],
-                a,
-                b
-            );
+            const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
 
             if (info.dist < bestDist) {
                 bestDist = info.dist;
                 bestIndex = i;
+                bestProj = info.projLngLat;
+                bestT = info.t;
             }
         }
     }
@@ -378,7 +319,22 @@ function moveMarker(coords) {
     lastRouteDist = bestDist;
     lastRouteSegmentIndex = bestIndex;
 
-    if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS) {
+    // ========================================================
+    // ========== КОСТЫЛЬ-ЛИНИЯ (НЕ ОТОБРАЖАТЬ) ===============
+    // ========================================================
+    // Логика остаётся, но слой делаем невидимым
+    // (если он есть в твоём style.json)
+    const hackLayer = map.getLayer("route-hack-line");
+    if (hackLayer) {
+        map.setLayoutProperty("route-hack-line", "visibility", "none");
+    }
+
+    // ========================================================
+    // ========== ПЕРЕКРАСКА МАРШРУТА =========================
+    // ========================================================
+
+    if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
+
         const passedCoords = [];
         const remainingCoords = [];
 
@@ -386,8 +342,23 @@ function moveMarker(coords) {
             remainingCoords.push(fullRoute[i].coord);
         }
 
-        for (let i = 0; i <= bestIndex; i++) {
+        for (let i = 0; i < bestIndex; i++) {
             passedCoords.push(fullRoute[i].coord);
+        }
+
+        const a = fullRoute[bestIndex].coord;
+        const b = fullRoute[bestIndex + 1].coord;
+
+        if (bestT <= 0) {
+            passedCoords.push(a);
+
+        } else if (bestT >= 1) {
+            passedCoords.push(a, b);
+
+        } else {
+            const proj = bestProj;
+            passedCoords.push(a, proj);
+            remainingCoords[bestIndex] = proj;
         }
 
         map.getSource("route-passed").setData({
@@ -425,10 +396,7 @@ function moveMarker(coords) {
     const src = compassActive ? "compass" : "gps";
     const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
     debugUpdate(src, ang);
-}
-
-
-// ========================================================
+}// ========================================================
 // ================== SIMULATION STEP ======================
 // ========================================================
 
@@ -470,7 +438,10 @@ function startSimulation() {
     });
 
     setTimeout(simulateNextStep, 1200);
-}// ========================================================
+}
+
+
+// ========================================================
 // ======================= INIT MAP ========================
 // ========================================================
 
@@ -577,6 +548,7 @@ async function initMap() {
                 });
             }
 
+            // квадратные точки (PNG)
             if (p.type === "square") {
                 const el = document.createElement("div");
                 el.style.width = "40px";
@@ -724,4 +696,10 @@ async function initMap() {
 // ====================== DOM EVENTS =======================
 // ========================================================
 
+document.addEventListener("DOMContentLoaded", initMap);// ========================================================
+// ====================== DOM EVENTS =======================
+// ========================================================
+
 document.addEventListener("DOMContentLoaded", initMap);
+
+// ==================== END OF APP.JS ======================
