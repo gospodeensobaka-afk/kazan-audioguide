@@ -143,7 +143,7 @@ function checkZones(coords) {
             closestZone = { id: z.id, dist, visited: z.visited, entered: z.entered };
         }
 
-        // 🔧 Правка: зона активируется только при входе
+        // зона активируется только при входе
         if (!z.entered && dist <= z.radius) {
             z.entered = true;
             if (!z.visited) {
@@ -188,6 +188,84 @@ function ensureSuperDebug() {
     }
     return dbg;
 }// ========================================================
+// ===================== DEBUG UPDATE ======================
+// ========================================================
+
+function debugUpdate(source, angle, error = "none") {
+    const dbg = ensureSuperDebug();
+
+    if (!arrowEl) {
+        dbg.textContent = "NO ARROW ELEMENT";
+        return;
+    }
+
+    const tr = arrowEl.style.transform || "none";
+
+    let computed = "none";
+    try {
+        computed = window.getComputedStyle(arrowEl).transform;
+    } catch (e) {
+        computed = "error";
+    }
+
+    const ow = arrowEl.offsetWidth;
+    const oh = arrowEl.offsetHeight;
+
+    const rect = arrowEl.getBoundingClientRect();
+    const boxRaw =
+        `x:${rect.x.toFixed(1)}, y:${rect.y.toFixed(1)}, ` +
+        `w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
+
+    const vis = arrowEl.style.visibility || "undefined";
+    const wc = arrowEl.style.willChange || "none";
+    const to = arrowEl.style.transformOrigin || "none";
+    const pos = arrowEl.style.position || "static";
+    const top = arrowEl.style.top || "auto";
+    const left = arrowEl.style.left || "auto";
+
+    const routeDistStr =
+        (lastRouteDist == null) ? "n/a" : `${lastRouteDist.toFixed(1)}m`;
+    const routeSegStr =
+        (lastRouteSegmentIndex == null) ? "n/a" : `${lastRouteSegmentIndex}`;
+    const zoneInfo = lastZoneDebug || "none";
+
+    dbg.textContent =
+`SRC: ${source} | ANG: ${isNaN(angle) ? "NaN" : Math.round(angle)}° | ERR: ${error}
+
+--- TRANSFORM ---
+SET:   ${tr}
+COMP:  ${computed}
+
+--- LAYOUT ---
+offset: ${ow}x${oh}
+BOX:    ${boxRaw}
+
+--- STYLE ---
+VIS: ${vis}
+willChange: ${wc}
+origin: ${to}
+position: ${pos}
+top/left: ${top} / ${left}
+
+--- STATE ---
+CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(smoothAngle)}° | UPD: ${compassUpdates}
+GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
+
+--- MAP / ROUTE ---
+bearing: ${Math.round(lastMapBearing)}°
+corrected: ${isNaN(lastCorrectedAngle) ? "NaN" : Math.round(lastCorrectedAngle)}°
+routeDist: ${routeDistStr} | seg: ${routeSegStr}
+
+--- ZONE ---
+${zoneInfo}
+
+--- PNG ---
+arrow=${arrowPngStatus}, icons=${iconsPngStatus}
+`;
+}
+
+
+// ========================================================
 // ============= DOM-СТРЕЛКА: ПОЗИЦИЯ И ПОВОРОТ ============
 // ========================================================
 
@@ -239,7 +317,8 @@ function handleIOSCompass(e) {
     smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
     compassUpdates++;
 
-    lastMapBearing = (typeof map.getBearing === "function") ? map.getBearing() : 0;
+    lastMapBearing =
+        (typeof map.getBearing === "function") ? map.getBearing() : 0;
 
     lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
 
@@ -270,10 +349,7 @@ function startCompass() {
     }
 
     debugUpdate("compass", NaN, "IOS_ONLY");
-}
-
-
-// ========================================================
+}// ========================================================
 // ===================== MOVE MARKER =======================
 // ========================================================
 
@@ -322,8 +398,6 @@ function moveMarker(coords) {
     // ========================================================
     // ========== КОСТЫЛЬ-ЛИНИЯ (НЕ ОТОБРАЖАТЬ) ===============
     // ========================================================
-    // Логика остаётся, но слой делаем невидимым
-    // (если он есть в твоём style.json)
     const hackLayer = map.getLayer("route-hack-line");
     if (hackLayer) {
         map.setLayoutProperty("route-hack-line", "visibility", "none");
@@ -396,7 +470,10 @@ function moveMarker(coords) {
     const src = compassActive ? "compass" : "gps";
     const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
     debugUpdate(src, ang);
-}// ========================================================
+}
+
+
+// ========================================================
 // ================== SIMULATION STEP ======================
 // ========================================================
 
@@ -438,10 +515,7 @@ function startSimulation() {
     });
 
     setTimeout(simulateNextStep, 1200);
-}
-
-
-// ========================================================
+}// ========================================================
 // ======================= INIT MAP ========================
 // ========================================================
 
@@ -693,10 +767,6 @@ async function initMap() {
 
 
 // ========================================================
-// ====================== DOM EVENTS =======================
-// ========================================================
-
-document.addEventListener("DOMContentLoaded", initMap);// ========================================================
 // ====================== DOM EVENTS =======================
 // ========================================================
 
