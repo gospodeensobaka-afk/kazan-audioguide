@@ -2,7 +2,13 @@
 // =============== GLOBAL VARIABLES & STATE ===============
 // ========================================================
 
-let map;
+let map;// === PHOTO FEATURE ===
+let currentPointImage = null;
+
+const togglePhotoBtn = document.getElementById("togglePhotoBtn");
+const photoOverlay = document.getElementById("photoOverlay");
+const photoImage = document.getElementById("photoImage");
+const closePhotoBtn = document.getElementById("closePhotoBtn");
 let arrowEl = null;
 let lastCoords = null;
 let zones = [];
@@ -462,6 +468,18 @@ function moveMarker(coords) {
     // ========================================================
 
     checkZones(coords);
+    // === PHOTO ACTIVATION FOR SQUARE POINTS ===
+zones.forEach(z => {
+    if (z.type === "square") {
+        const dist = distance(coords, [z.lat, z.lng]);
+        if (dist < 25) { // радиус активации
+            if (z.image) {
+                currentPointImage = z.image;
+                togglePhotoBtn.style.display = "block";
+            }
+        }
+    }
+});
 
     // ========================================================
     // ===================== FINAL DEBUG ======================
@@ -769,8 +787,24 @@ async function initMap() {
 // ========================================================
 // ====================== DOM EVENTS =======================
 // ========================================================
+// === PHOTO BUTTON LOGIC ===
+togglePhotoBtn.onclick = () => {
+    if (!currentPointImage) return;
+    photoImage.src = currentPointImage;
+    photoOverlay.classList.remove("hidden");
+};
 
+closePhotoBtn.onclick = () => {
+    photoOverlay.classList.add("hidden");
+};
+
+photoOverlay.onclick = (e) => {
+    if (e.target === photoOverlay) {
+        photoOverlay.classList.add("hidden");
+    }
+};
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END OF APP.JS ======================
+
 
