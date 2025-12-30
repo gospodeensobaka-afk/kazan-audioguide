@@ -524,7 +524,7 @@ async function initMap() {
 
     map = new maplibregl.Map({
         container: "map",
-        style: "style.json",
+        style: "style.json?v=2",
         center: initialCenter,
         zoom: 18
     });
@@ -773,3 +773,4 @@ async function initMap() {
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END OF APP.JS ======================
+
