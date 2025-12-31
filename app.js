@@ -136,18 +136,23 @@ function updateCircleColors() {
 }
 
 function checkZones(coords) {
-    let closestZone = null;
-    let closestDist = Infinity;
-
     zones.forEach(z => {
         if (z.type !== "audio") return;
 
         const dist = distance(coords, [z.lat, z.lng]);
 
-        if (dist < closestDist) {
-            closestDist = dist;
-            closestZone = { id: z.id, dist, visited: z.visited, entered: z.entered };
+        // Срабатывает ТОЛЬКО при входе в круг
+        if (!z.visited && dist <= z.radius) {
+            z.visited = true;
+
+            updateCircleColors();
+
+            if (z.audio) {
+                playZoneAudio(z.audio);
+            }
         }
+    });
+}
 
         // зона активируется только при входе
         if (!z.entered && dist <= z.radius * 0.8) {
@@ -469,21 +474,24 @@ function moveMarker(coords) {
 
     checkZones(coords);
     // === PHOTO ACTIVATION FOR SQUARE POINTS ===
-// === PHOTO ACTIVATION FOR SQUARE POINTS ===
 zones.forEach(z => {
-    if (z.type === "square") {
-        const dist = distance(coords, [z.lat, z.lng]);
+    if (z.type !== "square" || !z.image) return;
 
-        // Показываем кнопку только если есть фото
-        if (z.image && dist < 25) {
-            currentPointImage = z.image;
-            togglePhotoBtn.style.display = "block";
-        }
+    const dist = distance(coords, [z.lat, z.lng]);
 
-        // Прячем кнопку, если ушли далеко
-        if (dist >= 25) {
-            togglePhotoBtn.style.display = "none";
-        }
+    // Вход в круг → показать кнопку и фото
+    if (!z.entered && dist <= 30) {
+        z.entered = true;
+        currentPointImage = z.image;
+        togglePhotoBtn.style.display = "block";
+        photoImage.src = z.image;
+        photoOverlay.classList.remove("hidden");
+    }
+
+    // Выход из круга → спрятать кнопку
+    if (z.entered && dist > 30) {
+        z.entered = false;
+        togglePhotoBtn.style.display = "none";
     }
 });
 
@@ -681,7 +689,31 @@ oldLayers.forEach(id => {
             }
         });
 
-        map.addSource("audio-circles", {
+        map.addSource("audio-circles"// === PHOTO CIRCLES (PNG POINTS) ===
+const photoCircleFeatures = zones
+    .filter(z => z.type === "square" && z.image)
+    .map(z => ({
+        type: "Feature",
+        properties: { id: z.id },
+        geometry: { type: "Point", coordinates: [z.lng, z.lat] }
+    }));
+
+map.addSource("photo-circles", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: photoCircleFeatures }
+});
+
+map.addLayer({
+    id: "photo-circles-layer",
+    type: "circle",
+    source: "photo-circles",
+    paint: {
+        "circle-radius": 30, // больше чем аудио
+        "circle-color": "rgba(0,0,255,0.08)",
+        "circle-stroke-color": "rgba(0,0,255,0.3)",
+        "circle-stroke-width": 1
+    }
+});, {
             type: "geojson",
             data: { type: "FeatureCollection", features: circleFeatures }
         });
@@ -819,5 +851,6 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END OF APP.JS ======================
+
 
 
