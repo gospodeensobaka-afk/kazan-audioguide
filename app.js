@@ -150,7 +150,7 @@ function checkZones(coords) {
         }
 
         // зона активируется только при входе
-        if (!z.entered && dist <= z.radius) {
+        if (!z.entered && dist <= z.radius * 0.8) {
             z.entered = true;
             if (!z.visited) {
                 z.visited = true;
@@ -469,14 +469,20 @@ function moveMarker(coords) {
 
     checkZones(coords);
     // === PHOTO ACTIVATION FOR SQUARE POINTS ===
+// === PHOTO ACTIVATION FOR SQUARE POINTS ===
 zones.forEach(z => {
     if (z.type === "square") {
         const dist = distance(coords, [z.lat, z.lng]);
-        if (dist < 25) { // радиус активации
-            if (z.image) {
-                currentPointImage = z.image;
-                togglePhotoBtn.style.display = "block";
-            }
+
+        // Показываем кнопку только если есть фото
+        if (z.image && dist < 25) {
+            currentPointImage = z.image;
+            togglePhotoBtn.style.display = "block";
+        }
+
+        // Прячем кнопку, если ушли далеко
+        if (dist >= 25) {
+            togglePhotoBtn.style.display = "none";
         }
     }
 });
@@ -553,7 +559,13 @@ async function initMap() {
     }
 
     map.on("load", async () => {
-
+// === REMOVE OLD ROUTE LINES FROM STYLE.JSON ===
+const oldLayers = ["route", "route-line", "route-hack-line"];
+oldLayers.forEach(id => {
+    if (map.getLayer(id)) {
+        map.setLayoutProperty(id, "visibility", "none");
+    }
+});
         // ========================================================
         // ======================= LOAD DATA ======================
         // ========================================================
@@ -621,16 +633,17 @@ async function initMap() {
 
         points.forEach(p => {
             zones.push({
-                id: p.id,
-                name: p.name,
-                lat: p.lat,
-                lng: p.lng,
-                radius: p.radius || 20,
-                visited: false,
-                entered: false,
-                type: p.type,
-                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null
-            });
+    id: p.id,
+    name: p.name,
+    lat: p.lat,
+    lng: p.lng,
+    radius: p.radius || 20,
+    visited: false,
+    entered: false,
+    type: p.type,
+    audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
+    image: p.image || null   // ← ДОБАВЛЕНО
+});
 
             if (p.type === "audio") {
                 circleFeatures.push({
@@ -806,4 +819,5 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 // ==================== END OF APP.JS ======================
+
 
