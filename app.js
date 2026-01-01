@@ -432,7 +432,6 @@ function moveMarker(coords) {
             currentPointImage = z.image;
             togglePhotoBtn.style.display = "block";
             photoImage.src = z.image;
-            photoOverlay.classList.remove("hidden");
         }
 
         if (z.entered && dist > 30) {
@@ -801,6 +800,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
