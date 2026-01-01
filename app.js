@@ -738,36 +738,35 @@ if (mapContainer) {
     });
 
     /* ========================================================
-       ========================= BUTTONS ======================
-       ======================================================== */
+   ========================= BUTTONS ======================
+   ======================================================== */
 
-    const simBtn = document.getElementById("simulate");
-    if (simBtn) simBtn.onclick = startSimulation;
+const simBtn = document.getElementById("simulate");
+if (simBtn) simBtn.onclick = startSimulation;
 
+const audioBtn = document.getElementById("enableAudio");
+if (audioBtn) {
+    audioBtn.onclick = () => {
+        const a = new Audio("audio/1.mp3");
+        a.play()
+            .then(() => audioEnabled = true)
+            .catch(() => console.log("Ошибка разрешения аудио"));
+    };
+}
 
+const compassBtn = document.getElementById("enableCompass");
+if (compassBtn) compassBtn.onclick = startCompass;
 
-    const audioBtn = document.getElementById("enableAudio");
-    if (audioBtn) {
-        audioBtn.onclick = () => {
-            const a = new Audio("audio/1.mp3");
-            a.play()
-                .then(() => audioEnabled = true)
-                .catch(() => console.log("Ошибка разрешения аудио"));
-        };
-    }
-
-    const compassBtn = document.getElementById("enableCompass");
-    if (compassBtn) compassBtn.onclick = startCompass;
 // === PLACE PHOTO BUTTON RIGHT UNDER COMPASS BUTTON ===
 if (compassBtn && togglePhotoBtn) {
+    togglePhotoBtn.style.position = "absolute";
+    togglePhotoBtn.style.top = "160px";   // ниже компаса
+    togglePhotoBtn.style.left = "10px";
+    togglePhotoBtn.style.zIndex = "10";
     togglePhotoBtn.style.display = "block";
-    togglePhotoBtn.style.marginTop = "6px";
-    togglePhotoBtn.style.position = "relative";
-    togglePhotoBtn.style.zIndex = "100002";
 
     compassBtn.insertAdjacentElement("afterend", togglePhotoBtn);
 }
-
     /* ========================================================
        ===================== INIT DEBUG PANEL =================
        ======================================================== */
@@ -799,6 +798,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
