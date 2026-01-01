@@ -764,6 +764,9 @@ if (compassBtn && togglePhotoBtn) {
     togglePhotoBtn.style.left = "10px";
     togglePhotoBtn.style.zIndex = "10";
     togglePhotoBtn.style.display = "block";
+    togglePhotoBtn.style.width = "140px";
+    togglePhotoBtn.style.height = "32px";
+    togglePhotoBtn.style.fontSize = "14px";
 
     compassBtn.insertAdjacentElement("afterend", togglePhotoBtn);
 }
@@ -798,6 +801,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
