@@ -1,14 +1,15 @@
-// ========================================================
-// =============== GLOBAL VARIABLES & STATE ===============
-// ========================================================
+/* ========================================================
+   =============== GLOBAL VARIABLES & STATE ===============
+   ======================================================== */
 
-let map;// === PHOTO FEATURE ===
+let map;
 let currentPointImage = null;
 
 const togglePhotoBtn = document.getElementById("togglePhotoBtn");
 const photoOverlay = document.getElementById("photoOverlay");
 const photoImage = document.getElementById("photoImage");
 const closePhotoBtn = document.getElementById("closePhotoBtn");
+
 let arrowEl = null;
 let lastCoords = null;
 let zones = [];
@@ -42,9 +43,9 @@ let lastZoneDebug = "";
 
 const ROUTE_HITBOX_METERS = 6;
 
-// ========================================================
-// ===================== UTILITIES ========================
-// ========================================================
+/* ========================================================
+   ===================== UTILITIES ========================
+   ======================================================== */
 
 function distance(a, b) {
     const R = 6371000;
@@ -108,9 +109,9 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
     return { dist, t, projLngLat: [projLng, projLat] };
 }
 
-// ========================================================
-// ===================== AUDIO ZONES =======================
-// ========================================================
+/* ========================================================
+   ===================== AUDIO ZONES =======================
+   ======================================================== */
 
 function playZoneAudio(src) {
     if (!audioEnabled || audioPlaying) return;
@@ -141,42 +142,18 @@ function checkZones(coords) {
 
         const dist = distance(coords, [z.lat, z.lng]);
 
-        // Срабатывает ТОЛЬКО при входе в круг
+        // СТАРАЯ НАДЁЖНАЯ ЛОГИКА
         if (!z.visited && dist <= z.radius) {
             z.visited = true;
-
             updateCircleColors();
-
-            if (z.audio) {
-                playZoneAudio(z.audio);
-            }
+            if (z.audio) playZoneAudio(z.audio);
         }
     });
 }
 
-        // зона активируется только при входе
-        if (!z.entered && dist <= z.radius * 0.8) {
-            z.entered = true;
-            if (!z.visited) {
-                z.visited = true;
-                updateCircleColors();
-                if (z.audio) playZoneAudio(z.audio);
-            }
-        }
-    });
-
-    if (closestZone) {
-        lastZoneDebug =
-            `id: ${closestZone.id} | dist: ${closestZone.dist.toFixed(1)}m` +
-            ` | entered: ${closestZone.entered} | visited: ${closestZone.visited}`;
-    } else {
-        lastZoneDebug = "";
-    }
-}
-
-// ========================================================
-// ===================== SUPER DEBUG =======================
-// ========================================================
+/* ========================================================
+   ===================== SUPER DEBUG =======================
+   ======================================================== */
 
 function ensureSuperDebug() {
     let dbg = document.getElementById("superDebug");
@@ -198,9 +175,7 @@ function ensureSuperDebug() {
         document.body.appendChild(dbg);
     }
     return dbg;
-}// ========================================================
-// ===================== DEBUG UPDATE ======================
-// ========================================================
+}
 
 function debugUpdate(source, angle, error = "none") {
     const dbg = ensureSuperDebug();
@@ -211,13 +186,9 @@ function debugUpdate(source, angle, error = "none") {
     }
 
     const tr = arrowEl.style.transform || "none";
-
     let computed = "none";
-    try {
-        computed = window.getComputedStyle(arrowEl).transform;
-    } catch (e) {
-        computed = "error";
-    }
+    try { computed = window.getComputedStyle(arrowEl).transform; }
+    catch (e) { computed = "error"; }
 
     const ow = arrowEl.offsetWidth;
     const oh = arrowEl.offsetHeight;
@@ -228,16 +199,12 @@ function debugUpdate(source, angle, error = "none") {
         `w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
 
     const vis = arrowEl.style.visibility || "undefined";
-    const wc = arrowEl.style.willChange || "none";
-    const to = arrowEl.style.transformOrigin || "none";
-    const pos = arrowEl.style.position || "static";
-    const top = arrowEl.style.top || "auto";
-    const left = arrowEl.style.left || "auto";
 
     const routeDistStr =
         (lastRouteDist == null) ? "n/a" : `${lastRouteDist.toFixed(1)}m`;
     const routeSegStr =
         (lastRouteSegmentIndex == null) ? "n/a" : `${lastRouteSegmentIndex}`;
+
     const zoneInfo = lastZoneDebug || "none";
 
     dbg.textContent =
@@ -251,20 +218,11 @@ COMP:  ${computed}
 offset: ${ow}x${oh}
 BOX:    ${boxRaw}
 
---- STYLE ---
-VIS: ${vis}
-willChange: ${wc}
-origin: ${to}
-position: ${pos}
-top/left: ${top} / ${left}
-
 --- STATE ---
 CMP: ${compassActive ? "active" : "inactive"} | H: ${Math.round(smoothAngle)}° | UPD: ${compassUpdates}
 GPS: ${gpsActive ? "on" : "off"} | GPS_ANG: ${gpsAngleLast} | GPS_UPD: ${gpsUpdates}
 
 --- MAP / ROUTE ---
-bearing: ${Math.round(lastMapBearing)}°
-corrected: ${isNaN(lastCorrectedAngle) ? "NaN" : Math.round(lastCorrectedAngle)}°
 routeDist: ${routeDistStr} | seg: ${routeSegStr}
 
 --- ZONE ---
@@ -273,12 +231,9 @@ ${zoneInfo}
 --- PNG ---
 arrow=${arrowPngStatus}, icons=${iconsPngStatus}
 `;
-}
-
-
-// ========================================================
-// ============= DOM-СТРЕЛКА: ПОЗИЦИЯ И ПОВОРОТ ============
-// ========================================================
+}/* ========================================================
+   ===================== MOVE MARKER =======================
+   ======================================================== */
 
 function updateArrowPositionFromCoords(coords) {
     if (!map || !arrowEl || !coords) return;
@@ -307,63 +262,6 @@ function handleMapMove() {
     debugUpdate(src, ang);
 }
 
-
-// ========================================================
-// ===================== COMPASS LOGIC =====================
-// ========================================================
-
-function handleIOSCompass(e) {
-    if (!compassActive) return;
-    if (!map || !arrowEl) {
-        debugUpdate("compass", NaN, "NO_MAP_OR_ARROW");
-        return;
-    }
-    if (e.webkitCompassHeading == null) {
-        debugUpdate("compass", NaN, "NO_HEADING");
-        return;
-    }
-
-    const raw = normalizeAngle(e.webkitCompassHeading);
-
-    smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
-    compassUpdates++;
-
-    lastMapBearing =
-        (typeof map.getBearing === "function") ? map.getBearing() : 0;
-
-    lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
-
-    applyArrowTransform(lastCorrectedAngle);
-
-    debugUpdate("compass", lastCorrectedAngle);
-}
-
-function startCompass() {
-    compassActive = true;
-
-    if (typeof DeviceOrientationEvent !== "undefined" &&
-        typeof DeviceOrientationEvent.requestPermission === "function") {
-
-        DeviceOrientationEvent.requestPermission()
-            .then(state => {
-                if (state === "granted") {
-                    window.addEventListener("deviceorientation", handleIOSCompass);
-                } else {
-                    debugUpdate("compass", NaN, "PERMISSION_DENIED");
-                }
-            })
-            .catch(() => {
-                debugUpdate("compass", NaN, "PERMISSION_ERROR");
-            });
-
-        return;
-    }
-
-    debugUpdate("compass", NaN, "IOS_ONLY");
-}// ========================================================
-// ===================== MOVE MARKER =======================
-// ========================================================
-
 function moveMarker(coords) {
     const prevCoords = lastCoords;
     lastCoords = coords;
@@ -378,9 +276,9 @@ function moveMarker(coords) {
         applyArrowTransform(angle);
     }
 
-    // ========================================================
-    // ========== УМНАЯ ПЕРЕКРАСКА МАРШРУТА (A2 + S2) ==========
-    // ========================================================
+    /* ========================================================
+       ========== УМНАЯ ПЕРЕКРАСКА МАРШРУТА ===================
+       ======================================================== */
 
     let bestIndex = null;
     let bestDist = Infinity;
@@ -406,17 +304,18 @@ function moveMarker(coords) {
     lastRouteDist = bestDist;
     lastRouteSegmentIndex = bestIndex;
 
-    // ========================================================
-    // ========== КОСТЫЛЬ-ЛИНИЯ (НЕ ОТОБРАЖАТЬ) ===============
-    // ========================================================
+    /* ========================================================
+       ========== КОСТЫЛЬ-ЛИНИЯ (ОТКЛЮЧИТЬ) ==================
+       ======================================================== */
+
     const hackLayer = map.getLayer("route-hack-line");
     if (hackLayer) {
         map.setLayoutProperty("route-hack-line", "visibility", "none");
     }
 
-    // ========================================================
-    // ========== ПЕРЕКРАСКА МАРШРУТА =========================
-    // ========================================================
+    /* ========================================================
+       ========== ПЕРЕКРАСКА МАРШРУТА =========================
+       ======================================================== */
 
     if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
 
@@ -457,57 +356,49 @@ function moveMarker(coords) {
         });
     }
 
-    // ========================================================
-    // ===================== FOLLOW CAMERA ====================
-    // ========================================================
-
-    if (simulationActive) {
-        map.easeTo({
-            center: [coords[1], coords[0]],
-            duration: 500
-        });
-    }
-
-    // ========================================================
-    // ====================== AUDIO ZONES ======================
-    // ========================================================
+    /* ========================================================
+       ====================== AUDIO ZONES ======================
+       ======================================================== */
 
     checkZones(coords);
-    // === PHOTO ACTIVATION FOR SQUARE POINTS ===
-zones.forEach(z => {
-    if (z.type !== "square" || !z.image) return;
 
-    const dist = distance(coords, [z.lat, z.lng]);
+    /* ========================================================
+       ========== PHOTO ACTIVATION FOR SQUARE POINTS ==========
+       ======================================================== */
 
-    // Вход в круг → показать кнопку и фото
-    if (!z.entered && dist <= 30) {
-        z.entered = true;
-        currentPointImage = z.image;
-        togglePhotoBtn.style.display = "block";
-        photoImage.src = z.image;
-        photoOverlay.classList.remove("hidden");
-    }
+    zones.forEach(z => {
+        if (z.type !== "square" || !z.image) return;
 
-    // Выход из круга → спрятать кнопку
-    if (z.entered && dist > 30) {
-        z.entered = false;
-        togglePhotoBtn.style.display = "none";
-    }
-});
+        const dist = distance(coords, [z.lat, z.lng]);
 
-    // ========================================================
-    // ===================== FINAL DEBUG ======================
-    // ========================================================
+        // Вход в круг → показать кнопку и фото
+        if (!z.entered && dist <= 30) {
+            z.entered = true;
+            currentPointImage = z.image;
+            togglePhotoBtn.style.display = "block";
+            photoImage.src = z.image;
+            photoOverlay.classList.remove("hidden");
+        }
+
+        // Выход из круга → спрятать кнопку
+        if (z.entered && dist > 30) {
+            z.entered = false;
+            togglePhotoBtn.style.display = "none";
+        }
+    });
+
+    /* ========================================================
+       ===================== FINAL DEBUG ======================
+       ======================================================== */
 
     const src = compassActive ? "compass" : "gps";
     const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
     debugUpdate(src, ang);
 }
 
-
-// ========================================================
-// ================== SIMULATION STEP ======================
-// ========================================================
+/* ========================================================
+   ================== SIMULATION STEP ======================
+   ======================================================== */
 
 function simulateNextStep() {
     if (!simulationActive) return;
@@ -525,10 +416,9 @@ function simulateNextStep() {
     setTimeout(simulateNextStep, 1200);
 }
 
-
-// ========================================================
-// ================== START SIMULATION =====================
-// ========================================================
+/* ========================================================
+   ================== START SIMULATION =====================
+   ======================================================== */
 
 function startSimulation() {
     if (!simulationPoints.length) return;
@@ -547,9 +437,9 @@ function startSimulation() {
     });
 
     setTimeout(simulateNextStep, 1200);
-}// ========================================================
-// ======================= INIT MAP ========================
-// ========================================================
+}/* ========================================================
+   ======================= INIT MAP ========================
+   ======================================================== */
 
 async function initMap() {
     const initialCenter = [49.082118, 55.826584];
@@ -567,16 +457,21 @@ async function initMap() {
     }
 
     map.on("load", async () => {
-// === REMOVE OLD ROUTE LINES FROM STYLE.JSON ===
-const oldLayers = ["route", "route-line", "route-hack-line"];
-oldLayers.forEach(id => {
-    if (map.getLayer(id)) {
-        map.setLayoutProperty(id, "visibility", "none");
-    }
-});
-        // ========================================================
-        // ======================= LOAD DATA ======================
-        // ========================================================
+
+        /* ========================================================
+           ========== REMOVE OLD ROUTE LAYERS (COSTYL) ============
+           ======================================================== */
+
+        const oldLayers = ["route", "route-line", "route-hack-line"];
+        oldLayers.forEach(id => {
+            if (map.getLayer(id)) {
+                map.setLayoutProperty(id, "visibility", "none");
+            }
+        });
+
+        /* ========================================================
+           ======================= LOAD DATA ======================
+           ======================================================== */
 
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
@@ -587,10 +482,9 @@ oldLayers.forEach(id => {
 
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
 
-
-        // ========================================================
-        // ===================== ROUTE SOURCES ====================
-        // ========================================================
+        /* ========================================================
+           ===================== ROUTE SOURCES ====================
+           ======================================================== */
 
         map.addSource("route-passed", {
             type: "geojson",
@@ -611,10 +505,9 @@ oldLayers.forEach(id => {
             }
         });
 
-
-        // ========================================================
-        // ====================== ROUTE LAYERS =====================
-        // ========================================================
+        /* ========================================================
+           ====================== ROUTE LAYERS =====================
+           ======================================================== */
 
         map.addLayer({
             id: "route-remaining-line",
@@ -632,26 +525,25 @@ oldLayers.forEach(id => {
             paint: { "line-width": 4, "line-color": "#333333" }
         });
 
-
-        // ========================================================
-        // ====================== AUDIO ZONES ======================
-        // ========================================================
+        /* ========================================================
+           ====================== AUDIO ZONES ======================
+           ======================================================== */
 
         const circleFeatures = [];
 
         points.forEach(p => {
             zones.push({
-    id: p.id,
-    name: p.name,
-    lat: p.lat,
-    lng: p.lng,
-    radius: p.radius || 20,
-    visited: false,
-    entered: false,
-    type: p.type,
-    audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
-    image: p.image || null   // ← ДОБАВЛЕНО
-});
+                id: p.id,
+                name: p.name,
+                lat: p.lat,
+                lng: p.lng,
+                radius: p.radius || 20,
+                visited: false,
+                entered: false,
+                type: p.type,
+                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
+                image: p.image || null
+            });
 
             if (p.type === "audio") {
                 circleFeatures.push({
@@ -661,7 +553,7 @@ oldLayers.forEach(id => {
                 });
             }
 
-            // квадратные точки (PNG)
+            /* PNG markers */
             if (p.type === "square") {
                 const el = document.createElement("div");
                 el.style.width = "40px";
@@ -689,31 +581,11 @@ oldLayers.forEach(id => {
             }
         });
 
-        map.addSource("audio-circles"// === PHOTO CIRCLES (PNG POINTS) ===
-const photoCircleFeatures = zones
-    .filter(z => z.type === "square" && z.image)
-    .map(z => ({
-        type: "Feature",
-        properties: { id: z.id },
-        geometry: { type: "Point", coordinates: [z.lng, z.lat] }
-    }));
+        /* ========================================================
+           ==================== AUDIO CIRCLES ======================
+           ======================================================== */
 
-map.addSource("photo-circles", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: photoCircleFeatures }
-});
-
-map.addLayer({
-    id: "photo-circles-layer",
-    type: "circle",
-    source: "photo-circles",
-    paint: {
-        "circle-radius": 30, // больше чем аудио
-        "circle-color": "rgba(0,0,255,0.08)",
-        "circle-stroke-color": "rgba(0,0,255,0.3)",
-        "circle-stroke-width": 1
-    }
-});, {
+        map.addSource("audio-circles", {
             type: "geojson",
             data: { type: "FeatureCollection", features: circleFeatures }
         });
@@ -740,10 +612,38 @@ map.addLayer({
             }
         });
 
+        /* ========================================================
+           ==================== PHOTO CIRCLES ======================
+           ======================================================== */
 
-        // ========================================================
-        // ===================== DOM USER ARROW ===================
-        // ========================================================
+        const photoCircleFeatures = zones
+            .filter(z => z.type === "square" && z.image)
+            .map(z => ({
+                type: "Feature",
+                properties: { id: z.id },
+                geometry: { type: "Point", coordinates: [z.lng, z.lat] }
+            }));
+
+        map.addSource("photo-circles", {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: photoCircleFeatures }
+        });
+
+        map.addLayer({
+            id: "photo-circles-layer",
+            type: "circle",
+            source: "photo-circles",
+            paint: {
+                "circle-radius": 30,
+                "circle-color": "rgba(0,0,255,0.08)",
+                "circle-stroke-color": "rgba(0,0,255,0.3)",
+                "circle-stroke-width": 1
+            }
+        });
+
+        /* ========================================================
+           ===================== DOM USER ARROW ===================
+           ======================================================== */
 
         arrowEl = document.createElement("img");
         arrowEl.src = "arrow.png";
@@ -758,24 +658,11 @@ map.addLayer({
         arrowEl.style.pointerEvents = "none";
         arrowEl.style.zIndex = "9999";
 
-        applyArrowTransform(0);
+        applyArrowTransform();
 
-        arrowEl.onload = () => { arrowPngStatus = "ok"; };
-        arrowEl.onerror = () => {
-            arrowPngStatus = "error";
-            debugUpdate("none", null, "ARROW_PNG_FAIL");
-        };
-
-        if (mapContainer) {
-            mapContainer.appendChild(arrowEl);
-        } else {
-            document.body.appendChild(arrowEl);
-        }
-
-
-        // ========================================================
-        // ====================== GPS TRACKING ====================
-        // ========================================================
+// continue in part 4…        /* ========================================================
+           ====================== GPS TRACKING ====================
+           ======================================================== */
 
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
@@ -788,20 +675,18 @@ map.addLayer({
             );
         }
 
-
-        // ========================================================
-        // ===================== MAP MOVE UPDATE ==================
-        // ========================================================
+        /* ========================================================
+           ===================== MAP MOVE UPDATE ==================
+           ======================================================== */
 
         map.on("move", handleMapMove);
 
         console.log("Карта готова");
     });
 
-
-    // ========================================================
-    // ========================= BUTTONS ======================
-    // ========================================================
+    /* ========================================================
+       ========================= BUTTONS ======================
+       ======================================================== */
 
     const simBtn = document.getElementById("simulate");
     if (simBtn) simBtn.onclick = startSimulation;
@@ -819,20 +704,18 @@ map.addLayer({
     const compassBtn = document.getElementById("enableCompass");
     if (compassBtn) compassBtn.onclick = startCompass;
 
-
-    // ========================================================
-    // ===================== INIT DEBUG PANEL =================
-    // ========================================================
+    /* ========================================================
+       ===================== INIT DEBUG PANEL =================
+       ======================================================== */
 
     ensureSuperDebug();
     debugUpdate("init", 0, "INIT");
 }
 
+/* ========================================================
+   ====================== DOM EVENTS =======================
+   ======================================================== */
 
-// ========================================================
-// ====================== DOM EVENTS =======================
-// ========================================================
-// === PHOTO BUTTON LOGIC ===
 togglePhotoBtn.onclick = () => {
     if (!currentPointImage) return;
     photoImage.src = currentPointImage;
@@ -848,9 +731,7 @@ photoOverlay.onclick = (e) => {
         photoOverlay.classList.add("hidden");
     }
 };
+
 document.addEventListener("DOMContentLoaded", initMap);
 
-// ==================== END OF APP.JS ======================
-
-
-
+/* ==================== END OF APP.JS ====================== */
