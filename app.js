@@ -743,7 +743,14 @@ if (mapContainer) {
 
     const simBtn = document.getElementById("simulate");
     if (simBtn) simBtn.onclick = startSimulation;
-
+// === MOVE PHOTO BUTTON TO CONTROLS ===
+const controls = document.getElementById("controls");
+if (controls && togglePhotoBtn) {
+    togglePhotoBtn.style.display = "inline-block";
+    togglePhotoBtn.style.position = "relative";
+    togglePhotoBtn.style.zIndex = "100000";
+    controls.appendChild(togglePhotoBtn);
+}
     const audioBtn = document.getElementById("enableAudio");
     if (audioBtn) {
         audioBtn.onclick = () => {
@@ -788,3 +795,4 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
