@@ -360,21 +360,12 @@ function moveMarker(coords) {
     lastRouteDist = bestDist;
     lastRouteSegmentIndex = bestIndex;
 
-    /* ========================================================
-       ========== КОСТЫЛЬ-ЛИНИЯ (ОТКЛЮЧИТЬ) ==================
-       ======================================================== */
-
     const hackLayer = map.getLayer("route-hack-line");
     if (hackLayer) {
         map.setLayoutProperty("route-hack-line", "visibility", "none");
     }
 
-    /* ========================================================
-       ========== ПЕРЕКРАСКА МАРШРУТА =========================
-       ======================================================== */
-
     if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
-
         const passedCoords = [];
         const remainingCoords = [];
 
@@ -391,10 +382,8 @@ function moveMarker(coords) {
 
         if (bestT <= 0) {
             passedCoords.push(a);
-
         } else if (bestT >= 1) {
             passedCoords.push(a, b);
-
         } else {
             const proj = bestProj;
             passedCoords.push(a, proj);
@@ -419,34 +408,39 @@ function moveMarker(coords) {
     checkZones(coords);
 
     /* ========================================================
-   ========== PHOTO ACTIVATION FOR SQUARE POINTS ==========
-   ======================================================== */
+       ========== PHOTO ACTIVATION FOR SQUARE POINTS ==========
+       ======================================================== */
 
-zones.forEach(z => {
-    if (z.type !== "square" || !z.image) return;
+    zones.forEach(z => {
+        if (z.type !== "square" || !z.image) return;
 
-    const dist = distance(coords, [z.lat, z.lng]);
+        const dist = distance(coords, [z.lat, z.lng]);
 
-    // ВХОД В ЗОНУ
-    if (!z.entered && dist <= 30) {
-        z.entered = true;
-        currentPointImage = z.image;
-        togglePhotoBtn.style.display = "block";
-        photoImage.src = z.image;
-        togglePhotoBtn.classList.add("photo-btn-glow"); // 🔥 подсветка
-    }
+        // ВХОД В ЗОНУ
+        if (!z.entered && dist <= 30) {
+            z.entered = true;
+            currentPointImage = z.image;
+            togglePhotoBtn.style.display = "block";
+            photoImage.src = z.image;
+            togglePhotoBtn.classList.add("photo-btn-glow");
+        }
 
-    // ВЫХОД ИЗ ЗОНЫ
-    if (z.entered && dist > 30) {
-        z.entered = false;
-        togglePhotoBtn.style.display = "none";
-        togglePhotoBtn.classList.remove("photo-btn-glow"); // ❌ убрать подсветку
-    }
-});
-   /* ========================================================
+        // ВЫХОД ИЗ ЗОНЫ
+        if (z.entered && dist > 30) {
+            z.entered = false;
+            togglePhotoBtn.style.display = "none";
+            togglePhotoBtn.classList.remove("photo-btn-glow");
+        }
+    });
+
+    const src = compassActive ? "compass" : "gps";
+    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
+    debugUpdate(src, ang);
+} // ← ВАЖНО: ЭТА СКОБКА ЗАКРЫВАЕТ moveMarker()
+
+/* ========================================================
    ================== SIMULATION STEP ======================
    ======================================================== */
-
 function simulateNextStep() {
     if (!simulationActive) return;
     if (simulationIndex >= simulationPoints.length) {
@@ -798,6 +792,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
