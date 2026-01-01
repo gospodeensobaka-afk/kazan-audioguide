@@ -142,7 +142,7 @@ function checkZones(coords) {
 
         const dist = distance(coords, [z.lat, z.lng]);
 
-        // СТАРАЯ НАДЁЖНАЯ ЛОГИКА
+        // СТАРАЯ НАДЁЖНАЯ ЛОГИКА: один раз при входе
         if (!z.visited && dist <= z.radius) {
             z.visited = true;
             updateCircleColors();
@@ -198,8 +198,6 @@ function debugUpdate(source, angle, error = "none") {
         `x:${rect.x.toFixed(1)}, y:${rect.y.toFixed(1)}, ` +
         `w:${rect.width.toFixed(1)}, h:${rect.height.toFixed(1)}`;
 
-    const vis = arrowEl.style.visibility || "undefined";
-
     const routeDistStr =
         (lastRouteDist == null) ? "n/a" : `${lastRouteDist.toFixed(1)}m`;
     const routeSegStr =
@@ -232,7 +230,61 @@ ${zoneInfo}
 arrow=${arrowPngStatus}, icons=${iconsPngStatus}
 `;
 }/* ========================================================
-   ===================== MOVE MARKER =======================
+   ===================== COMPASS LOGIC =====================
+   ======================================================== */
+
+function handleIOSCompass(e) {
+    if (!compassActive) return;
+    if (!map || !arrowEl) {
+        debugUpdate("compass", NaN, "NO_MAP_OR_ARROW");
+        return;
+    }
+    if (e.webkitCompassHeading == null) {
+        debugUpdate("compass", NaN, "NO_HEADING");
+        return;
+    }
+
+    const raw = normalizeAngle(e.webkitCompassHeading);
+
+    smoothAngle = normalizeAngle(0.8 * smoothAngle + 0.2 * raw);
+    compassUpdates++;
+
+    lastMapBearing =
+        (typeof map.getBearing === "function") ? map.getBearing() : 0;
+
+    lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
+
+    applyArrowTransform(lastCorrectedAngle);
+
+    debugUpdate("compass", lastCorrectedAngle);
+}
+
+function startCompass() {
+    compassActive = true;
+
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+
+        DeviceOrientationEvent.requestPermission()
+            .then(state => {
+                if (state === "granted") {
+                    window.addEventListener("deviceorientation", handleIOSCompass);
+                } else {
+                    debugUpdate("compass", NaN, "PERMISSION_DENIED");
+                }
+            })
+            .catch(() => {
+                debugUpdate("compass", NaN, "PERMISSION_ERROR");
+            });
+
+        return;
+    }
+
+    debugUpdate("compass", NaN, "IOS_ONLY");
+}
+
+/* ========================================================
+   ============= DOM-СТРЕЛКА: ПОЗИЦИЯ И ПОВОРОТ ============
    ======================================================== */
 
 function updateArrowPositionFromCoords(coords) {
@@ -261,6 +313,10 @@ function handleMapMove() {
     const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
     debugUpdate(src, ang);
 }
+
+/* ========================================================
+   ===================== MOVE MARKER =======================
+   ======================================================== */
 
 function moveMarker(coords) {
     const prevCoords = lastCoords;
@@ -371,7 +427,6 @@ function moveMarker(coords) {
 
         const dist = distance(coords, [z.lat, z.lng]);
 
-        // Вход в круг → показать кнопку и фото
         if (!z.entered && dist <= 30) {
             z.entered = true;
             currentPointImage = z.image;
@@ -380,16 +435,11 @@ function moveMarker(coords) {
             photoOverlay.classList.remove("hidden");
         }
 
-        // Выход из круга → спрятать кнопку
         if (z.entered && dist > 30) {
             z.entered = false;
             togglePhotoBtn.style.display = "none";
         }
     });
-
-    /* ========================================================
-       ===================== FINAL DEBUG ======================
-       ======================================================== */
 
     const src = compassActive ? "compass" : "gps";
     const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
@@ -658,9 +708,7 @@ async function initMap() {
         arrowEl.style.pointerEvents = "none";
         arrowEl.style.zIndex = "9999";
 
-        applyArrowTransform();
-
-/* ========================================================
+        applyArrowTransform();        /* ========================================================
            ====================== GPS TRACKING ====================
            ======================================================== */
 
@@ -735,4 +783,3 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
-
