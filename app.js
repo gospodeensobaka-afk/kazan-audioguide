@@ -746,9 +746,16 @@ if (mapContainer) {
 // === MOVE PHOTO BUTTON TO CONTROLS ===
 const controls = document.getElementById("controls");
 if (controls && togglePhotoBtn) {
+
+    // создаём stacking context для всего блока кнопок
+    controls.style.position = "relative";
+    controls.style.zIndex = "100001";
+
+    // поднимаем саму кнопку
     togglePhotoBtn.style.display = "inline-block";
     togglePhotoBtn.style.position = "relative";
-    togglePhotoBtn.style.zIndex = "100000";
+    togglePhotoBtn.style.zIndex = "100002";
+
     controls.appendChild(togglePhotoBtn);
 }
     const audioBtn = document.getElementById("enableAudio");
@@ -795,4 +802,5 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
