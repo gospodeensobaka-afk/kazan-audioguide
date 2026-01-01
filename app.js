@@ -743,21 +743,9 @@ if (mapContainer) {
 
     const simBtn = document.getElementById("simulate");
     if (simBtn) simBtn.onclick = startSimulation;
-// === MOVE PHOTO BUTTON TO CONTROLS ===
-const controls = document.getElementById("controls");
-if (controls && togglePhotoBtn) {
 
-    // создаём stacking context для всего блока кнопок
-    controls.style.position = "relative";
-    controls.style.zIndex = "100001";
 
-    // поднимаем саму кнопку
-    togglePhotoBtn.style.display = "inline-block";
-    togglePhotoBtn.style.position = "relative";
-    togglePhotoBtn.style.zIndex = "100002";
 
-    controls.appendChild(togglePhotoBtn);
-}
     const audioBtn = document.getElementById("enableAudio");
     if (audioBtn) {
         audioBtn.onclick = () => {
@@ -770,6 +758,15 @@ if (controls && togglePhotoBtn) {
 
     const compassBtn = document.getElementById("enableCompass");
     if (compassBtn) compassBtn.onclick = startCompass;
+// === PLACE PHOTO BUTTON RIGHT UNDER COMPASS BUTTON ===
+if (compassBtn && togglePhotoBtn) {
+    togglePhotoBtn.style.display = "block";
+    togglePhotoBtn.style.marginTop = "6px";
+    togglePhotoBtn.style.position = "relative";
+    togglePhotoBtn.style.zIndex = "100002";
+
+    compassBtn.insertAdjacentElement("afterend", togglePhotoBtn);
+}
 
     /* ========================================================
        ===================== INIT DEBUG PANEL =================
@@ -802,5 +799,6 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
