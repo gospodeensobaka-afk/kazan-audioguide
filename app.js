@@ -660,7 +660,7 @@ async function initMap() {
 
         applyArrowTransform();
 
-// continue in part 4…        /* ========================================================
+/* ========================================================
            ====================== GPS TRACKING ====================
            ======================================================== */
 
@@ -735,3 +735,4 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
