@@ -757,7 +757,12 @@ if (compassBtn && togglePhotoBtn) {
     togglePhotoBtn.style.display = "block";
     togglePhotoBtn.style.width = "140px";
     togglePhotoBtn.style.height = "32px";
-    togglePhotoBtn.style.fontSize = "14px";
+
+    togglePhotoBtn.textContent = "Фото";
+    togglePhotoBtn.style.fontSize = "13px";
+    togglePhotoBtn.style.whiteSpace = "nowrap";
+    togglePhotoBtn.style.overflow = "hidden";
+    togglePhotoBtn.style.textOverflow = "ellipsis";
 
     compassBtn.insertAdjacentElement("afterend", togglePhotoBtn);
 }
@@ -792,6 +797,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
