@@ -31,7 +31,11 @@ html, body {
   background: #ffffff;
   border-radius: 8px;
   border: none;
-  font-size: 14px;
+  font-size: 13px;        /* ↓ уменьшили */
+  line-height: 16px;      /* ↓ чтобы текст не прыгал */
+  white-space: nowrap;    /* ↓ запрет переноса */
+  overflow: hidden;       /* ↓ если вдруг не влезет */
+  text-overflow: ellipsis;/* ↓ троеточие вместо переноса */
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   cursor: pointer;
 }
@@ -81,3 +85,4 @@ html, body {
     border: 1px solid rgba(0, 150, 255, 0.8);
     transition: box-shadow 0.2s ease, border 0.2s ease;
 }
+
