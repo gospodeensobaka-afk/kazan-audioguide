@@ -498,18 +498,15 @@ async function initMap() {
     }
 
     map.on("load", async () => {
-
-        /* ========================================================
-           ========== REMOVE OLD ROUTE LAYERS (COSTYL) ============
-           ======================================================== */
-
-        const oldLayers = ["route", "route-line", "route-hack-line"];
-        oldLayers.forEach(id => {
-            if (map.getLayer(id)) {
-                map.setLayoutProperty(id, "visibility", "none");
-            }
-        });
-
+// FIX_REMOVE_HACK_LINE — полностью удалить старые слои маршрута
+["route", "route-line", "route-hack-line"].forEach(id => {
+    if (map.getLayer(id)) {
+        map.removeLayer(id);
+    }
+    if (map.getSource(id)) {
+        map.removeSource(id);
+    }
+})
         /* ========================================================
            ======================= LOAD DATA ======================
            ======================================================== */
@@ -636,7 +633,7 @@ async function initMap() {
             type: "circle",
             source: "audio-circles",
             paint: {
-                "circle-radius": 20,
+                "circle-radius": 0,
                 "circle-color": [
                     "case",
                     ["boolean", ["get", "visited"], false],
@@ -652,7 +649,25 @@ async function initMap() {
                 "circle-stroke-width": 2
             }
         });
+// FIX_PHYSICAL_AUDIO_RADIUS — визуальный радиус = физический радиус (метры → пиксели)
+function updateAudioCircleRadius() {
+    const zoom = map.getZoom();
+    const center = map.getCenter();
+    const lat = center.lat;
 
+    const metersPerPixel =
+        156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
+
+    zones.forEach(z => {
+        if (z.type === "audio") {
+            const radiusPixels = z.radius / metersPerPixel;
+            map.setPaintProperty("audio-circles-layer", "circle-radius", radiusPixels);
+        }
+    });
+}
+
+map.on("zoom", updateAudioCircleRadius);
+map.on("load", updateAudioCircleRadius);
         /* ========================================================
            ==================== PHOTO CIRCLES ======================
            ======================================================== */
@@ -797,6 +812,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
