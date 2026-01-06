@@ -365,7 +365,17 @@ function moveMarker(coords) {
         map.setLayoutProperty("route-hack-line", "visibility", "none");
     }
 
-    if (bestIndex != null && bestDist <= ROUTE_HITBOX_METERS && bestProj) {
+    // FIX_ROUTE_SEGMENT_FILTER — фильтр перекраски маршрута, чтобы не рисовать серый хвост
+const MAX_SEGMENT_DIST = 12;
+const MAX_SEGMENT_JUMP = 3;
+
+if (
+    bestIndex != null &&
+    bestDist <= ROUTE_HITBOX_METERS &&
+    bestDist <= MAX_SEGMENT_DIST &&
+    Math.abs(bestIndex - lastRouteSegmentIndex) <= MAX_SEGMENT_JUMP &&
+    bestProj
+) {
         const passedCoords = [];
         const remainingCoords = [];
 
