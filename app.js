@@ -1,7 +1,8 @@
 /* ========================================================
    =============== GLOBAL VARIABLES & STATE ===============
    ======================================================== */
-
+// TOUR START FLAG
+let tourStarted = false;
 let map;
 let currentPointImage = null;
 
@@ -319,6 +320,8 @@ function handleMapMove() {
    ======================================================== */
 
 function moveMarker(coords) {
+       // TOUR NOT STARTED → IGNORE ALL MOVEMENT
+    if (!tourStarted) return;
     const prevCoords = lastCoords;
     lastCoords = coords;
 
@@ -837,6 +840,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
