@@ -22,7 +22,8 @@ let simulationIndex = 0;
 let gpsActive = false; // включится после старта
 let audioEnabled = false;
 let audioPlaying = false;
-
+let totalAudioZones = 0;
+let visitedAudioZones = 0;
 let fullRoute = [];
 let passedRoute = [];
 
@@ -109,7 +110,11 @@ function pointToSegmentInfo(pointLatLng, aLngLat, bLngLat) {
 
     return { dist, t, projLngLat: [projLng, projLat] };
 }
-
+function updateProgress() {
+    const el = document.getElementById("tourProgress");
+    if (!el) return;
+    el.textContent = `Пройдено: ${visitedAudioZones} из ${totalAudioZones}`;
+}
 /* ========================================================
    ===================== AUDIO ZONES =======================
    ======================================================== */
@@ -145,10 +150,16 @@ function checkZones(coords) {
 
         // СТАРАЯ НАДЁЖНАЯ ЛОГИКА: один раз при входе
         if (!z.visited && dist <= z.radius) {
-            z.visited = true;
-            updateCircleColors();
-            if (z.audio) playZoneAudio(z.audio);
-        }
+    z.visited = true;
+
+    if (z.type === "audio") {
+        visitedAudioZones++;
+        updateProgress();
+    }
+
+    updateCircleColors();
+    if (z.audio) playZoneAudio(z.audio);
+}
     });
 }
 
@@ -534,10 +545,14 @@ async function initMap() {
     if (map.getSource(id)) {
         map.removeSource(id);
     }
-})
-        /* ========================================================
-           ======================= LOAD DATA ======================
-           ======================================================== */
+});
+
+// ВЫЗЫВАЕМ ПОСЛЕ удаления слоёв, но ДО загрузки данных
+updateProgress();
+
+/* ========================================================
+   ======================= LOAD DATA =======================
+   ======================================================== */
 
         const points = await fetch("points.json").then(r => r.json());
         const route = await fetch("route.json").then(r => r.json());
@@ -610,7 +625,7 @@ async function initMap() {
                 audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
                 image: p.image || null
             });
-
+if (p.type === "audio") totalAudioZones++;
             if (p.type === "audio") {
                 circleFeatures.push({
                     type: "Feature",
@@ -856,6 +871,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
