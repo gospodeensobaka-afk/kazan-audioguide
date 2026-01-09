@@ -19,7 +19,7 @@ let simulationActive = false;
 let simulationPoints = [];
 let simulationIndex = 0;
 
-let gpsActive = true;
+let gpsActive = false; // включится после старта
 let audioEnabled = false;
 let audioPlaying = false;
 
@@ -774,7 +774,27 @@ if (mapContainer) {
     /* ========================================================
    ========================= BUTTONS ======================
    ======================================================== */
+/* ========================================================
+   ===================== START TOUR BTN ====================
+   ======================================================== */
 
+document.addEventListener("DOMContentLoaded", () => {
+    const startBtn = document.getElementById("startTourBtn");
+    if (!startBtn) return;
+
+    startBtn.onclick = () => {
+        // включаем экскурсию
+        tourStarted = true;
+        gpsActive = true;
+
+        // проигрываем приветствие
+        const intro = new Audio("audio/start.mp3");
+        intro.play().catch(() => console.log("Не удалось проиграть start.mp3"));
+
+        // скрываем кнопку
+        startBtn.style.display = "none";
+    };
+});
 const simBtn = document.getElementById("simulate");
 if (simBtn) simBtn.onclick = startSimulation;
 
@@ -840,6 +860,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
