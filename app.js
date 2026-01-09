@@ -464,12 +464,13 @@ function simulateNextStep() {
 // ========================================================
 // ========== SIMULATION GPS JUMP TEST (ANTI-TAIL) =========
 // ========================================================
-if (simulationIndex === 5) {  
-    // искусственный GPS-прыжок на ~15–20 метров
-    const jumpLat = simulationPoints[simulationIndex][0] + 0.00015;
-    const jumpLng = simulationPoints[simulationIndex][1] + 0.00015;
+if (simulationIndex === 5) {
 
-    console.log("SIMULATION: GPS JUMP TRIGGERED");
+    // Жёсткий GPS-прыжок в конкретную точку
+    const jumpLat = 55.826866;
+    const jumpLng = 49.082310;
+
+    console.log("SIMULATION: GPS JUMP TO FIXED POINT");
 
     moveMarker([jumpLat, jumpLng]);
 
@@ -836,6 +837,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
