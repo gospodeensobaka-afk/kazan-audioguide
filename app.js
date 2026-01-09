@@ -778,23 +778,19 @@ if (mapContainer) {
    ===================== START TOUR BTN ====================
    ======================================================== */
 
-document.addEventListener("DOMContentLoaded", () => {
-    const startBtn = document.getElementById("startTourBtn");
-    if (!startBtn) return;
-
+/* START TOUR BTN */
+const startBtn = document.getElementById("startTourBtn");
+if (startBtn) {
     startBtn.onclick = () => {
-        // включаем экскурсию
         tourStarted = true;
         gpsActive = true;
 
-        // проигрываем приветствие
         const intro = new Audio("audio/start.mp3");
         intro.play().catch(() => console.log("Не удалось проиграть start.mp3"));
 
-        // скрываем кнопку
         startBtn.style.display = "none";
     };
-});
+}
 const simBtn = document.getElementById("simulate");
 if (simBtn) simBtn.onclick = startSimulation;
 
@@ -860,6 +856,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
