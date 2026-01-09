@@ -607,64 +607,69 @@ updateProgress();
         });
 
         /* ========================================================
-           ====================== AUDIO ZONES ======================
-           ======================================================== */
+   ====================== AUDIO ZONES ======================
+   ======================================================== */
 
-        const circleFeatures = [];
+const circleFeatures = [];
 
-        points.forEach(p => {
-            zones.push({
-                id: p.id,
-                name: p.name,
-                lat: p.lat,
-                lng: p.lng,
-                radius: p.radius || 20,
-                visited: false,
-                entered: false,
-                type: p.type,
-                audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
-                image: p.image || null
-            });
-if (p.type === "audio") totalAudioZones++;
-            if (p.type === "audio") {
-                circleFeatures.push({
-                    type: "Feature",
-                    properties: { id: p.id, visited: false },
-                    geometry: { type: "Point", coordinates: [p.lng, p.lat] }
-                });
-            }
+points.forEach(p => {
+    zones.push({
+        id: p.id,
+        name: p.name,
+        lat: p.lat,
+        lng: p.lng,
+        radius: p.radius || 20,
+        visited: false,
+        entered: false,
+        type: p.type,
+        audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
+        image: p.image || null
+    });
 
-            /* PNG markers */
-            if (p.type === "square") {
-                const el = document.createElement("div");
-                el.style.width = "40px";
-                el.style.height = "40px";
-                el.style.display = "flex";
-                el.style.alignItems = "center";
-                el.style.justifyContent = "center";
+    if (p.type === "audio") totalAudioZones++;
 
-                const img = document.createElement("img");
-                img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
-                img.style.width = "32px";
-                img.style.height = "32px";
-
-                img.onload = () => { iconsPngStatus = "ok"; };
-                img.onerror = () => {
-                    iconsPngStatus = "error";
-                    debugUpdate("none", null, "PNG_LOAD_FAIL");
-                };
-
-                el.appendChild(img);
-
-                new maplibregl.Marker({ element: el })
-                    .setLngLat([p.lng, p.lat])
-                    .addTo(map);
-            }
+    if (p.type === "audio") {
+        circleFeatures.push({
+            type: "Feature",
+            properties: { id: p.id, visited: false },
+            geometry: { type: "Point", coordinates: [p.lng, p.lat] }
         });
+    }
 
-        /* ========================================================
-           ==================== AUDIO CIRCLES ======================
-           ======================================================== */
+    /* PNG markers */
+    if (p.type === "square") {
+        const el = document.createElement("div");
+        el.style.width = "40px";
+        el.style.height = "40px";
+        el.style.display = "flex";
+        el.style.alignItems = "center";
+        el.style.justifyContent = "center";
+
+        const img = document.createElement("img");
+        img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
+        img.style.width = "32px";
+        img.style.height = "32px";
+
+        img.onload = () => { iconsPngStatus = "ok"; };
+        img.onerror = () => {
+            iconsPngStatus = "error";
+            debugUpdate("none", null, "PNG_LOAD_FAIL");
+        };
+
+        el.appendChild(img);
+
+        new maplibregl.Marker({ element: el })
+            .setLngLat([p.lng, p.lat])
+            .addTo(map);
+    }
+});
+
+// ← ВАЖНО: обновляем прогресс ПОСЛЕ цикла
+updateProgress();
+
+/* ========================================================
+   ==================== AUDIO CIRCLES ======================
+   ======================================================== */
 
         map.addSource("audio-circles", {
             type: "geojson",
@@ -871,6 +876,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
