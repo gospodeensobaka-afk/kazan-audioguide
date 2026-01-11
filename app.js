@@ -352,25 +352,25 @@ function moveMarker(coords) {
        =============== GPS ROTATION + MAP ROTATION ============
        ======================================================== */
 
-   if (!compassActive && prevCoords) {
-    const angle = calculateAngle(prevCoords, coords);
-    gpsAngleLast = Math.round(angle);
-    gpsUpdates++;
+    if (!compassActive && prevCoords) {
+        const angle = calculateAngle(prevCoords, coords);
+        gpsAngleLast = Math.round(angle);
+        gpsUpdates++;
 
-    // Поворот стрелки
-    applyArrowTransform(angle);
+        // Поворот стрелки
+        applyArrowTransform(angle);
 
-    // Поворот карты — ТЕПЕРЬ ТОЛЬКО ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ ТРОГАЕТ ЭКРАН
-    if (!userTouching) {
-        map.easeTo({
-            bearing: angle,
-            duration: 300
-        });
+        // Поворот карты — только если пользователь не трогает экран
+        if (!userTouching) {
+            map.easeTo({
+                bearing: angle,
+                duration: 300
+            });
+        }
     }
-}
 
     /* ========================================================
-       ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ПОВОДКА ======
+       ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ХВОСТА =======
        ======================================================== */
 
     let bestIndex = null;
@@ -399,21 +399,17 @@ function moveMarker(coords) {
 
     /* === ОБНОВЛЕНИЕ ЦВЕТА СТРЕЛКИ === */
     if (arrowEl) {
-        if (ON_ROUTE) {
-    arrowEl.style.color = "#00ff00"; // ярко‑зелёная
-} else {
-    arrowEl.style.color = "#88ff88"; // бледно‑зелёная
-}
+        arrowEl.style.color = ON_ROUTE ? "#00ff00" : "#88ff88";
     }
 
-    // Если стрелка НЕ на маршруте → НЕ РИСУЕМ НИЧЕГО
+    // Если стрелка НЕ на маршруте → НЕ РИСУЕМ НИЧЕГО (ХВОСТ УБРАН)
     if (!ON_ROUTE) {
         return;
     }
 
     /* === ПЕРЕКРАСКА МАРШРУТА (ТОЛЬКО ЕСЛИ НА МАРШРУТЕ) === */
 
-    if (bestIndex != null && bestProj) {
+    if (ON_ROUTE && bestIndex != null && bestProj) {
         const passedCoords = [];
         const remainingCoords = [];
 
@@ -463,7 +459,6 @@ function moveMarker(coords) {
 
         const dist = distance(coords, [z.lat, z.lng]);
 
-        // ВХОД В ЗОНУ
         if (!z.entered && dist <= 30) {
             z.entered = true;
             currentPointImage = z.image;
@@ -472,7 +467,6 @@ function moveMarker(coords) {
             togglePhotoBtn.classList.add("photo-btn-glow");
         }
 
-        // ВЫХОД ИЗ ЗОНЫ
         if (z.entered && dist > 30) {
             z.entered = false;
             togglePhotoBtn.style.display = "none";
@@ -916,6 +910,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
