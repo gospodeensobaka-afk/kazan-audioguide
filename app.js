@@ -349,84 +349,66 @@ function moveMarker(coords) {
     }
 
     /* ========================================================
-       ========== УМНАЯ ПЕРЕКРАСКА МАРШРУТА ===================
-       ======================================================== */
+   ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА ===================
+   ======================================================== */
 
-    let bestIndex = null;
-    let bestDist = Infinity;
-    let bestProj = null;
-    let bestT = 0;
+let bestIndex = null;
+let bestDist = Infinity;
+let bestProj = null;
+let bestT = 0;
 
-    if (fullRoute.length >= 2) {
-        for (let i = 0; i < fullRoute.length - 1; i++) {
-            const a = fullRoute[i].coord;
-            const b = fullRoute[i + 1].coord;
+if (fullRoute.length >= 2) {
+    for (let i = 0; i < fullRoute.length - 1; i++) {
+        const a = fullRoute[i].coord;
+        const b = fullRoute[i + 1].coord;
 
-            const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
+        const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
 
-            if (info.dist < bestDist) {
-                bestDist = info.dist;
-                bestIndex = i;
-                bestProj = info.projLngLat;
-                bestT = info.t;
-            }
+        if (info.dist < bestDist) {
+            bestDist = info.dist;
+            bestIndex = i;
+            bestProj = info.projLngLat;
+            bestT = info.t;
         }
     }
+}
 
-    lastRouteDist = bestDist;
-    lastRouteSegmentIndex = bestIndex;
+const MAX_DIST = 12;
 
-    const hackLayer = map.getLayer("route-hack-line");
-    if (hackLayer) {
-        map.setLayoutProperty("route-hack-line", "visibility", "none");
+if (bestIndex != null && bestDist <= MAX_DIST && bestProj) {
+    const passedCoords = [];
+    const remainingCoords = [];
+
+    for (let i = 0; i < fullRoute.length; i++) {
+        remainingCoords.push(fullRoute[i].coord);
     }
 
-    // FIX_ROUTE_SEGMENT_FILTER — фильтр перекраски маршрута, чтобы не рисовать серый хвост
-const MAX_SEGMENT_DIST = 12;
-const MAX_SEGMENT_JUMP = 3;
-
-if (
-    bestIndex != null &&
-    bestDist <= ROUTE_HITBOX_METERS &&
-    bestDist <= MAX_SEGMENT_DIST &&
-    Math.abs(bestIndex - lastRouteSegmentIndex) <= MAX_SEGMENT_JUMP &&
-    bestProj
-) {
-        const passedCoords = [];
-        const remainingCoords = [];
-
-        for (let i = 0; i < fullRoute.length; i++) {
-            remainingCoords.push(fullRoute[i].coord);
-        }
-
-        for (let i = 0; i < bestIndex; i++) {
-            passedCoords.push(fullRoute[i].coord);
-        }
-
-        const a = fullRoute[bestIndex].coord;
-        const b = fullRoute[bestIndex + 1].coord;
-
-        if (bestT <= 0) {
-            passedCoords.push(a);
-        } else if (bestT >= 1) {
-            passedCoords.push(a, b);
-        } else {
-            const proj = bestProj;
-            passedCoords.push(a, proj);
-            remainingCoords[bestIndex] = proj;
-        }
-
-        map.getSource("route-passed").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: passedCoords }
-        });
-
-        map.getSource("route-remaining").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: remainingCoords }
-        });
+    for (let i = 0; i < bestIndex; i++) {
+        passedCoords.push(fullRoute[i].coord);
     }
 
+    const a = fullRoute[bestIndex].coord;
+    const b = fullRoute[bestIndex + 1].coord;
+
+    if (bestT <= 0) {
+        passedCoords.push(a);
+    } else if (bestT >= 1) {
+        passedCoords.push(a, b);
+    } else {
+        passedCoords.push(a, bestProj);
+        remainingCoords[bestIndex] = bestProj;
+    }
+
+    map.getSource("route-passed").setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: passedCoords }
+    });
+
+    map.getSource("route-remaining").setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: remainingCoords }
+    });
+}
     /* ========================================================
        ====================== AUDIO ZONES ======================
        ======================================================== */
@@ -878,6 +860,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
