@@ -30,6 +30,7 @@ let fullRoute = [];
 let passedRoute = [];
 
 let compassActive = false;
+let userInteracting = false;
 let smoothAngle = 0;
 let compassUpdates = 0;
 
@@ -269,10 +270,12 @@ function handleIOSCompass(e) {
     lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
 
     applyArrowTransform(lastCorrectedAngle);
-map.easeTo({
-    bearing: lastCorrectedAngle,
-    duration: 300
-});
+if (!userInteracting) {
+    map.easeTo({
+        bearing: lastCorrectedAngle,
+        duration: 300
+    });
+}
     debugUpdate("compass", lastCorrectedAngle);
 }
 
@@ -555,6 +558,8 @@ async function initMap() {
     }
 
     map.on("load", async () => {
+       map.on("movestart", () => userInteracting = true);
+map.on("moveend", () => userInteracting = false);
 // FIX_REMOVE_HACK_LINE — полностью удалить старые слои маршрута
 ["route", "route-line", "route-hack-line"].forEach(id => {
     if (map.getLayer(id)) {
@@ -897,6 +902,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
