@@ -1,6 +1,8 @@
 /* ========================================================
    =============== GLOBAL VARIABLES & STATE ===============
    ======================================================== */
+document.getElementById("buildIndicator").textContent =
+  "build: " + new Date().toLocaleTimeString();
 // TOUR START FLAG
 let tourStarted = false;
 let map;
@@ -876,6 +878,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
