@@ -269,7 +269,10 @@ function handleIOSCompass(e) {
     lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
 
     applyArrowTransform(lastCorrectedAngle);
-
+map.easeTo({
+    bearing: lastCorrectedAngle,
+    duration: 300
+});
     debugUpdate("compass", lastCorrectedAngle);
 }
 
@@ -333,85 +336,147 @@ function handleMapMove() {
    ======================================================== */
 
 function moveMarker(coords) {
-       // TOUR NOT STARTED → IGNORE ALL MOVEMENT
+    // TOUR NOT STARTED → IGNORE ALL MOVEMENT
     if (!tourStarted) return;
+
     const prevCoords = lastCoords;
     lastCoords = coords;
 
     updateArrowPositionFromCoords(coords);
 
-    // GPS‑поворот, если компас выключен
+    /* ========================================================
+       =============== GPS ROTATION + MAP ROTATION ============
+       ======================================================== */
+
     if (!compassActive && prevCoords) {
         const angle = calculateAngle(prevCoords, coords);
         gpsAngleLast = Math.round(angle);
         gpsUpdates++;
+
+        // Поворот стрелки
         applyArrowTransform(angle);
+
+        // Поворот карты
+        map.easeTo({
+            bearing: angle,
+            duration: 300
+        });
     }
 
-    /* ======== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ПОВОДКА ======== */
+    /* ========================================================
+       ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ПОВОДКА ======
+       ======================================================== */
 
-let bestIndex = null;
-let bestDist = Infinity;
-let bestProj = null;
-let bestT = 0;
+    let bestIndex = null;
+    let bestDist = Infinity;
+    let bestProj = null;
+    let bestT = 0;
 
-if (fullRoute.length >= 2) {
-    for (let i = 0; i < fullRoute.length - 1; i++) {
-        const a = fullRoute[i].coord;
-        const b = fullRoute[i + 1].coord;
+    if (fullRoute.length >= 2) {
+        for (let i = 0; i < fullRoute.length - 1; i++) {
+            const a = fullRoute[i].coord;
+            const b = fullRoute[i + 1].coord;
 
-        const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
+            const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
 
-        if (info.dist < bestDist) {
-            bestDist = info.dist;
-            bestIndex = i;
-            bestProj = info.projLngLat;
-            bestT = info.t;
+            if (info.dist < bestDist) {
+                bestDist = info.dist;
+                bestIndex = i;
+                bestProj = info.projLngLat;
+                bestT = info.t;
+            }
         }
     }
-}
 
-// Стрелка считается "на маршруте" только если ближе 3 метров
-const ON_ROUTE = bestDist <= 3;
+    // Стрелка считается "на маршруте" только если ближе 3 метров
+    const ON_ROUTE = bestDist <= 3;
 
-// Если стрелка НЕ на маршруте → НЕ РИСУЕМ НИЧЕГО
-if (!ON_ROUTE) {
-    return;
-}
-
-if (bestIndex != null && bestProj) {
-    const passedCoords = [];
-    const remainingCoords = [];
-
-    for (let i = 0; i < fullRoute.length; i++) {
-        remainingCoords.push(fullRoute[i].coord);
+    /* === ОБНОВЛЕНИЕ ЦВЕТА СТРЕЛКИ === */
+    if (arrowEl) {
+        if (ON_ROUTE) {
+            arrowEl.style.filter = "hue-rotate(90deg) saturate(2)";
+        } else {
+            arrowEl.style.filter = "hue-rotate(90deg) saturate(0.4) brightness(1.4)";
+        }
     }
 
-    for (let i = 0; i < bestIndex; i++) {
-        passedCoords.push(fullRoute[i].coord);
+    // Если стрелка НЕ на маршруте → НЕ РИСУЕМ НИЧЕГО
+    if (!ON_ROUTE) {
+        return;
     }
 
-    const a = fullRoute[bestIndex].coord;
-    const b = fullRoute[bestIndex + 1].coord;
+    /* === ПЕРЕКРАСКА МАРШРУТА (ТОЛЬКО ЕСЛИ НА МАРШРУТЕ) === */
 
-    if (bestT <= 0) {
-        passedCoords.push(a);
-    } else if (bestT >= 1) {
-        passedCoords.push(a, b);
-    } else {
-        passedCoords.push(a, bestProj);
-        remainingCoords[bestIndex] = bestProj;
+    if (bestIndex != null && bestProj) {
+        const passedCoords = [];
+        const remainingCoords = [];
+
+        for (let i = 0; i < fullRoute.length; i++) {
+            remainingCoords.push(fullRoute[i].coord);
+        }
+
+        for (let i = 0; i < bestIndex; i++) {
+            passedCoords.push(fullRoute[i].coord);
+        }
+
+        const a = fullRoute[bestIndex].coord;
+        const b = fullRoute[bestIndex + 1].coord;
+
+        if (bestT <= 0) {
+            passedCoords.push(a);
+        } else if (bestT >= 1) {
+            passedCoords.push(a, b);
+        } else {
+            passedCoords.push(a, bestProj);
+            remainingCoords[bestIndex] = bestProj;
+        }
+
+        map.getSource("route-passed").setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: passedCoords }
+        });
+
+        map.getSource("route-remaining").setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: remainingCoords }
+        });
     }
 
-    map.getSource("route-passed").setData({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: passedCoords }
+    /* ========================================================
+       ====================== AUDIO ZONES ======================
+       ======================================================== */
+
+    checkZones(coords);
+
+    /* ========================================================
+       ========== PHOTO ACTIVATION FOR SQUARE POINTS ==========
+       ======================================================== */
+
+    zones.forEach(z => {
+        if (z.type !== "square" || !z.image) return;
+
+        const dist = distance(coords, [z.lat, z.lng]);
+
+        // ВХОД В ЗОНУ
+        if (!z.entered && dist <= 30) {
+            z.entered = true;
+            currentPointImage = z.image;
+            togglePhotoBtn.style.display = "block";
+            photoImage.src = z.image;
+            togglePhotoBtn.classList.add("photo-btn-glow");
+        }
+
+        // ВЫХОД ИЗ ЗОНЫ
+        if (z.entered && dist > 30) {
+            z.entered = false;
+            togglePhotoBtn.style.display = "none";
+            togglePhotoBtn.classList.remove("photo-btn-glow");
+        }
     });
 
-    map.getSource("route-remaining").setData({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: remainingCoords }
-    });
+    const src = compassActive ? "compass" : "gps";
+    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
+    debugUpdate(src, ang);
 }
     /* ========================================================
        ====================== AUDIO ZONES ======================
@@ -864,6 +929,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
