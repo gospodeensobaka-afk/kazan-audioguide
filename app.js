@@ -394,10 +394,10 @@ function moveMarker(coords) {
     /* === ОБНОВЛЕНИЕ ЦВЕТА СТРЕЛКИ === */
     if (arrowEl) {
         if (ON_ROUTE) {
-            arrowEl.style.filter = "hue-rotate(90deg) saturate(2)";
-        } else {
-            arrowEl.style.filter = "hue-rotate(90deg) saturate(0.4) brightness(1.4)";
-        }
+    arrowEl.style.color = "#00ff00"; // ярко‑зелёная
+} else {
+    arrowEl.style.color = "#88ff88"; // бледно‑зелёная
+}
     }
 
     // Если стрелка НЕ на маршруте → НЕ РИСУЕМ НИЧЕГО
@@ -766,25 +766,28 @@ map.on("load", updateAudioCircleRadius);
         /* ========================================================
            ===================== DOM USER ARROW ===================
            ======================================================== */
+arrowEl = document.createElement("div");
+arrowEl.innerHTML = `
+<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="50,5 90,95 50,75 10,95" fill="currentColor"/>
+</svg>
+`;
 
-        arrowEl = document.createElement("img");
-        arrowEl.src = "arrow.png";
-        arrowEl.style.width = "40px";
-        arrowEl.style.height = "40px";
-        arrowEl.style.transformOrigin = "center center";
-        arrowEl.style.visibility = "visible";
-        arrowEl.style.willChange = "transform";
-        arrowEl.style.position = "absolute";
-        arrowEl.style.left = "50%";
-        arrowEl.style.top = "50%";
-        arrowEl.style.pointerEvents = "none";
-        arrowEl.style.zIndex = "9999";
+arrowEl.style.position = "absolute";
+arrowEl.style.left = "50%";
+arrowEl.style.top = "50%";
+arrowEl.style.transformOrigin = "center center";
+arrowEl.style.pointerEvents = "none";
+arrowEl.style.zIndex = "9999";
+arrowEl.style.color = "#00ff00"; // стартовый цвет
 
-        applyArrowTransform();
+applyArrowTransform();
+
 if (mapContainer) {
     mapContainer.appendChild(arrowEl);
 } else {
     document.body.appendChild(arrowEl);
+}
 }        /* ========================================================
            ====================== GPS TRACKING ====================
            ======================================================== */
@@ -894,6 +897,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
