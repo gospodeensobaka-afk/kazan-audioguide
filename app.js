@@ -348,7 +348,7 @@ function moveMarker(coords) {
         applyArrowTransform(angle);
     }
 
-    /* ======== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА С ПРОВЕРКОЙ ======== */
+    /* ======== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ПОВОДКА ======== */
 
 let bestIndex = null;
 let bestDist = Infinity;
@@ -371,10 +371,15 @@ if (fullRoute.length >= 2) {
     }
 }
 
-const MAX_DIST = 12;
-const ON_ROUTE = bestDist <= MAX_DIST;
+// Стрелка считается "на маршруте" только если ближе 3 метров
+const ON_ROUTE = bestDist <= 3;
 
-if (bestIndex != null && ON_ROUTE && bestProj) {
+// Если стрелка НЕ на маршруте → НЕ РИСУЕМ НИЧЕГО
+if (!ON_ROUTE) {
+    return;
+}
+
+if (bestIndex != null && bestProj) {
     const passedCoords = [];
     const remainingCoords = [];
 
@@ -859,6 +864,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
