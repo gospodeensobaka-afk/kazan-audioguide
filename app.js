@@ -30,6 +30,7 @@ let fullRoute = [];
 let passedRoute = [];
 
 let compassActive = false;
+let userTouching = false;
 let userInteracting = false;
 let smoothAngle = 0;
 let compassUpdates = 0;
@@ -270,7 +271,7 @@ function handleIOSCompass(e) {
     lastCorrectedAngle = normalizeAngle(smoothAngle - lastMapBearing);
 
     applyArrowTransform(lastCorrectedAngle);
-if (!userInteracting) {
+if (!userTouching) {
     map.easeTo({
         bearing: lastCorrectedAngle,
         duration: 300
@@ -351,20 +352,22 @@ function moveMarker(coords) {
        =============== GPS ROTATION + MAP ROTATION ============
        ======================================================== */
 
-    if (!compassActive && prevCoords) {
-        const angle = calculateAngle(prevCoords, coords);
-        gpsAngleLast = Math.round(angle);
-        gpsUpdates++;
+   if (!compassActive && prevCoords) {
+    const angle = calculateAngle(prevCoords, coords);
+    gpsAngleLast = Math.round(angle);
+    gpsUpdates++;
 
-        // Поворот стрелки
-        applyArrowTransform(angle);
+    // Поворот стрелки
+    applyArrowTransform(angle);
 
-        // Поворот карты
+    // Поворот карты — ТЕПЕРЬ ТОЛЬКО ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ ТРОГАЕТ ЭКРАН
+    if (!userTouching) {
         map.easeTo({
             bearing: angle,
             duration: 300
         });
     }
+}
 
     /* ========================================================
        ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ПОВОДКА ======
@@ -558,6 +561,17 @@ async function initMap() {
     }
 
     map.on("load", async () => {
+       map.getCanvas().addEventListener("pointerdown", () => {
+    userTouching = true;
+});
+
+map.getCanvas().addEventListener("pointerup", () => {
+    userTouching = false;
+});
+
+map.getCanvas().addEventListener("pointercancel", () => {
+    userTouching = false;
+});
        map.on("movestart", () => userInteracting = true);
 map.on("moveend", () => userInteracting = false);
 // FIX_REMOVE_HACK_LINE — полностью удалить старые слои маршрута
@@ -902,6 +916,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
