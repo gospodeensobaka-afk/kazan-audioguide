@@ -19,6 +19,14 @@ let zones = [];
 
 let simulationActive = false;
 let simulationPoints = [];
+const jumpPoints = [
+    [55.826681, 49.082236],
+    [55.826597, 49.082102],
+    [55.826698, 49.082098],
+    [55.826934, 49.081875],
+    [55.826830, 49.082332],
+    [55.826659, 49.082523]
+];
 let simulationIndex = 0;
 
 let gpsActive = false; // включится после старта
@@ -485,6 +493,8 @@ function moveMarker(coords) {
    ======================================================== */
 function simulateNextStep() {
     if (!simulationActive) return;
+
+    // Если дошли до конца маршрута — стоп
     if (simulationIndex >= simulationPoints.length) {
         simulationActive = false;
         gpsActive = true;
@@ -492,25 +502,32 @@ function simulateNextStep() {
     }
 
     const next = simulationPoints[simulationIndex];
-    simulationIndex++;
-// ========================================================
-// ========== SIMULATION GPS JUMP TEST (ANTI-TAIL) =========
-// ========================================================
-if (simulationIndex === 5) {
 
-    // Жёсткий GPS-прыжок в конкретную точку
-    const jumpLat = 55.826866;
-    const jumpLng = 49.082310;
-
-    console.log("SIMULATION: GPS JUMP TO FIXED POINT");
-
-    moveMarker([jumpLat, jumpLng]);
-
-    setTimeout(simulateNextStep, 1200);
-    return;
-}
+    // 1) Двигаемся по маршруту
     moveMarker(next);
 
+    // 2) После каждой точки — прыжок в сторону
+    if (simulationIndex < jumpPoints.length) {
+        const jp = jumpPoints[simulationIndex];
+
+        console.log("SIMULATION: SIDE JUMP", jp);
+
+        setTimeout(() => {
+            moveMarker(jp);
+
+            // Возврат на маршрут через 1.2 сек
+            setTimeout(() => {
+                simulationIndex++;
+                simulateNextStep();
+            }, 1200);
+
+        }, 800);
+
+        return;
+    }
+
+    // 3) Если прыжков больше нет — обычная симуляция
+    simulationIndex++;
     setTimeout(simulateNextStep, 1200);
 }
 
@@ -910,6 +927,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
