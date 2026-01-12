@@ -415,43 +415,25 @@ function moveMarker(coords) {
         return;
     }
 
-    /* === ПЕРЕКРАСКА МАРШРУТА (ТОЛЬКО ЕСЛИ НА МАРШРУТЕ) === */
+   /* === ПРОГРЕСС ПО МАРШРУТУ (TRIM-OFFSET) === */
 
-    if (ON_ROUTE && bestIndex != null && bestProj) {
-        const passedCoords = [];
-        const remainingCoords = [];
+let passed = 0;
 
-        for (let i = 0; i < fullRoute.length; i++) {
-            remainingCoords.push(fullRoute[i].coord);
-        }
+// длина всех сегментов до текущего
+for (let i = 0; i < bestIndex; i++) {
+    passed += routeDistances[i];
+}
 
-        for (let i = 0; i < bestIndex; i++) {
-            passedCoords.push(fullRoute[i].coord);
-        }
+// добавляем часть текущего сегмента
+passed += routeDistances[bestIndex] * bestT;
 
-        const a = fullRoute[bestIndex].coord;
-        const b = fullRoute[bestIndex + 1].coord;
+// итоговый прогресс 0..1
+let progress = passed / totalRouteLength;
+progress = Math.max(0, Math.min(1, progress));
 
-        if (bestT <= 0) {
-            passedCoords.push(a);
-        } else if (bestT >= 1) {
-            passedCoords.push(a, b);
-        } else {
-            passedCoords.push(a, bestProj);
-            remainingCoords[bestIndex] = bestProj;
-        }
-
-        map.getSource("route-passed").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: passedCoords }
-        });
-
-        map.getSource("route-remaining").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: remainingCoords }
-        });
-    }
-
+// обновляем trim-offset
+map.setPaintProperty("route-passed", "line-trim-offset", [0, progress]);
+map.setPaintProperty("route-remaining", "line-trim-offset", [progress, 1]);
     /* ========================================================
        ====================== AUDIO ZONES ======================
        ======================================================== */
@@ -610,49 +592,56 @@ updateProgress();
         }));
 
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+       // === PRECOMPUTE SEGMENT LENGTHS ===
+routeDistances = [];
+totalRouteLength = 0;
+
+for (let i = 0; i < fullRoute.length - 1; i++) {
+    const a = fullRoute[i].coord;
+    const b = fullRoute[i + 1].coord;
+    const d = distance([a[1], a[0]], [b[1], b[0]]);
+    routeDistances.push(d);
+    totalRouteLength += d;
+}
 
         /* ========================================================
            ===================== ROUTE SOURCES ====================
            ======================================================== */
 
-        map.addSource("route-passed", {
-            type: "geojson",
-            data: {
-                type: "Feature",
-                geometry: { type: "LineString", coordinates: [] }
-            }
-        });
-
-        map.addSource("route-remaining", {
-            type: "geojson",
-            data: {
-                type: "Feature",
-                geometry: {
-                    type: "LineString",
-                    coordinates: fullRoute.map(pt => pt.coord)
-                }
-            }
-        });
+        map.addSource("route", {
+    type: "geojson",
+    data: route
+});
 
         /* ========================================================
            ====================== ROUTE LAYERS =====================
            ======================================================== */
 
-        map.addLayer({
-            id: "route-remaining-line",
-            type: "line",
-            source: "route-remaining",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-width": 4, "line-color": "#007aff" }
-        });
+       // Серый — пройденная часть
+map.addLayer({
+    id: "route-passed",
+    type: "line",
+    source: "route",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+        "line-width": 4,
+        "line-color": "#333333",
+        "line-trim-offset": [0, 0]
+    }
+});
 
-        map.addLayer({
-            id: "route-passed-line",
-            type: "line",
-            source: "route-passed",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-width": 4, "line-color": "#333333" }
-        });
+// Синий — оставшаяся часть
+map.addLayer({
+    id: "route-remaining",
+    type: "line",
+    source: "route",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+        "line-width": 4,
+        "line-color": "#007aff",
+        "line-trim-offset": [0, 1]
+    }
+});
 
         /* ========================================================
    ====================== AUDIO ZONES ======================
@@ -927,6 +916,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
