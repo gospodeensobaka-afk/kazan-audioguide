@@ -36,8 +36,7 @@ let totalAudioZones = 0;
 let visitedAudioZones = 0;
 let fullRoute = [];
 let passedRoute = [];
-let routeDistances = [];
-let totalRouteLength = 0;
+let maxPassedIndex = 0;
 let compassActive = false;
 let userTouching = false;
 let userInteracting = false;
@@ -416,40 +415,49 @@ function moveMarker(coords) {
         return;
     }
 
-   
+    /* === ПЕРЕКРАСКА МАРШРУТА (ТОЛЬКО ЕСЛИ НА МАРШРУТЕ) === */
 
-const passedCoords = [];
-const remainingCoords = [];
-
-for (let i = 0; i < fullRoute.length; i++) {
-    remainingCoords.push(fullRoute[i].coord);
+    if (ON_ROUTE && bestIndex != null && bestProj) {
+       // === АНТИ-ХВОСТ: запрещаем перекраску назад ===
+if (bestIndex < maxPassedIndex) {
+    return; // игнорируем GPS-прыжок назад
 }
 
-for (let i = 0; i < bestIndex; i++) {
-    passedCoords.push(fullRoute[i].coord);
-}
+maxPassedIndex = bestIndex;
+        const passedCoords = [];
+        const remainingCoords = [];
 
-const a = fullRoute[bestIndex].coord;
-const b = fullRoute[bestIndex + 1].coord;
+        for (let i = 0; i < fullRoute.length; i++) {
+            remainingCoords.push(fullRoute[i].coord);
+        }
 
-if (bestT <= 0) {
-    passedCoords.push(a);
-} else if (bestT >= 1) {
-    passedCoords.push(a, b);
-} else {
-    passedCoords.push(a, bestProj);
-    remainingCoords[bestIndex] = bestProj;
-}
+        for (let i = 0; i < bestIndex; i++) {
+            passedCoords.push(fullRoute[i].coord);
+        }
 
-map.getSource("route-passed").setData({
-    type: "Feature",
-    geometry: { type: "LineString", coordinates: passedCoords }
-});
+        const a = fullRoute[bestIndex].coord;
+        const b = fullRoute[bestIndex + 1].coord;
 
-map.getSource("route-remaining").setData({
-    type: "Feature",
-    geometry: { type: "LineString", coordinates: remainingCoords }
-});
+        if (bestT <= 0) {
+            passedCoords.push(a);
+        } else if (bestT >= 1) {
+            passedCoords.push(a, b);
+        } else {
+            passedCoords.push(a, bestProj);
+            remainingCoords[bestIndex] = bestProj;
+        }
+
+        map.getSource("route-passed").setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: passedCoords }
+        });
+
+        map.getSource("route-remaining").setData({
+            type: "Feature",
+            geometry: { type: "LineString", coordinates: remainingCoords }
+        });
+    }
+
     /* ========================================================
        ====================== AUDIO ZONES ======================
        ======================================================== */
@@ -604,72 +612,53 @@ updateProgress();
         const route = await fetch("route.json").then(r => r.json());
 
         fullRoute = route.geometry.coordinates.map(c => ({
-            coord: [c[1], c[0]]   // теперь coord = [lat, lng]
+            coord: [c[0], c[1]]
         }));
 
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
-       // === PRECOMPUTE SEGMENT LENGTHS ===
-routeDistances = [];
-totalRouteLength = 0;
-
-for (let i = 0; i < fullRoute.length - 1; i++) {
-    const a = fullRoute[i].coord;
-    const b = fullRoute[i + 1].coord;
-    const d = distance([a[1], a[0]], [b[1], b[0]]);
-    routeDistances.push(d);
-    totalRouteLength += d;
-}
 
         /* ========================================================
            ===================== ROUTE SOURCES ====================
            ======================================================== */
 
         map.addSource("route-passed", {
-    type: "geojson",
-    data: {
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: [] }
-    }
-});
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: { type: "LineString", coordinates: [] }
+            }
+        });
 
-map.addSource("route-remaining", {
-    type: "geojson",
-    data: {
-        type: "Feature",
-        geometry: {
-            type: "LineString",
-            coordinates: fullRoute.map(pt => pt.coord)
-        }
-    }
-});
+        map.addSource("route-remaining", {
+            type: "geojson",
+            data: {
+                type: "Feature",
+                geometry: {
+                    type: "LineString",
+                    coordinates: fullRoute.map(pt => pt.coord)
+                }
+            }
+        });
 
         /* ========================================================
            ====================== ROUTE LAYERS =====================
            ======================================================== */
 
-       // Серый — пройденная часть
-map.addLayer({
-    id: "route-passed",
-    type: "line",
-    source: "route-passed",
-    layout: { "line-join": "round", "line-cap": "round" },
-    paint: {
-        "line-width": 4,
-        "line-color": "#333333"
-    }
-});
+        map.addLayer({
+            id: "route-remaining-line",
+            type: "line",
+            source: "route-remaining",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-width": 4, "line-color": "#007aff" }
+        });
 
-// Синий — оставшаяся часть
-map.addLayer({
-    id: "route-remaining",
-    type: "line",
-    source: "route-remaining",
-    layout: { "line-join": "round", "line-cap": "round" },
-    paint: {
-        "line-width": 4,
-        "line-color": "#007aff"
-    }
-});
+        map.addLayer({
+            id: "route-passed-line",
+            type: "line",
+            source: "route-passed",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-width": 4, "line-color": "#333333" }
+        });
 
         /* ========================================================
    ====================== AUDIO ZONES ======================
@@ -944,36 +933,3 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
