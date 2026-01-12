@@ -603,7 +603,7 @@ updateProgress();
         const route = await fetch("route.json").then(r => r.json());
 
         fullRoute = route.geometry.coordinates.map(c => ({
-            coord: [c[0], c[1]]
+            coord: [c[1], c[0]]   // теперь coord = [lat, lng]
         }));
 
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
@@ -943,6 +943,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
