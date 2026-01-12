@@ -36,7 +36,8 @@ let totalAudioZones = 0;
 let visitedAudioZones = 0;
 let fullRoute = [];
 let passedRoute = [];
-
+let routeDistances = [];
+let totalRouteLength = 0;
 let compassActive = false;
 let userTouching = false;
 let userInteracting = false;
@@ -415,7 +416,7 @@ function moveMarker(coords) {
         return;
     }
 
-   /* === ПРОГРЕСС ПО МАРШРУТУ (TRIM-OFFSET) === */
+   
 
 const passedCoords = [];
 const remainingCoords = [];
@@ -943,6 +944,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
