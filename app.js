@@ -381,6 +381,8 @@ function moveMarker(coords) {
        ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ХВОСТА =======
        ======================================================== */
 
+
+    // === FIND CLOSEST ROUTE SEGMENT ===
     let bestIndex = null;
     let bestDist = Infinity;
     let bestProj = null;
@@ -402,62 +404,86 @@ function moveMarker(coords) {
         }
     }
 
-    // Стрелка считается "на маршруте" только если ближе 3 метров
     const ON_ROUTE = bestDist <= 3;
 
-    /* === ОБНОВЛЕНИЕ ЦВЕТА СТРЕЛКИ === */
     if (arrowEl) {
         arrowEl.style.color = ON_ROUTE ? "#00ff00" : "#88ff88";
     }
 
-    // Если стрелка НЕ на маршруте → НЕ РИСУЕМ НИЧЕГО (ХВОСТ УБРАН)
-    if (!ON_ROUTE) {
+    if (!ON_ROUTE) return;
+
+    // === ANTI-TAIL: DO NOT MOVE BACKWARD ===
+    if (bestIndex < maxPassedIndex) {
         return;
     }
+    maxPassedIndex = bestIndex;
 
-    /* === ПЕРЕКРАСКА МАРШРУТА (ТОЛЬКО ЕСЛИ НА МАРШРУТЕ) === */
+    // === BUILD PASSED & REMAINING COORDS ===
+    const passedCoords = [];
+    const remainingCoords = [];
 
-    if (ON_ROUTE && bestIndex != null && bestProj) {
-       // === АНТИ-ХВОСТ: запрещаем перекраску назад ===
-if (bestIndex < maxPassedIndex) {
-    return; // игнорируем GPS-прыжок назад
-}
+    // remaining starts from current projected point
+    remainingCoords.push(bestProj);
 
-maxPassedIndex = bestIndex;
-        const passedCoords = [];
-        const remainingCoords = [];
-
-        for (let i = 0; i < fullRoute.length; i++) {
-            remainingCoords.push(fullRoute[i].coord);
-        }
-
-        for (let i = 0; i < bestIndex; i++) {
-            passedCoords.push(fullRoute[i].coord);
-        }
-
-        const a = fullRoute[bestIndex].coord;
-        const b = fullRoute[bestIndex + 1].coord;
-
-        if (bestT <= 0) {
-            passedCoords.push(a);
-        } else if (bestT >= 1) {
-            passedCoords.push(a, b);
-        } else {
-            passedCoords.push(a, bestProj);
-            remainingCoords[bestIndex] = bestProj;
-        }
-
-        map.getSource("route-passed").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: passedCoords }
-        });
-
-        map.getSource("route-remaining").setData({
-            type: "Feature",
-            geometry: { type: "LineString", coordinates: remainingCoords }
-        });
+    for (let i = bestIndex + 1; i < fullRoute.length; i++) {
+        remainingCoords.push(fullRoute[i].coord);
     }
 
+    // passed part
+    for (let i = 0; i < bestIndex; i++) {
+        passedCoords.push(fullRoute[i].coord);
+    }
+
+    const a = fullRoute[bestIndex].coord;
+    const b = fullRoute[bestIndex + 1].coord;
+
+    if (bestT <= 0) {
+        passedCoords.push(a);
+    } else if (bestT >= 1) {
+        passedCoords.push(a, b);
+    } else {
+        passedCoords.push(a, bestProj);
+    }
+
+    // === UPDATE SOURCES ===
+    map.getSource("route-passed").setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: passedCoords }
+    });
+
+    map.getSource("route-remaining").setData({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: remainingCoords }
+    });
+
+    // === ZONES ===
+    checkZones(coords);
+
+    // === PHOTO POINTS ===
+    zones.forEach(z => {
+        if (z.type !== "square" || !z.image) return;
+
+        const dist = distance(coords, [z.lat, z.lng]);
+
+        if (!z.entered && dist <= 30) {
+            z.entered = true;
+            currentPointImage = z.image;
+            togglePhotoBtn.style.display = "block";
+            photoImage.src = z.image;
+            togglePhotoBtn.classList.add("photo-btn-glow");
+        }
+
+        if (z.entered && dist > 30) {
+            z.entered = false;
+            togglePhotoBtn.style.display = "none";
+            togglePhotoBtn.classList.remove("photo-btn-glow");
+        }
+    });
+
+    const src = compassActive ? "compass" : "gps";
+    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
+    debugUpdate(src, ang);
+}
     /* ========================================================
        ====================== AUDIO ZONES ======================
        ======================================================== */
@@ -933,3 +959,4 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
