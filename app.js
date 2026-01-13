@@ -487,14 +487,9 @@ function moveMarker(coords) {
     /* ========================================================
        ====================== AUDIO ZONES ======================
        ======================================================== */
-
-    checkZones(coords);
-
     /* ========================================================
        ========== PHOTO ACTIVATION FOR SQUARE POINTS ==========
        ======================================================== */
-
-    zones.forEach(z => {
         if (z.type !== "square" || !z.image) return;
 
         const dist = distance(coords, [z.lat, z.lng]);
@@ -959,4 +954,5 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
