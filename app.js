@@ -484,36 +484,6 @@ function moveMarker(coords) {
     const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
     debugUpdate(src, ang);
 }
-    /* ========================================================
-       ====================== AUDIO ZONES ======================
-       ======================================================== */
-    /* ========================================================
-       ========== PHOTO ACTIVATION FOR SQUARE POINTS ==========
-       ======================================================== */
-        if (z.type !== "square" || !z.image) return;
-
-        const dist = distance(coords, [z.lat, z.lng]);
-
-        if (!z.entered && dist <= 30) {
-            z.entered = true;
-            currentPointImage = z.image;
-            togglePhotoBtn.style.display = "block";
-            photoImage.src = z.image;
-            togglePhotoBtn.classList.add("photo-btn-glow");
-        }
-
-        if (z.entered && dist > 30) {
-            z.entered = false;
-            togglePhotoBtn.style.display = "none";
-            togglePhotoBtn.classList.remove("photo-btn-glow");
-        }
-    });
-
-    const src = compassActive ? "compass" : "gps";
-    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
-    debugUpdate(src, ang);
-}
-    
 
 /* ========================================================
    ================== SIMULATION STEP ======================
@@ -954,5 +924,6 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
