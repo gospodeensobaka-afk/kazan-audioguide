@@ -439,21 +439,7 @@ for (let i = 0; i < fullRoute.length - 1; i++) {
         remainingCoords.push(fullRoute[i].coord);
     }
 
-    // passed part
-    for (let i = 0; i < bestIndex; i++) {
-        passedCoords.push(fullRoute[i].coord);
-    }
-
-    const a = fullRoute[bestIndex].coord;
-    const b = fullRoute[bestIndex + 1].coord;
-
-    if (bestT <= 0) {
-        passedCoords.push(a);
-    } else if (bestT >= 1) {
-        passedCoords.push(a, b);
-    } else {
-        passedCoords.push(a, bestProj);
-    }
+    
 
     // === UPDATE SOURCES ===
     map.getSource("route-passed").setData({
@@ -935,6 +921,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
