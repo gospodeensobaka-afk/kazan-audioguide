@@ -37,6 +37,7 @@ let visitedAudioZones = 0;
 let fullRoute = [];
 let passedRoute = [];
 let maxPassedIndex = 0;
+let visitedSegments = [];
 let compassActive = false;
 let userTouching = false;
 let userInteracting = false;
@@ -411,6 +412,7 @@ function moveMarker(coords) {
     }
 
     if (!ON_ROUTE) return;
+   visitedSegments[bestIndex] = true;
 
     // === ANTI-TAIL: DO NOT MOVE BACKWARD ===
     if (bestIndex < maxPassedIndex) {
@@ -419,7 +421,15 @@ function moveMarker(coords) {
     maxPassedIndex = bestIndex;
 
     // === BUILD PASSED & REMAINING COORDS ===
-    const passedCoords = [];
+    // === BUILD PASSED COORDS BASED ON VISITED SEGMENTS ===
+const passedCoords = [];
+
+for (let i = 0; i < fullRoute.length - 1; i++) {
+    if (visitedSegments[i]) {
+        passedCoords.push(fullRoute[i].coord);
+        passedCoords.push(fullRoute[i + 1].coord);
+    }
+}
     const remainingCoords = [];
 
     // remaining starts from current projected point
@@ -607,6 +617,7 @@ updateProgress();
         }));
 
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
+       visitedSegments = new Array(fullRoute.length - 1).fill(false);
 
         /* ========================================================
            ===================== ROUTE SOURCES ====================
@@ -924,6 +935,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
