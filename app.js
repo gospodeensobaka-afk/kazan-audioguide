@@ -499,26 +499,7 @@ function simulateNextStep() {
     // 1) Двигаемся по маршруту
     moveMarker(next);
 
-    // 2) После каждой точки — прыжок в сторону
-    if (simulationIndex < jumpPoints.length) {
-        const jp = jumpPoints[simulationIndex];
-
-        console.log("SIMULATION: SIDE JUMP", jp);
-
-        setTimeout(() => {
-            moveMarker(jp);
-
-            // Возврат на маршрут через 1.2 сек
-            setTimeout(() => {
-                simulationIndex++;
-                simulateNextStep();
-            }, 1200);
-
-        }, 800);
-
-        return;
-    }
-
+   
     // 3) Если прыжков больше нет — обычная симуляция
     simulationIndex++;
     setTimeout(simulateNextStep, 1200);
@@ -921,8 +902,3 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
-
-
-
-
-
