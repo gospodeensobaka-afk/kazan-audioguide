@@ -35,9 +35,10 @@ let audioPlaying = false;
 let totalAudioZones = 0;
 let visitedAudioZones = 0;
 let fullRoute = [];
+let routeSegments = []; // массив слоёв маршрута
+let activeSegmentIndex = null; // какой слой сейчас активен
 let passedRoute = [];
 let maxPassedIndex = 0;
-let visitedSegments = [];
 let compassActive = false;
 let userTouching = false;
 let userInteracting = false;
@@ -381,65 +382,62 @@ function moveMarker(coords) {
     /* ========================================================
        ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ХВОСТА =======
        ======================================================== */
+// === FIND NEAREST ROUTE POINT ===
+let nearestPointIndex = null;
+let nearestPointDist = Infinity;
 
-
-    // === FIND CLOSEST ROUTE SEGMENT ===
-    let bestIndex = null;
-    let bestDist = Infinity;
-    let bestProj = null;
-    let bestT = 0;
-
-    if (fullRoute.length >= 2) {
-        for (let i = 0; i < fullRoute.length - 1; i++) {
-            const a = fullRoute[i].coord;
-            const b = fullRoute[i + 1].coord;
-
-            const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
-
-            if (info.dist < bestDist) {
-                bestDist = info.dist;
-                bestIndex = i;
-                bestProj = info.projLngLat;
-                bestT = info.t;
-            }
-        }
-    }
-
-    const ON_ROUTE = bestDist <= 3;
-
-    if (arrowEl) {
-        arrowEl.style.color = ON_ROUTE ? "#00ff00" : "#88ff88";
-    }
-
-    if (!ON_ROUTE) return;
-   visitedSegments[bestIndex] = true;
-
-    // === ANTI-TAIL: DO NOT MOVE BACKWARD ===
-    if (bestIndex < maxPassedIndex) {
-        return;
-    }
-    maxPassedIndex = bestIndex;
-
-    // === BUILD PASSED & REMAINING COORDS ===
-    // === BUILD PASSED COORDS BASED ON VISITED SEGMENTS ===
-const passedCoords = [];
-
-for (let i = 0; i < fullRoute.length - 1; i++) {
-    if (visitedSegments[i]) {
-        passedCoords.push(fullRoute[i].coord);
-        passedCoords.push(fullRoute[i + 1].coord);
+for (let i = 0; i < fullRoute.length; i++) {
+    const d = distance(coords, [fullRoute[i].coord[1], fullRoute[i].coord[0]]);
+    if (d < nearestPointDist) {
+        nearestPointDist = d;
+        nearestPointIndex = i;
     }
 }
-    const remainingCoords = [];
 
-    // remaining starts from current projected point
-    remainingCoords.push(bestProj);
+// если далеко от маршрута — ничего не делаем
+if (nearestPointDist > 12) return;
 
-    for (let i = bestIndex + 1; i < fullRoute.length; i++) {
-        remainingCoords.push(fullRoute[i].coord);
+// активируем слой, который начинается в этой точке
+if (nearestPointIndex < routeSegments.length) {
+    activeSegmentIndex = nearestPointIndex;
+}
+    const passedCoords = [];
+const remainingCoords = [];
+
+// 1) рисуем пройденные слои
+for (let i = 0; i < routeSegments.length; i++) {
+    if (routeSegments[i].passed) {
+        passedCoords.push(routeSegments[i].start);
+        passedCoords.push(routeSegments[i].end);
     }
+}
 
-    
+// 2) если есть активный слой — обновляем его
+if (activeSegmentIndex !== null) {
+    const seg = routeSegments[activeSegmentIndex];
+
+    // проверяем, что мы действительно на этом сегменте
+    const info = pointToSegmentInfo(
+        [coords[0], coords[1]],
+        seg.start,
+        seg.end
+    );
+
+    if (info.dist <= 4) {
+        // красим только этот слой
+        routeSegments[activeSegmentIndex].passed = true;
+        passedCoords.push(seg.start);
+        passedCoords.push(seg.end);
+    }
+}
+
+// 3) оставшиеся слои — просто визуал
+for (let i = 0; i < routeSegments.length; i++) {
+    if (!routeSegments[i].passed) {
+        remainingCoords.push(routeSegments[i].start);
+        remainingCoords.push(routeSegments[i].end);
+    }
+}
 
     // === UPDATE SOURCES ===
     map.getSource("route-passed").setData({
@@ -499,7 +497,26 @@ function simulateNextStep() {
     // 1) Двигаемся по маршруту
     moveMarker(next);
 
-   
+    // 2) После каждой точки — прыжок в сторону
+    if (simulationIndex < jumpPoints.length) {
+        const jp = jumpPoints[simulationIndex];
+
+        console.log("SIMULATION: SIDE JUMP", jp);
+
+        setTimeout(() => {
+            moveMarker(jp);
+
+            // Возврат на маршрут через 1.2 сек
+            setTimeout(() => {
+                simulationIndex++;
+                simulateNextStep();
+            }, 1200);
+
+        }, 800);
+
+        return;
+    }
+
     // 3) Если прыжков больше нет — обычная симуляция
     simulationIndex++;
     setTimeout(simulateNextStep, 1200);
@@ -582,9 +599,16 @@ updateProgress();
         fullRoute = route.geometry.coordinates.map(c => ({
             coord: [c[0], c[1]]
         }));
-
+// создаём слои маршрута
+routeSegments = [];
+for (let i = 0; i < fullRoute.length - 1; i++) {
+    routeSegments.push({
+        start: fullRoute[i].coord,
+        end: fullRoute[i + 1].coord,
+        passed: false
+    });
+}
         simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
-       visitedSegments = new Array(fullRoute.length - 1).fill(false);
 
         /* ========================================================
            ===================== ROUTE SOURCES ====================
@@ -902,3 +926,5 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
+
