@@ -283,7 +283,7 @@ function handleIOSCompass(e) {
     applyArrowTransform(lastCorrectedAngle);
 if (!userTouching) {
     map.easeTo({
-        bearing: lastCorrectedAngle,
+        bearing: smoothAngle,
         duration: 300
     });
 }
@@ -935,6 +935,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
