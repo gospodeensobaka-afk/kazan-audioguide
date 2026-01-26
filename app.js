@@ -423,12 +423,21 @@ if (activeSegmentIndex !== null) {
         seg.end
     );
 
-    if (info.dist <= 4) {
-        // красим только этот слой
-        routeSegments[activeSegmentIndex].passed = true;
-        passedCoords.push(seg.start);
-        passedCoords.push(seg.end);
-    }
+   if (info.dist <= 4) {
+    // частичная перекраска сегмента
+    const proj = info.projLngLat; // точка проекции
+
+    // пройденная часть: start → projection
+    passedCoords.push(seg.start);
+    passedCoords.push(proj);
+
+    // оставшаяся часть: projection → end
+    remainingCoords.push(proj);
+    remainingCoords.push(seg.end);
+
+    // помечаем сегмент как "начатый", но не полностью пройденный
+    routeSegments[activeSegmentIndex].passed = true;
+}
 }
 
 // 3) оставшиеся слои — просто визуал
@@ -926,5 +935,6 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
