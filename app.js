@@ -378,74 +378,58 @@ function moveMarker(coords) {
             });
         }
     }
+/* ========================================================
+   ========== ЧАСТИЧНАЯ ПЕРЕКРАСКА КАК В СТАРОЙ ВЕРСИИ =====
+   ======================================================== */
 
-    /* ========================================================
-       ========== ЧИСТАЯ ПЕРЕКРАСКА МАРШРУТА БЕЗ ХВОСТА =======
-       ======================================================== */
-// === FIND NEAREST ROUTE POINT ===
-let nearestPointIndex = null;
-let nearestPointDist = Infinity;
+// ищем ближайший сегмент
+let nearestIndex = null;
+let nearestDist = Infinity;
+let nearestProj = null;
+let nearestT = 0;
 
-for (let i = 0; i < fullRoute.length; i++) {
-    const d = distance(coords, [fullRoute[i].coord[1], fullRoute[i].coord[0]]);
-    if (d < nearestPointDist) {
-        nearestPointDist = d;
-        nearestPointIndex = i;
+for (let i = 0; i < fullRoute.length - 1; i++) {
+    const a = fullRoute[i].coord;
+    const b = fullRoute[i + 1].coord;
+
+    const info = pointToSegmentInfo([coords[0], coords[1]], a, b);
+
+    if (info.dist < nearestDist) {
+        nearestDist = info.dist;
+        nearestIndex = i;
+        nearestProj = info.projLngLat;
+        nearestT = info.t;
     }
 }
 
-// если далеко от маршрута — ничего не делаем
-if (nearestPointDist > 12) return;
+// если далеко от маршрута — не красим
+if (nearestDist > 12) return;
 
-// активируем слой, который начинается в этой точке
-if (nearestPointIndex < routeSegments.length) {
-    activeSegmentIndex = nearestPointIndex;
-}
-    const passedCoords = [];
+const passedCoords = [];
 const remainingCoords = [];
 
-// 1) рисуем пройденные слои
-for (let i = 0; i < routeSegments.length; i++) {
-    if (routeSegments[i].passed) {
-        passedCoords.push(routeSegments[i].start);
-        passedCoords.push(routeSegments[i].end);
-    }
+// 1) все сегменты ДО текущего — полностью пройденные
+for (let i = 0; i < nearestIndex; i++) {
+    passedCoords.push(fullRoute[i].coord);
+    passedCoords.push(fullRoute[i + 1].coord);
 }
 
-// 2) если есть активный слой — обновляем его
-if (activeSegmentIndex !== null) {
-    const seg = routeSegments[activeSegmentIndex];
+// 2) текущий сегмент — частичная перекраска
+const segA = fullRoute[nearestIndex].coord;
+const segB = fullRoute[nearestIndex + 1].coord;
 
-    // проверяем, что мы действительно на этом сегменте
-    const info = pointToSegmentInfo(
-        [coords[0], coords[1]],
-        seg.start,
-        seg.end
-    );
+// пройденная часть: A → proj
+passedCoords.push(segA);
+passedCoords.push(nearestProj);
 
-   if (info.dist <= 4) {
-    // частичная перекраска сегмента
-    const proj = info.projLngLat; // точка проекции
+// оставшаяся часть: proj → B
+remainingCoords.push(nearestProj);
+remainingCoords.push(segB);
 
-    // пройденная часть: start → projection
-    passedCoords.push(seg.start);
-    passedCoords.push(proj);
-
-    // оставшаяся часть: projection → end
-    remainingCoords.push(proj);
-    remainingCoords.push(seg.end);
-
-    // помечаем сегмент как "начатый", но не полностью пройденный
-    routeSegments[activeSegmentIndex].passed = true;
-}
-}
-
-// 3) оставшиеся слои — просто визуал
-for (let i = 0; i < routeSegments.length; i++) {
-    if (!routeSegments[i].passed) {
-        remainingCoords.push(routeSegments[i].start);
-        remainingCoords.push(routeSegments[i].end);
-    }
+// 3) все сегменты ПОСЛЕ текущего — полностью оставшиеся
+for (let i = nearestIndex + 1; i < fullRoute.length - 1; i++) {
+    remainingCoords.push(fullRoute[i].coord);
+    remainingCoords.push(fullRoute[i + 1].coord);
 }
 
     // === UPDATE SOURCES ===
@@ -935,6 +919,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
