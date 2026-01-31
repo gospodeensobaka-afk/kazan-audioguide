@@ -133,7 +133,7 @@
                   ===================== AUDIO ZONES =======================
                   ======================================================== */
                
-              function playZoneAudio(src) {
+             function playZoneAudio(src, id) {
     if (!audioEnabled) audioEnabled = true;
 
     globalAudio.src = src;
@@ -142,6 +142,8 @@
 
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
+
+    setupPhotoTimingsForAudio(globalAudio, id);
 }
                
                function updateCircleColors() {
@@ -175,7 +177,7 @@
                    }
                
                    updateCircleColors();
-                   if (z.audio) playZoneAudio(z.audio);
+                   if (z.audio) playZoneAudio(z.audio, z.id);
                }
                    });
                }
@@ -1046,6 +1048,7 @@ function showTimedPhoto(src) {
                
                
                
+
 
 
 
