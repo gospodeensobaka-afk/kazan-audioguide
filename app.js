@@ -344,7 +344,36 @@ function handleMapMove() {
     const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
     debugUpdate(src, ang);
 }
+/* ========================================================
+   ========== SIMULATE AUDIO ZONE (MANUAL TRIGGER) =========
+   ======================================================== */
 
+function simulateAudioZone(id) {
+    const z = zones.find(z => z.id === id && z.type === "audio");
+    if (!z) return;
+
+    if (z.visited) {
+        console.log("Zone already visited");
+        return;
+    }
+
+    z.visited = true;
+    visitedAudioZones++;
+    updateProgress();
+    updateCircleColors();
+
+    if (z.audio) {
+        const audio = new Audio(z.audio);
+        audioPlaying = true;
+
+        audio.play().catch(() => audioPlaying = false);
+        audio.onended = () => audioPlaying = false;
+
+        setupPhotoTimingsForAudio(audio, id);
+    }
+
+    console.log("Simulated audio zone:", id);
+}
 /* ========================================================
    ===================== MOVE MARKER =======================
    ======================================================== */
@@ -645,7 +674,26 @@ for (let i = 0; i < fullRoute.length - 1; i++) {
             layout: { "line-join": "round", "line-cap": "round" },
             paint: { "line-width": 4, "line-color": "#333333" }
         });
+// === PHOTO TIMINGS FOR AUDIO ZONES ===
+// zoneId: { second: "image_path" }
+const photoTimings = {
+    3: { 3: "images/zone3_photo.jpg" } // пример: зона 3 → фото на 3 секунде
+};
+       function setupPhotoTimingsForAudio(audio, zoneId) {
+    const timings = photoTimings[zoneId];
+    if (!timings) return;
 
+    let shown = {};
+
+    audio.ontimeupdate = () => {
+        const t = Math.floor(audio.currentTime);
+
+        if (timings[t] && !shown[t]) {
+            shown[t] = true;
+            showTimedPhoto(timings[t]);
+        }
+    };
+}
         /* ========================================================
    ====================== AUDIO ZONES ======================
    ======================================================== */
@@ -737,6 +785,11 @@ updateProgress();
                 "circle-stroke-width": 2
             }
         });
+       // === SIMULATE AUDIO ZONE ON CLICK ===
+map.on("click", "audio-circles-layer", (e) => {
+    const id = e.features[0].properties.id;
+    simulateAudioZone(id);
+});
 // FIX_PHYSICAL_AUDIO_RADIUS — визуальный радиус = физический радиус (метры → пиксели)
 function updateAudioCircleRadius() {
     const zoom = map.getZoom();
@@ -899,7 +952,37 @@ if (compassBtn && togglePhotoBtn) {
 /* ========================================================
    ====================== DOM EVENTS =======================
    ======================================================== */
+/* ========================================================
+   ========== TIMED PHOTO POPUP (SMALL → FULL) =============
+   ======================================================== */
 
+function showTimedPhoto(src) {
+    // маленькое превью
+    const preview = document.createElement("img");
+    preview.src = src;
+    preview.style.position = "absolute";
+    preview.style.bottom = "120px";
+    preview.style.left = "10px";
+    preview.style.width = "80px";
+    preview.style.height = "80px";
+    preview.style.borderRadius = "8px";
+    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
+    preview.style.zIndex = "99999";
+    preview.style.cursor = "pointer";
+
+    document.body.appendChild(preview);
+
+    preview.onclick = () => {
+        currentPointImage = src;
+        photoImage.src = src;
+        photoOverlay.classList.remove("hidden");
+    };
+
+    // исчезает через 10 секунд
+    setTimeout(() => {
+        preview.remove();
+    }, 10000);
+}
 togglePhotoBtn.onclick = () => {
     if (!currentPointImage) return;
     photoImage.src = currentPointImage;
@@ -919,6 +1002,7 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
