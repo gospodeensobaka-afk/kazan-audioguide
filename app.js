@@ -397,6 +397,34 @@
                        }
                    };
                }
+/* ========================================================
+   ========== TIMED PHOTO POPUP (SMALL → FULL) =============
+   ======================================================== */
+
+function showTimedPhoto(src) {
+    const preview = document.createElement("img");
+    preview.src = src;
+    preview.style.position = "absolute";
+    preview.style.bottom = "120px";
+    preview.style.left = "10px";
+    preview.style.width = "80px";
+    preview.style.height = "80px";
+    preview.style.borderRadius = "8px";
+    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
+    preview.style.zIndex = "99999";
+    preview.style.cursor = "pointer";
+
+    document.body.appendChild(preview);
+
+    preview.onclick = () => {
+        currentPointImage = src;
+        photoImage.src = src;
+        photoOverlay.classList.remove("hidden");
+    };
+
+    // исчезает через 10 секунд
+    setTimeout(() => preview.remove(), 10000);
+}
                /* ========================================================
                   ===================== MOVE MARKER =======================
                   ======================================================== */
@@ -1012,3 +1040,4 @@
                
                
                
+
