@@ -351,34 +351,35 @@
                   ========== SIMULATE AUDIO ZONE (MANUAL TRIGGER) =========
                   ======================================================== */
                
-               function simulateAudioZone(id) {
-                   const z = zones.find(z => z.id === id && z.type === "audio");
-                   if (!z) return;
-               
-                   if (z.visited) {
-                       console.log("Zone already visited");
-                       return;
-                   }
-               
-                   z.visited = true;
-                   visitedAudioZones++;
-                   updateProgress();
-                   updateCircleColors();
-               
-                   if (z.audio) {
-                       if (!audioEnabled) audioEnabled = true;
+              function simulateAudioZone(id) {
+    const z = zones.find(z => z.id === id && z.type === "audio");
+    if (!z) return;
 
-globalAudio.src = z.audio;
-globalAudio.currentTime = 0;
-globalAudio.play().catch(() => {});
+    if (z.visited) {
+        console.log("Zone already visited");
+        return;
+    }
 
-audioPlaying = true;
-globalAudio.onended = () => audioPlaying = false;
+    z.visited = true;
+    visitedAudioZones++;
+    updateProgress();
+    updateCircleColors();
 
-setupPhotoTimingsForAudio(globalAudio, id);
-               
-                   console.log("Simulated audio zone:", id);
-               }
+    if (z.audio) {
+        if (!audioEnabled) audioEnabled = true;
+
+        globalAudio.src = z.audio;
+        globalAudio.currentTime = 0;
+        globalAudio.play().catch(() => {});
+
+        audioPlaying = true;
+        globalAudio.onended = () => audioPlaying = false;
+
+        setupPhotoTimingsForAudio(globalAudio, id);
+    }
+
+    console.log("Simulated audio zone:", id);
+}
                /* ========================================================
                   ========== PHOTO TIMINGS FOR AUDIO ZONES ================
                   ======================================================== */
@@ -1046,5 +1047,6 @@ function showTimedPhoto(src) {
                
                
                
+
 
 
