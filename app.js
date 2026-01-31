@@ -350,8 +350,7 @@
                /* ========================================================
                   ========== SIMULATE AUDIO ZONE (MANUAL TRIGGER) =========
                   ======================================================== */
-               
-              function simulateAudioZone(id) {
+               function simulateAudioZone(id) {
     const z = zones.find(z => z.id === id && z.type === "audio");
     if (!z) return;
 
@@ -1047,6 +1046,7 @@ function showTimedPhoto(src) {
                
                
                
+
 
 
 
