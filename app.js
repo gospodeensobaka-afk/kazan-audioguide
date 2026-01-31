@@ -392,7 +392,7 @@
                };
                
                function setupPhotoTimingsForAudio(audio, zoneId) {
-                   const timings = photoTimings[zoneId];
+                   const timings = photoTimings[Number(zoneId)];
                    if (!timings) return;
                
                    let shown = {};
@@ -1050,6 +1050,7 @@ function showTimedPhoto(src) {
                
                
                
+
 
 
 
