@@ -133,17 +133,19 @@
                   ===================== AUDIO ZONES =======================
                   ======================================================== */
                
-             function playZoneAudio(src, id) {
+            function playZoneAudio(src, id) {
     if (!audioEnabled) audioEnabled = true;
 
     globalAudio.src = src;
     globalAudio.currentTime = 0;
+
+    // Привязываем тайминги ВСЕГДА
+    setupPhotoTimingsForAudio(globalAudio, id);
+
     globalAudio.play().catch(() => {});
 
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
-
-    setupPhotoTimingsForAudio(globalAudio, id);
 }
                
                function updateCircleColors() {
@@ -1048,6 +1050,7 @@ function showTimedPhoto(src) {
                
                
                
+
 
 
 
