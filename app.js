@@ -28,7 +28,7 @@
                    [55.826659, 49.082523]
                ];
                let simulationIndex = 0;
-               
+               let globalAudio = null;
                let gpsActive = false; // включится после старта
                let audioEnabled = false;
                let audioPlaying = false;
@@ -133,13 +133,16 @@
                   ===================== AUDIO ZONES =======================
                   ======================================================== */
                
-               function playZoneAudio(src) {
-                   if (!audioEnabled || audioPlaying) return;
-                   const audio = new Audio(src);
-                   audioPlaying = true;
-                   audio.play().catch(() => { audioPlaying = false; });
-                   audio.onended = () => { audioPlaying = false; };
-               }
+              function playZoneAudio(src) {
+    if (!audioEnabled) audioEnabled = true;
+
+    globalAudio.src = src;
+    globalAudio.currentTime = 0;
+    globalAudio.play().catch(() => {});
+
+    audioPlaying = true;
+    globalAudio.onended = () => audioPlaying = false;
+}
                
                function updateCircleColors() {
                    const source = map.getSource("audio-circles");
@@ -363,14 +366,16 @@
                    updateCircleColors();
                
                    if (z.audio) {
-                       const audio = new Audio(z.audio);
-                       audioPlaying = true;
-               
-                       audio.play().catch(() => audioPlaying = false);
-                       audio.onended = () => audioPlaying = false;
-               
-                       setupPhotoTimingsForAudio(audio, id);
-                   }
+                       if (!audioEnabled) audioEnabled = true;
+
+globalAudio.src = z.audio;
+globalAudio.currentTime = 0;
+globalAudio.play().catch(() => {});
+
+audioPlaying = true;
+globalAudio.onended = () => audioPlaying = false;
+
+setupPhotoTimingsForAudio(globalAudio, id);
                
                    console.log("Simulated audio zone:", id);
                }
@@ -636,6 +641,7 @@ function showTimedPhoto(src) {
                    }
                
                    map.on("load", async () => {
+                     globalAudio = document.getElementById("globalAudio");
                       map.getCanvas().addEventListener("pointerdown", () => {
                    userTouching = true;
                });
@@ -1040,4 +1046,5 @@ function showTimedPhoto(src) {
                
                
                
+
 
