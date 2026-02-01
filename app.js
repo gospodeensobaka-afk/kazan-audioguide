@@ -140,36 +140,14 @@
     globalAudio.currentTime = 0;
 
     // Привязываем тайминги ВСЕГДА
-    setupPhotoTimingsForAudio(globalAudio, id);
+    setupMediaTimingsForAudio(globalAudio);
 
     globalAudio.play().catch(() => {});
 
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
 }
-               function setupPhotoTimingsForAudio(audio, zoneId) {
-    console.log("SETUP TIMINGS CALLED, zoneId =", zoneId, "src =", audio.src);
-
-    const src = audio.src.split("/").pop();
-    const key = "audio/" + src;
-    console.log("PHOTO KEY =", key, "TIMINGS =", photoTimings[key]);
-
-    const timings = photoTimings[key];
-    if (!timings) return;
-
-    let shown = {};
-
-    audio.ontimeupdate = () => {
-        const t = Math.floor(audio.currentTime);
-        console.log("AUDIO TIME", t);
-
-        if (timings[t] && !shown[t]) {
-            shown[t] = true;
-            console.log("SHOW TIMED PHOTO", timings[t]);
-            showTimedPhoto(timings[t]);
-        }
-    };
-}
+               
                function updateCircleColors() {
                    const source = map.getSource("audio-circles");
                    if (!source) return;
@@ -405,7 +383,7 @@ document.body.addEventListener("click", () => {
         globalAudio.ontimeupdate = null;
 
         // ВАЖНО: тайминги ДО play()
-        setupPhotoTimingsForAudio(globalAudio, id);
+        setupMediaTimingsForAudio(globalAudio);
 
         // Запуск аудио
         globalAudio.play().catch(() => {});
@@ -454,28 +432,82 @@ function showTimedPhoto(src) {
         photoImage.src = src;
         photoOverlay.classList.remove("hidden");
     };
+/* ========================================================
+   ========== TIMED MEDIA (PHOTO + VIDEO) ==================
+   ======================================================== */
 
-    // исчезает через 10 секунд
-    setTimeout(() => preview.remove(), 10000);
+const videoTimings = {
+    "audio/3.mp3": {
+        3: "videos/zone3_video.mp4"
+    }
+};
+
+function showTimedVideo(src) {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.background = "rgba(0,0,0,0.85)";
+    overlay.style.zIndex = "999999";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+
+    const video = document.createElement("video");
+    video.src = src;
+    video.controls = true;
+    video.autoplay = true;
+    video.style.maxWidth = "90%";
+    video.style.maxHeight = "90%";
+    video.style.borderRadius = "12px";
+    video.style.boxShadow = "0 0 20px rgba(0,0,0,0.5)";
+
+    const closeBtn = document.createElement("div");
+    closeBtn.textContent = "✕";
+    closeBtn.style.position = "absolute";
+    closeBtn.style.top = "20px";
+    closeBtn.style.right = "20px";
+    closeBtn.style.fontSize = "32px";
+    closeBtn.style.color = "white";
+    closeBtn.style.cursor = "pointer";
+
+    closeBtn.onclick = () => overlay.remove();
+
+    overlay.appendChild(video);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
 }
-function setupPhotoTimingsForAudio(audio, zoneId) {
-    const src = audio.src.split("/").pop(); // например "3.mp3"
+
+function setupMediaTimingsForAudio(audio) {
+    const src = audio.src.split("/").pop();
     const key = "audio/" + src;
 
-    const timings = photoTimings[key];
-    if (!timings) return;
+    const photo = photoTimings[key];
+    const video = videoTimings[key];
 
-    let shown = {};
+    let shownPhoto = {};
+    let shownVideo = {};
 
     audio.ontimeupdate = () => {
         const t = Math.floor(audio.currentTime);
 
-        if (timings[t] && !shown[t]) {
-            shown[t] = true;
-            showTimedPhoto(timings[t]);
+        if (photo && photo[t] && !shownPhoto[t]) {
+            shownPhoto[t] = true;
+            showTimedPhoto(photo[t]);
+        }
+
+        if (video && video[t] && !shownVideo[t]) {
+            shownVideo[t] = true;
+            showTimedVideo(video[t]);
         }
     };
 }
+    // исчезает через 10 секунд
+    setTimeout(() => preview.remove(), 10000);
+}
+
                /* ========================================================
                   ===================== MOVE MARKER =======================
                   ======================================================== */
@@ -1095,6 +1127,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
