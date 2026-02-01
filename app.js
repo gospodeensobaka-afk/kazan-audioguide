@@ -399,24 +399,15 @@ document.body.addEventListener("click", () => {
                   ======================================================== */
                
                const photoTimings = {
-                   3: { 3: "images/zone3_photo.jpg" }
-               };
+    "audio/3.mp3": {
+        3: "images/zone3_photo.jpg"
+    },
+    "audio/5.mp3": {
+        3: "images/zone5_photo.jpg"
+    }
+};
                
-               function setupPhotoTimingsForAudio(audio, zoneId) {
-                   const timings = photoTimings[Number(zoneId)];
-                   if (!timings) return;
                
-                   let shown = {};
-               
-                   audio.ontimeupdate = () => {
-                       const t = Math.floor(audio.currentTime);
-               
-                       if (timings[t] && !shown[t]) {
-                           shown[t] = true;
-                           showTimedPhoto(timings[t]);
-                       }
-                   };
-               }
 /* ========================================================
    ========== TIMED PHOTO POPUP (SMALL → FULL) =============
    ======================================================== */
@@ -444,6 +435,24 @@ function showTimedPhoto(src) {
 
     // исчезает через 10 секунд
     setTimeout(() => preview.remove(), 10000);
+}
+function setupPhotoTimingsForAudio(audio, zoneId) {
+    const src = audio.src.split("/").pop(); // например "3.mp3"
+    const key = "audio/" + src;
+
+    const timings = photoTimings[key];
+    if (!timings) return;
+
+    let shown = {};
+
+    audio.ontimeupdate = () => {
+        const t = Math.floor(audio.currentTime);
+
+        if (timings[t] && !shown[t]) {
+            shown[t] = true;
+            showTimedPhoto(timings[t]);
+        }
+    };
 }
                /* ========================================================
                   ===================== MOVE MARKER =======================
@@ -1064,6 +1073,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
