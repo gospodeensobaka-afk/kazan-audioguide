@@ -646,6 +646,9 @@ function showTimedPhoto(src) {
                
                    map.on("load", async () => {
                      globalAudio = document.getElementById("globalAudio");
+                     globalAudio.muted = false;
+globalAudio.autoplay = true;
+                     globalAudio.load();
                       map.getCanvas().addEventListener("pointerdown", () => {
                    userTouching = true;
                });
@@ -1050,6 +1053,7 @@ function showTimedPhoto(src) {
                
                
                
+
 
 
 
