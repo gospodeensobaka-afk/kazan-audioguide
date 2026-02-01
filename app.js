@@ -373,7 +373,9 @@
         globalAudio.pause();
         globalAudio.removeAttribute("src");
         globalAudio.load();
-
+document.body.addEventListener("click", () => {
+    globalAudio.play().catch(() => {});
+}, { once: true });
         globalAudio.src = z.audio;
         globalAudio.currentTime = 0;
 
@@ -1062,6 +1064,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
