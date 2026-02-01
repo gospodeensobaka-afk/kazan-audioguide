@@ -358,33 +358,37 @@
     const z = zones.find(z => z.id === id && z.type === "audio");
     if (!z) return;
 
-    if (z.visited) {
-        console.log("Zone already visited");
-        return;
-    }
+    // Разрешаем повторный запуск в симуляции
+    z.visited = false;
 
     z.visited = true;
     visitedAudioZones++;
     updateProgress();
     updateCircleColors();
 
-   if (z.audio) {
-    if (!audioEnabled) audioEnabled = true;
+    if (z.audio) {
+        if (!audioEnabled) audioEnabled = true;
 
-    globalAudio.src = z.audio;
-    globalAudio.currentTime = 0;
+        // Полный сброс аудио, чтобы браузер считал это новым запуском
+        globalAudio.pause();
+        globalAudio.removeAttribute("src");
+        globalAudio.load();
 
-    // 🔥 Сбрасываем старый таймер
-    globalAudio.ontimeupdate = null;
+        globalAudio.src = z.audio;
+        globalAudio.currentTime = 0;
 
-    globalAudio.play().catch(() => {});
+        // Сбрасываем старый таймер
+        globalAudio.ontimeupdate = null;
 
-    audioPlaying = true;
-    globalAudio.onended = () => audioPlaying = false;
+        // ВАЖНО: тайминги ДО play()
+        setupPhotoTimingsForAudio(globalAudio, id);
 
-    // 🔥 Привязываем тайминги для этой зоны
-    setupPhotoTimingsForAudio(globalAudio, id);
-}
+        // Запуск аудио
+        globalAudio.play().catch(() => {});
+
+        audioPlaying = true;
+        globalAudio.onended = () => audioPlaying = false;
+    }
 
     console.log("Simulated audio zone:", id);
 }
@@ -1058,6 +1062,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
