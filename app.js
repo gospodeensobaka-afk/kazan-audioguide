@@ -368,18 +368,23 @@
     updateProgress();
     updateCircleColors();
 
-    if (z.audio) {
-        if (!audioEnabled) audioEnabled = true;
+   if (z.audio) {
+    if (!audioEnabled) audioEnabled = true;
 
-        globalAudio.src = z.audio;
-        globalAudio.currentTime = 0;
-        globalAudio.play().catch(() => {});
+    globalAudio.src = z.audio;
+    globalAudio.currentTime = 0;
 
-        audioPlaying = true;
-        globalAudio.onended = () => audioPlaying = false;
+    // 🔥 Сбрасываем старый таймер
+    globalAudio.ontimeupdate = null;
 
-        setupPhotoTimingsForAudio(globalAudio, id);
-    }
+    globalAudio.play().catch(() => {});
+
+    audioPlaying = true;
+    globalAudio.onended = () => audioPlaying = false;
+
+    // 🔥 Привязываем тайминги для этой зоны
+    setupPhotoTimingsForAudio(globalAudio, id);
+}
 
     console.log("Simulated audio zone:", id);
 }
@@ -1053,6 +1058,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
