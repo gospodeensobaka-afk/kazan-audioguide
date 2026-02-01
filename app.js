@@ -1073,51 +1073,106 @@ globalAudio.autoplay = true;
                /* ========================================================
                   ========== TIMED PHOTO POPUP (SMALL → FULL) =============
                   ======================================================== */
-               
-               function showTimedPhoto(src) {
-                   // маленькое превью
-                   const preview = document.createElement("img");
-                   preview.src = src;
-                   preview.style.position = "absolute";
-                   preview.style.bottom = "120px";
-                   preview.style.left = "10px";
-                   preview.style.width = "80px";
-                   preview.style.height = "80px";
-                   preview.style.borderRadius = "8px";
-                   preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-                   preview.style.zIndex = "99999";
-                   preview.style.cursor = "pointer";
-               
-                   document.body.appendChild(preview);
-               
-                   preview.onclick = () => {
-                       currentPointImage = src;
-                       photoImage.src = src;
-                       photoOverlay.classList.remove("hidden");
-                   };
-               
-                   // исчезает через 10 секунд
-                   setTimeout(() => {
-                       preview.remove();
-                   }, 10000);
-               }
-               togglePhotoBtn.onclick = () => {
-                   if (!currentPointImage) return;
-                   photoImage.src = currentPointImage;
-                   photoOverlay.classList.remove("hidden");
-               };
-               
-               closePhotoBtn.onclick = () => {
-                   photoOverlay.classList.add("hidden");
-               };
-               
-               photoOverlay.onclick = (e) => {
-                   if (e.target === photoOverlay) {
-                       photoOverlay.classList.add("hidden");
-                   }
-               };
-               
-               document.addEventListener("DOMContentLoaded", initMap);
+               /* ========================================================
+   ========== TIMED PHOTO POPUP (SMALL → FULL) =============
+   ======================================================== */
+
+function showTimedPhoto(src) {
+    const preview = document.createElement("img");
+    preview.src = src;
+    preview.style.position = "absolute";
+    preview.style.bottom = "120px";
+    preview.style.left = "10px";
+    preview.style.width = "80px";
+    preview.style.height = "80px";
+    preview.style.borderRadius = "8px";
+    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
+    preview.style.zIndex = "99999";
+    preview.style.cursor = "pointer";
+
+    document.body.appendChild(preview);
+
+    preview.onclick = () => {
+        currentPointImage = src;
+        photoImage.src = src;
+        photoOverlay.classList.remove("hidden");
+    };
+
+    setTimeout(() => preview.remove(), 10000);
+}
+
+/* ========================================================
+   ========== TIMED MEDIA (PHOTO + VIDEO) ==================
+   ======================================================== */
+
+const videoTimings = {
+    "audio/3.mp3": {
+        3: "videos/zone3_video.mp4"
+    }
+};
+
+function showTimedVideo(src) {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.background = "rgba(0,0,0,0.85)";
+    overlay.style.zIndex = "999999";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+
+    const video = document.createElement("video");
+    video.src = src;
+    video.controls = true;
+    video.autoplay = true;
+    video.style.maxWidth = "90%";
+    video.style.maxHeight = "90%";
+    video.style.borderRadius = "12px";
+    video.style.boxShadow = "0 0 20px rgba(0,0,0,0.5)";
+
+    const closeBtn = document.createElement("div");
+    closeBtn.textContent = "✕";
+    closeBtn.style.position = "absolute";
+    closeBtn.style.top = "20px";
+    closeBtn.style.right = "20px";
+    closeBtn.style.fontSize = "32px";
+    closeBtn.style.color = "white";
+    closeBtn.style.cursor = "pointer";
+
+    closeBtn.onclick = () => overlay.remove();
+
+    overlay.appendChild(video);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+}
+
+function setupMediaTimingsForAudio(audio) {
+    const src = audio.src.split("/").pop();
+    const key = "audio/" + src;
+
+    const photo = photoTimings[key];
+    const video = videoTimings[key];
+
+    let shownPhoto = {};
+    let shownVideo = {};
+
+    audio.ontimeupdate = () => {
+        const t = Math.floor(audio.currentTime);
+
+        if (photo && photo[t] && !shownPhoto[t]) {
+            shownPhoto[t] = true;
+            showTimedPhoto(photo[t]);
+        }
+
+        if (video && video[t] && !shownVideo[t]) {
+            shownVideo[t] = true;
+            showTimedVideo(video[t]);
+        }
+    };
+}
                
                /* ==================== END OF APP.JS ====================== */
                
@@ -1127,6 +1182,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
