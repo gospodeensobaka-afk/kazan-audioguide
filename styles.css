@@ -87,5 +87,8 @@ html, body {
     border: 1px solid rgba(0, 150, 255, 0.8);
     transition: box-shadow 0.2s ease, border 0.2s ease;
 }
+.hidden {
+    display: none !important;
+}
 
 
