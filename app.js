@@ -140,7 +140,7 @@
     globalAudio.currentTime = 0;
 
     // Привязываем тайминги ВСЕГДА
-    setupMediaTimingsForAudio(globalAudio);
+    setupPhotoTimingsForAudio(globalAudio, id);
 
     globalAudio.play().catch(() => {});
 
@@ -405,7 +405,7 @@ document.body.addEventListener("click", () => {
         globalAudio.ontimeupdate = null;
 
         // ВАЖНО: тайминги ДО play()
-       setupMediaTimingsForAudio(globalAudio);
+        setupPhotoTimingsForAudio(globalAudio, id);
 
         // Запуск аудио
         globalAudio.play().catch(() => {});
@@ -428,12 +428,7 @@ document.body.addEventListener("click", () => {
         3: "images/zone5_photo.jpg"
     }
 };
-       /* VIDEO TIMINGS */
-const videoTimings = {
-    "audio/3.mp3": {
-        3: "videos/zone3_video.mp4"
-    }
-};        
+               
                
 /* ========================================================
    ========== TIMED PHOTO POPUP (SMALL → FULL) =============
@@ -478,69 +473,6 @@ function setupPhotoTimingsForAudio(audio, zoneId) {
         if (timings[t] && !shown[t]) {
             shown[t] = true;
             showTimedPhoto(timings[t]);
-        }
-    };
-}
-/* VIDEO POPUP */
-function showTimedVideo(src) {
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.background = "rgba(0,0,0,0.85)";
-    overlay.style.zIndex = "999999";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-
-    const video = document.createElement("video");
-    video.src = src;
-    video.controls = true;
-    video.autoplay = true;
-    video.style.maxWidth = "90%";
-    video.style.maxHeight = "90%";
-    video.style.borderRadius = "12px";
-
-    const closeBtn = document.createElement("div");
-    closeBtn.textContent = "✕";
-    closeBtn.style.position = "absolute";
-    closeBtn.style.top = "20px";
-    closeBtn.style.right = "20px";
-    closeBtn.style.fontSize = "32px";
-    closeBtn.style.color = "white";
-    closeBtn.style.cursor = "pointer";
-
-    closeBtn.onclick = () => overlay.remove();
-
-    overlay.appendChild(video);
-    overlay.appendChild(closeBtn);
-    document.body.appendChild(overlay);
-}
-
-/* UNIVERSAL MEDIA TIMINGS */
-function setupMediaTimingsForAudio(audio) {
-    const src = audio.src.split("/").pop();
-    const key = "audio/" + src;
-
-    const photo = photoTimings[key];
-    const video = videoTimings[key];
-
-    let shownPhoto = {};
-    let shownVideo = {};
-
-    audio.ontimeupdate = () => {
-        const t = Math.floor(audio.currentTime);
-
-        if (photo && photo[t] && !shownPhoto[t]) {
-            shownPhoto[t] = true;
-            showTimedPhoto(photo[t]);
-        }
-
-        if (video && video[t] && !shownVideo[t]) {
-            shownVideo[t] = true;
-            showTimedVideo(video[t]);
         }
     };
 }
