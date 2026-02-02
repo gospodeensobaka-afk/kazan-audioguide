@@ -1306,29 +1306,7 @@ globalAudio.autoplay = true;
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
 }
-               function setupPhotoTimingsForAudio(audio, zoneId) {
-    console.log("SETUP TIMINGS CALLED, zoneId =", zoneId, "src =", audio.src);
-
-    const src = audio.src.split("/").pop();
-    const key = "audio/" + src;
-    console.log("PHOTO KEY =", key, "TIMINGS =", photoTimings[key]);
-
-    const timings = photoTimings[key];
-    if (!timings) return;
-
-    let shown = {};
-
-    audio.ontimeupdate = () => {
-        const t = Math.floor(audio.currentTime);
-        console.log("AUDIO TIME", t);
-
-        if (timings[t] && !shown[t]) {
-            shown[t] = true;
-            console.log("SHOW TIMED PHOTO", timings[t]);
-            showTimedPhoto(timings[t]);
-        }
-    };
-}
+               
                function updateCircleColors() {
                    const source = map.getSource("audio-circles");
                    if (!source) return;
@@ -1609,7 +1587,7 @@ function showTimedPhoto(src) {
     document.body.appendChild(preview);
 
     preview.onclick = () => {
-        currentPointImage = src;
+        
         photoImage.src = src;
         photoOverlay.classList.remove("hidden");
     };
@@ -2254,6 +2232,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
