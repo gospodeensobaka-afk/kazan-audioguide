@@ -1181,7 +1181,6 @@ globalAudio.autoplay = true;
                document.getElementById("buildIndicator").textContent =
                  "build: " + new Date().toLocaleTimeString();
                // TOUR START FLAG
-               let tourStarted = false;
                let map;
                let currentPointImage = null;
                
@@ -2272,6 +2271,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
