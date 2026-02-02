@@ -463,24 +463,7 @@ function showTimedPhoto(src) {
     // исчезает через 10 секунд
     setTimeout(() => preview.remove(), 10000);
 }
-function setupPhotoTimingsForAudio(audio, zoneId) {
-    const src = audio.src.split("/").pop(); // например "3.mp3"
-    const key = "audio/" + src;
 
-    const timings = photoTimings[key];
-    if (!timings) return;
-
-    let shown = {};
-
-    audio.ontimeupdate = () => {
-        const t = Math.floor(audio.currentTime);
-
-        if (timings[t] && !shown[t]) {
-            shown[t] = true;
-            showTimedPhoto(timings[t]);
-        }
-    };
-}
 /* VIDEO POPUP */
 function showTimedVideo(src) {
     const overlay = document.createElement("div");
@@ -1181,7 +1164,7 @@ globalAudio.autoplay = true;
                document.getElementById("buildIndicator").textContent =
                  "build: " + new Date().toLocaleTimeString();
                // TOUR START FLAG
-               let map;
+            
                let currentPointImage = null;
                
                const togglePhotoBtn = document.getElementById("togglePhotoBtn");
@@ -2271,6 +2254,7 @@ globalAudio.autoplay = true;
                
                
                
+
 
 
 
