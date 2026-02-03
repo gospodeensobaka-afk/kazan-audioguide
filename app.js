@@ -16,6 +16,7 @@
                let arrowEl = null;
                let lastCoords = null;
                let zones = [];
+let lastZoneMedia = []; // фото и видео последней аудиозоны
                
                let simulationActive = false;
                let simulationPoints = [];
@@ -138,7 +139,21 @@
 
     globalAudio.src = src;
     globalAudio.currentTime = 0;
+// Собираем медиа для галереи
+lastZoneMedia = [];
+const srcKey = "audio/" + src.split("/").pop();
 
+if (photoTimings[srcKey]) {
+    for (const t in photoTimings[srcKey]) {
+        lastZoneMedia.push({ type: "photo", src: photoTimings[srcKey][t] });
+    }
+}
+
+if (videoTimings[srcKey]) {
+    for (const t in videoTimings[srcKey]) {
+        lastZoneMedia.push({ type: "video", src: videoTimings[srcKey][t] });
+    }
+}
     // Привязываем тайминги ВСЕГДА
     setupPhotoTimingsForAudio(globalAudio, id);
 
@@ -790,6 +805,69 @@ function setupPhotoTimingsForAudio(audio, zoneId) {
                    }
                
                    map.on("load", async () => {
+                     // === КНОПКА "НЕ УСПЕВАЮ" ===
+document.getElementById("slowBtn").onclick = () => {
+    const gallery = document.getElementById("bottomGallery");
+    const scroller = document.getElementById("galleryScroller");
+
+    // Переключаем видимость
+    gallery.classList.toggle("hidden");
+
+    // Очищаем старые превью
+    scroller.innerHTML = "";
+
+    // Добавляем новые
+    lastZoneMedia.forEach(item => {
+        const thumb = document.createElement("div");
+        thumb.style.width = "90px";
+        thumb.style.height = "90px";
+        thumb.style.borderRadius = "10px";
+        thumb.style.overflow = "hidden";
+        thumb.style.flexShrink = "0";
+        thumb.style.background = "#000";
+        thumb.style.display = "flex";
+        thumb.style.alignItems = "center";
+        thumb.style.justifyContent = "center";
+        thumb.style.cursor = "pointer";
+
+        if (item.type === "photo") {
+            const img = document.createElement("img");
+            img.src = item.src;
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "cover";
+            thumb.appendChild(img);
+
+            thumb.onclick = () => {
+                photoImage.src = item.src;
+                photoOverlay.classList.remove("hidden");
+            };
+        }
+
+        if (item.type === "video") {
+            const icon = document.createElement("div");
+            icon.style.width = "0";
+            icon.style.height = "0";
+            icon.style.borderLeft = "20px solid white";
+            icon.style.borderTop = "12px solid transparent";
+            icon.style.borderBottom = "12px solid transparent";
+            thumb.appendChild(icon);
+
+            thumb.onclick = () => {
+                // открываем fullscreen видео
+                const videoOverlay = document.getElementById("videoOverlay");
+                const videoElement = document.getElementById("videoElement");
+
+                videoElement.src = item.src;
+                videoElement.currentTime = 0;
+                videoElement.play().catch(() => {});
+                videoOverlay.classList.remove("hidden");
+            };
+        }
+
+        scroller.appendChild(thumb);
+    });
+};
                      globalAudio = document.getElementById("globalAudio");
                      globalAudio.muted = false;
 globalAudio.autoplay = true;
@@ -1191,4 +1269,5 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
