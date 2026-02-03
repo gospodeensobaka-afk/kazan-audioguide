@@ -17,6 +17,7 @@ document.getElementById("buildIndicator").textContent =
                let arrowEl = null;
                let lastCoords = null;
                let zones = [];
+let currentZoneId = null;
 let lastZoneMedia = []; // фото и видео последней аудиозоны
                
                let simulationActive = false;
@@ -136,6 +137,7 @@ let lastZoneMedia = []; // фото и видео последней аудио�
                   ======================================================== */
                
             function playZoneAudio(src, id) {
+              currentZoneId = id;
     if (!audioEnabled) audioEnabled = true;
 
     globalAudio.src = src;
@@ -438,7 +440,9 @@ document.body.addEventListener("click", () => {
               /* ========================================================
    ========== PHOTO TIMINGS FOR AUDIO ZONES ================
    ======================================================== */
-
+const autoCloseTimings = {
+    5: 2000
+};
 const photoTimings = {
     "audio/3.mp3": {
         3: "images/zone3_photo.jpg"
@@ -459,7 +463,18 @@ const videoTimings = {
    ======================================================== */
 
 function showTimedPhoto(src) {
-      lastZoneMedia.push({ type: "photo", src });
+    lastZoneMedia.push({ type: "photo", src });
+
+    photoImage.src = src;
+    photoOverlay.classList.remove("hidden");
+
+    // === АВТОЗАКРЫТИЕ ТОЛЬКО ДЛЯ ЗОНЫ 5 ===
+    if (currentZoneId === 5) {
+        setTimeout(() => {
+            photoOverlay.classList.add("hidden");
+        }, 2000);
+    }
+}
     const preview = document.createElement("img");
     preview.src = src;
     preview.style.position = "absolute";
@@ -485,83 +500,24 @@ function showTimedPhoto(src) {
 }
 
 function showTimedVideo(src) {
-      lastZoneMedia.push({ type: "video", src });
-    // Маленькое превью в углу, как у фото
-    const preview = document.createElement("div");
-    preview.style.position = "absolute";
-    preview.style.bottom = "120px";
-    preview.style.left = "100px";
-    preview.style.width = "80px";
-    preview.style.height = "80px";
-    preview.style.borderRadius = "8px";
-    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-    preview.style.zIndex = "99999";
-    preview.style.cursor = "pointer";
-    preview.style.background = "black";
-    preview.style.display = "flex";
-    preview.style.alignItems = "center";
-    preview.style.justifyContent = "center";
+    lastZoneMedia.push({ type: "video", src });
 
-    const playIcon = document.createElement("div");
-    playIcon.style.width = "0";
-    playIcon.style.height = "0";
-    playIcon.style.borderLeft = "18px solid white";
-    playIcon.style.borderTop = "10px solid transparent";
-    playIcon.style.borderBottom = "10px solid transparent";
+    const videoOverlay = document.getElementById("videoOverlay");
+    const videoElement = document.getElementById("videoElement");
 
-    preview.appendChild(playIcon);
-    document.body.appendChild(preview);
+    videoElement.src = src;
+    videoElement.currentTime = 0;
+    videoElement.play().catch(() => {});
+    videoOverlay.classList.remove("hidden");
 
-    // Ленивая инициализация полноэкранного оверлея
-    let videoOverlay = document.getElementById("videoOverlay");
-    let videoElement = document.getElementById("videoElement");
-    let closeVideoBtn = document.getElementById("closeVideoBtn");
-
-    if (!videoOverlay) {
-        videoOverlay = document.createElement("div");
-        videoOverlay.id = "videoOverlay";
-        videoOverlay.style.position = "fixed";
-        videoOverlay.style.top = "0";
-        videoOverlay.style.left = "0";
-        videoOverlay.style.width = "100%";
-        videoOverlay.style.height = "100%";
-        videoOverlay.style.background = "rgba(0,0,0,0.9)";
-        videoOverlay.style.display = "flex";
-        videoOverlay.style.alignItems = "center";
-        videoOverlay.style.justifyContent = "center";
-        videoOverlay.style.zIndex = "100000";
-        videoOverlay.classList.add("hidden");
-
-        videoElement = document.createElement("video");
-        videoElement.id = "videoElement";
-        videoElement.style.maxWidth = "100%";
-        videoElement.style.maxHeight = "100%";
-        videoElement.controls = true;
-
-        closeVideoBtn = document.createElement("button");
-        closeVideoBtn.id = "closeVideoBtn";
-        closeVideoBtn.textContent = "×";
-        closeVideoBtn.style.position = "absolute";
-        closeVideoBtn.style.top = "20px";
-        closeVideoBtn.style.right = "20px";
-        closeVideoBtn.style.width = "40px";
-        closeVideoBtn.style.height = "40px";
-        closeVideoBtn.style.borderRadius = "20px";
-        closeVideoBtn.style.border = "none";
-        closeVideoBtn.style.background = "rgba(0,0,0,0.7)";
-        closeVideoBtn.style.color = "white";
-        closeVideoBtn.style.fontSize = "24px";
-        closeVideoBtn.style.cursor = "pointer";
-
-        closeVideoBtn.onclick = () => {
+    // Автозакрытие, если зона требует
+    if (autoCloseTimings[currentZoneId]) {
+        setTimeout(() => {
             videoElement.pause();
             videoOverlay.classList.add("hidden");
-        };
-
-        videoOverlay.appendChild(videoElement);
-        videoOverlay.appendChild(closeVideoBtn);
-        document.body.appendChild(videoOverlay);
+        }, autoCloseTimings[currentZoneId]);
     }
+}
 
     preview.onclick = () => {
         videoElement.src = src;
@@ -1233,31 +1189,6 @@ globalAudio.autoplay = true;
                   ======================================================== */
                
                function showTimedPhoto(src) {
-                   // маленькое превью
-                   const preview = document.createElement("img");
-                   preview.src = src;
-                   preview.style.position = "absolute";
-                   preview.style.bottom = "120px";
-                   preview.style.left = "10px";
-                   preview.style.width = "80px";
-                   preview.style.height = "80px";
-                   preview.style.borderRadius = "8px";
-                   preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-                   preview.style.zIndex = "99999";
-                   preview.style.cursor = "pointer";
-               
-                   document.body.appendChild(preview);
-               
-                   preview.onclick = () => {
-                       currentPointImage = src;
-                       photoImage.src = src;
-                       photoOverlay.classList.remove("hidden");
-                   };
-               
-                   // исчезает через 10 секунд
-                   setTimeout(() => {
-                       preview.remove();
-                   }, 10000);
                }
                togglePhotoBtn.onclick = () => {
                    if (!currentPointImage) return;
@@ -1278,6 +1209,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
