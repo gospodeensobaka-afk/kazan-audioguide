@@ -811,6 +811,9 @@ function setupPhotoTimingsForAudio(audio, zoneId) {
                    map.on("load", async () => {
                      // === КНОПКА "НЕ УСПЕВАЮ" ===
 document.getElementById("slowBtn").onclick = () => {
+  document.getElementById("closeGalleryBtn").onclick = () => {
+    document.getElementById("bottomGallery").classList.add("hidden");
+};
     const gallery = document.getElementById("bottomGallery");
     const scroller = document.getElementById("galleryScroller");
 
@@ -1273,6 +1276,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
