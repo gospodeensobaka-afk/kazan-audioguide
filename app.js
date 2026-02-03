@@ -1,7 +1,8 @@
                /* ========================================================
                   =============== GLOBAL VARIABLES & STATE ===============
                   ======================================================== */
-               document.getElementById("buildIndicator").textContent =
+const DEBUG_MODE = false;              
+document.getElementById("buildIndicator").textContent =
                  "build: " + new Date().toLocaleTimeString();
                // TOUR START FLAG
                let tourStarted = false;
@@ -226,28 +227,31 @@ if (videoTimings[srcKey]) {
                   ======================================================== */
                
                function ensureSuperDebug() {
-                   let dbg = document.getElementById("superDebug");
-                   if (!dbg) {
-                       dbg = document.createElement("div");
-                       dbg.id = "superDebug";
-                       dbg.style.position = "fixed";
-                       dbg.style.bottom = "0";
-                       dbg.style.left = "0";
-                       dbg.style.width = "100%";
-                       dbg.style.padding = "8px 10px";
-                       dbg.style.background = "rgba(0,0,0,0.75)";
-                       dbg.style.color = "white";
-                       dbg.style.fontSize = "12px";
-                       dbg.style.fontFamily = "monospace";
-                       dbg.style.zIndex = "99999";
-                       dbg.style.whiteSpace = "pre-line";
-                       dbg.style.display = "block";
-                       document.body.appendChild(dbg);
-                   }
-                   return dbg;
-               }
+    if (!DEBUG_MODE) return { textContent: "" }; // заглушка
+
+    let dbg = document.getElementById("superDebug");
+    if (!dbg) {
+        dbg = document.createElement("div");
+        dbg.id = "superDebug";
+        dbg.style.position = "fixed";
+        dbg.style.bottom = "0";
+        dbg.style.left = "0";
+        dbg.style.width = "100%";
+        dbg.style.padding = "8px 10px";
+        dbg.style.background = "rgba(0,0,0,0.75)";
+        dbg.style.color = "white";
+        dbg.style.fontSize = "12px";
+        dbg.style.fontFamily = "monospace";
+        dbg.style.zIndex = "99999";
+        dbg.style.whiteSpace = "pre-line";
+        dbg.style.display = "block";
+        document.body.appendChild(dbg);
+    }
+    return dbg;
+}
                
                function debugUpdate(source, angle, error = "none") {
+                     if (!DEBUG_MODE) return;
                    const dbg = ensureSuperDebug();
                
                    if (!arrowEl) {
@@ -1269,5 +1273,6 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
