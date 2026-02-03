@@ -463,43 +463,24 @@ const videoTimings = {
    ======================================================== */
 
 function showTimedPhoto(src) {
+    // сохраняем в галерею последней зоны
     lastZoneMedia.push({ type: "photo", src });
 
+    // фулскрин-фото
     photoImage.src = src;
     photoOverlay.classList.remove("hidden");
 
-    // === АВТОЗАКРЫТИЕ ТОЛЬКО ДЛЯ ЗОНЫ 5 ===
-    if (currentZoneId === 5) {
+    // автозакрытие, если для зоны задан тайминг
+    const timeout = autoCloseTimings[currentZoneId];
+    if (timeout) {
         setTimeout(() => {
             photoOverlay.classList.add("hidden");
-        }, 2000);
+        }, timeout);
     }
-}
-    const preview = document.createElement("img");
-    preview.src = src;
-    preview.style.position = "absolute";
-    preview.style.bottom = "120px";
-    preview.style.left = "10px";
-    preview.style.width = "80px";
-    preview.style.height = "80px";
-    preview.style.borderRadius = "8px";
-    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-    preview.style.zIndex = "99999";
-    preview.style.cursor = "pointer";
-
-    document.body.appendChild(preview);
-
-    preview.onclick = () => {
-        currentPointImage = src;
-        photoImage.src = src;
-        photoOverlay.classList.remove("hidden");
-    };
-
-    // исчезает через 10 секунд
-    setTimeout(() => preview.remove(), 10000);
 }
 
 function showTimedVideo(src) {
+    // сохраняем в галерею последней зоны
     lastZoneMedia.push({ type: "video", src });
 
     const videoOverlay = document.getElementById("videoOverlay");
@@ -510,24 +491,14 @@ function showTimedVideo(src) {
     videoElement.play().catch(() => {});
     videoOverlay.classList.remove("hidden");
 
-    // Автозакрытие, если зона требует
-    if (autoCloseTimings[currentZoneId]) {
+    // автозакрытие, если для зоны задан тайминг
+    const timeout = autoCloseTimings[currentZoneId];
+    if (timeout) {
         setTimeout(() => {
             videoElement.pause();
             videoOverlay.classList.add("hidden");
-        }, autoCloseTimings[currentZoneId]);
+        }, timeout);
     }
-}
-
-    preview.onclick = () => {
-        videoElement.src = src;
-        videoElement.currentTime = 0;
-        videoElement.play().catch(() => {});
-        videoOverlay.classList.remove("hidden");
-    };
-
-    // превью исчезает через 10 секунд
-    setTimeout(() => preview.remove(), 10000);
 }
 
 function setupPhotoTimingsForAudio(audio, zoneId) {
@@ -1209,6 +1180,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
