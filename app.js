@@ -459,6 +459,7 @@ const videoTimings = {
    ======================================================== */
 
 function showTimedPhoto(src) {
+      lastZoneMedia.push({ type: "photo", src });
     const preview = document.createElement("img");
     preview.src = src;
     preview.style.position = "absolute";
@@ -484,6 +485,7 @@ function showTimedPhoto(src) {
 }
 
 function showTimedVideo(src) {
+      lastZoneMedia.push({ type: "video", src });
     // Маленькое превью в углу, как у фото
     const preview = document.createElement("div");
     preview.style.position = "absolute";
@@ -1276,6 +1278,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
