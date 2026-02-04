@@ -386,13 +386,14 @@ lastZoneMedia = [];
                /* ========================================================
                   ========== SIMULATE AUDIO ZONE (MANUAL TRIGGER) =========
                   ======================================================== */
-               function simulateAudioZone(id) {
+            /* === FIX_SIMULATE_AUDIO_ZONE === */
+function simulateAudioZone(id) {
     const z = zones.find(z => z.id === id && z.type === "audio");
     if (!z) return;
 
     // Сбрасываем медиа и фиксируем текущую зону для галереи
-    lastZoneMedia = [];            /* === PATCH_SIM_RESET_MEDIA === */
-    currentZoneId = id;            /* === PATCH_SIM_SET_ZONE === */
+    lastZoneMedia = [];
+    currentZoneId = id;
 
     // Разрешаем повторный запуск в симуляции
     z.visited = false;
@@ -405,7 +406,7 @@ lastZoneMedia = [];
     if (z.audio) {
         if (!audioEnabled) audioEnabled = true;
 
-        // Полный сброс аудио, чтобы браузер считал это новым запуском
+        // Полный сброс аудио
         globalAudio.pause();
         globalAudio.removeAttribute("src");
         globalAudio.load();
@@ -423,9 +424,7 @@ lastZoneMedia = [];
         // ВАЖНО: тайминги ДО play()
         setupPhotoTimingsForAudio(globalAudio, id);
 
-        // Запуск аудио
         globalAudio.play().catch(() => {});
-
         audioPlaying = true;
         globalAudio.onended = () => audioPlaying = false;
     }
@@ -1197,6 +1196,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
