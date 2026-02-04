@@ -10,13 +10,9 @@
                
                const togglePhotoBtn = document.getElementById("togglePhotoBtn");
                const photoOverlay = document.getElementById("photoOverlay");
-
                const photoImage = document.getElementById("photoImage");
+               const closePhotoBtn = document.getElementById("closePhotoBtn");
                
-               /* === PATCH_PHOTO_CLOSE_ON_CLICK === */
-photoOverlay.onclick = () => {
-    photoOverlay.style.display = "none";
-};
                let arrowEl = null;
                let lastCoords = null;
                let zones = [];
@@ -138,8 +134,6 @@ photoOverlay.onclick = () => {
                   ======================================================== */
                
             function playZoneAudio(src, id) {
-              currentZoneId = id;
-lastZoneMedia = [];
     if (!audioEnabled) audioEnabled = true;
 
     globalAudio.src = src;
@@ -153,29 +147,7 @@ lastZoneMedia = [];
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
 }
-               function setupPhotoTimingsForAudio(audio, zoneId) {
-    console.log("SETUP TIMINGS CALLED, zoneId =", zoneId, "src =", audio.src);
-
-    const src = audio.src.split("/").pop();
-    const key = "audio/" + src;
-    console.log("PHOTO KEY =", key, "TIMINGS =", photoTimings[key]);
-
-    const timings = photoTimings[key];
-    if (!timings) return;
-
-    let shown = {};
-
-    audio.ontimeupdate = () => {
-        const t = Math.floor(audio.currentTime);
-        console.log("AUDIO TIME", t);
-
-        if (timings[t] && !shown[t]) {
-            shown[t] = true;
-            console.log("SHOW TIMED PHOTO", timings[t]);
-            showTimedPhoto(timings[t]);
-        }
-    };
-}
+               
                function updateCircleColors() {
                    const source = map.getSource("audio-circles");
                    if (!source) return;
@@ -198,20 +170,17 @@ lastZoneMedia = [];
                        const dist = distance(coords, [z.lat, z.lng]);
                
                        // СТАРАЯ НАДЁЖНАЯ ЛОГИКА: один раз при входе
-                      if (!z.visited && dist <= z.radius) {
-    z.visited = true;
-
-    lastZoneMedia = []; /* === PATCH_RESET_MEDIA_SIMULATION === */
-    currentZoneId = z.id; /* ← правильный id зоны */
-
-    if (z.type === "audio") {
-        visitedAudioZones++;
-        updateProgress();
-    }
-
-    updateCircleColors();
-    if (z.audio) playZoneAudio(z.audio, z.id);
-}
+                       if (!z.visited && dist <= z.radius) {
+                   z.visited = true;
+               
+                   if (z.type === "audio") {
+                       visitedAudioZones++;
+                       updateProgress();
+                   }
+               
+                   updateCircleColors();
+                   if (z.audio) playZoneAudio(z.audio, z.id);
+               }
                    });
                }
                
@@ -236,7 +205,6 @@ lastZoneMedia = [];
                        dbg.style.zIndex = "99999";
                        dbg.style.whiteSpace = "pre-line";
                        dbg.style.display = "block";
-                     dbg.style.pointerEvents = "none"; /* === PATCH_DEBUG_POINTER_EVENTS === */
                        document.body.appendChild(dbg);
                    }
                    return dbg;
@@ -386,14 +354,9 @@ lastZoneMedia = [];
                /* ========================================================
                   ========== SIMULATE AUDIO ZONE (MANUAL TRIGGER) =========
                   ======================================================== */
-            /* === FIX_SIMULATE_AUDIO_ZONE === */
-function simulateAudioZone(id) {
+               function simulateAudioZone(id) {
     const z = zones.find(z => z.id === id && z.type === "audio");
     if (!z) return;
-
-    // Сбрасываем медиа и фиксируем текущую зону для галереи
-    lastZoneMedia = [];
-    currentZoneId = id;
 
     // Разрешаем повторный запуск в симуляции
     z.visited = false;
@@ -406,15 +369,13 @@ function simulateAudioZone(id) {
     if (z.audio) {
         if (!audioEnabled) audioEnabled = true;
 
-        // Полный сброс аудио
+        // Полный сброс аудио, чтобы браузер считал это новым запуском
         globalAudio.pause();
         globalAudio.removeAttribute("src");
         globalAudio.load();
-
-        document.body.addEventListener("click", () => {
-            globalAudio.play().catch(() => {});
-        }, { once: true });
-
+document.body.addEventListener("click", () => {
+    globalAudio.play().catch(() => {});
+}, { once: true });
         globalAudio.src = z.audio;
         globalAudio.currentTime = 0;
 
@@ -424,7 +385,9 @@ function simulateAudioZone(id) {
         // ВАЖНО: тайминги ДО play()
         setupPhotoTimingsForAudio(globalAudio, id);
 
+        // Запуск аудио
         globalAudio.play().catch(() => {});
+
         audioPlaying = true;
         globalAudio.onended = () => audioPlaying = false;
     }
@@ -450,138 +413,35 @@ const videoTimings = {
         3: "videos/zone3_video.mp4"
     }
 };
+/* ========================================================
+   ========== TIMED PHOTO / VIDEO POPUP ====================
+   ======================================================== */
 
-/* === START TIMED_MEDIA === */
-
-let lastZoneMedia = [];
-let currentZoneId = null;
-
-const autoCloseTimings = {
-    5: 2000
-};
-
+/* === PATCH_SHOW_TIMED_PHOTO === */
 function showTimedPhoto(src) {
     lastZoneMedia.push({ type: "photo", src });
 
     photoImage.src = src;
-   photoOverlay.style.display = "flex";
-
-    const timeout = autoCloseTimings[currentZoneId];
-    if (timeout) {
-        setTimeout(() => {
-           photoOverlay.style.display = "none";
-        }, timeout);
-    }
+    photoOverlay.style.display = "flex";
 }
 
+/* === PATCH_SHOW_TIMED_VIDEO === */
 function showTimedVideo(src) {
     lastZoneMedia.push({ type: "video", src });
 
     const videoOverlay = document.getElementById("videoOverlay");
     const videoElement = document.getElementById("videoElement");
-/* === PATCH_VIDEO_POINTER_EVENTS === */
-const closeVideoBtn = document.getElementById("closeVideoBtn");
-videoOverlay.style.pointerEvents = "auto";
-if (closeVideoBtn) {
-    closeVideoBtn.style.pointerEvents = "auto";
-    closeVideoBtn.onclick = () => {
-        videoElement.pause();
-        videoOverlay.style.display = "none";
-    };
-}
+
     videoElement.src = src;
     videoElement.currentTime = 0;
     videoElement.play().catch(() => {});
-    videoOverlay.style.display = "flex";
 
-    const timeout = autoCloseTimings[currentZoneId];
-    if (timeout) {
-        setTimeout(() => {
-            videoElement.pause();
-            videoOverlay.style.display = "none";
-        }, timeout);
-    }
+    videoOverlay.style.display = "flex";
 }
 
-/* === END TIMED_MEDIA === */
-/* === START GALLERY_LOGIC === */
-
-/* === START PATCH_NOT_READY_TOGGLE === */
-document.getElementById("notReadyBtn").onclick = () => {
-    const gallery = document.getElementById("galleryOverlay");
-
-    // если открыта — закрываем
-    if (gallery.style.display === "flex") {
-        gallery.style.display = "none";
-        return;
-    }
-
-    // иначе — открываем и заполняем
-    gallery.innerHTML = "";
-
-    lastZoneMedia.forEach(item => {
-        const thumb = document.createElement("div");
-        thumb.style.width = "80px";
-        thumb.style.height = "80px";
-        thumb.style.borderRadius = "12px";
-        thumb.style.overflow = "hidden";
-        thumb.style.background = "#000";
-        thumb.style.display = "flex";
-        thumb.style.alignItems = "center";
-        thumb.style.justifyContent = "center";
-        thumb.style.cursor = "pointer";
-
-        if (item.type === "photo") {
-            const img = document.createElement("img");
-            img.src = item.src;
-            img.style.width = "100%";
-            img.style.height = "100%";
-            img.style.objectFit = "cover";
-            thumb.appendChild(img);
-
-            thumb.onclick = () => {
-                photoImage.src = item.src;
-                photoOverlay.style.display = "flex";
-            };
-        }
-
-        if (item.type === "video") {
-            const icon = document.createElement("div");
-            icon.style.width = "0";
-            icon.style.height = "0";
-            icon.style.borderLeft = "20px solid white";
-            icon.style.borderTop = "12px solid transparent";
-            icon.style.borderBottom = "12px solid transparent";
-            thumb.appendChild(icon);
-
-            thumb.onclick = () => {
-                const videoOverlay = document.getElementById("videoOverlay");
-                const videoElement = document.getElementById("videoElement");
-
-                videoElement.src = item.src;
-                videoElement.currentTime = 0;
-                videoElement.play().catch(() => {});
-                videoOverlay.style.display = "flex";
-            };
-        }
-
-        gallery.appendChild(thumb);
-    });
-
-    gallery.style.display = "flex";
-
-    // закрытие по клику на тёмный фон
-    gallery.onclick = (e) => {
-        if (e.target === gallery) {
-            gallery.style.display = "none";
-        }
-    };
-};
-/* === END PATCH_NOT_READY_TOGGLE === */
-
-/* === END GALLERY_LOGIC === */
+/* === PATCH_SETUP_TIMINGS === */
 function setupPhotoTimingsForAudio(audio, zoneId) {
-    const src = audio.src.split("/").pop(); // например "3.mp3"
+    const src = audio.src.split("/").pop();
     const key = "audio/" + src;
 
     const pTimings = photoTimings[key] || null;
@@ -706,6 +566,28 @@ function setupPhotoTimingsForAudio(audio, zoneId) {
                
                    // === ZONES ===
                    checkZones(coords);
+               
+                   // === PHOTO POINTS ===
+                   zones.forEach(z => {
+                       if (z.type !== "square" || !z.image) return;
+               
+                       const dist = distance(coords, [z.lat, z.lng]);
+               
+                       if (!z.entered && dist <= 30) {
+                           z.entered = true;
+                           currentPointImage = z.image;
+                           togglePhotoBtn.style.display = "block";
+                           photoImage.src = z.image;
+                           togglePhotoBtn.classList.add("photo-btn-glow");
+                       }
+               
+                       if (z.entered && dist > 30) {
+                           z.entered = false;
+                           togglePhotoBtn.style.display = "none";
+                           togglePhotoBtn.classList.remove("photo-btn-glow");
+                       }
+                   });
+               
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
                    debugUpdate(src, ang);
@@ -1169,7 +1051,7 @@ globalAudio.autoplay = true;
                    preview.onclick = () => {
                        currentPointImage = src;
                        photoImage.src = src;
-                       photoOverlay.style.display = "flex";
+                       photoOverlay.classList.remove("hidden");
                    };
                
                    // исчезает через 10 секунд
@@ -1184,25 +1066,15 @@ globalAudio.autoplay = true;
                };
                
                closePhotoBtn.onclick = () => {
-                  photoOverlay.style.display = "none";
+                   photoOverlay.classList.add("hidden");
                };
                
                photoOverlay.onclick = (e) => {
                    if (e.target === photoOverlay) {
-                       photoOverlay.style.display = "none";
+                       photoOverlay.classList.add("hidden");
                    }
                };
                
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
-
-
-
-
-
-
-
-
-
-
