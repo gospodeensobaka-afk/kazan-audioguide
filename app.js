@@ -979,9 +979,9 @@ if (notReadyBtn && galleryOverlay) {
             }
 
             thumb.onclick = () => {
-                galleryOverlay.classList.add("hidden"); // ← прячем галерею
-                window.__openedFromGallery = true;      // ← флаг для showFullscreenMedia
-                showFullscreenMedia(item.src, item.type);
+                galleryOverlay.classList.add("hidden");   // прячем галерею
+                window.__openedFromGallery = true;        // флаг для showFullscreenMedia
+                showFullscreenMedia(item.src, item.type); // открываем медиа
             };
 
             galleryOverlay.appendChild(thumb);
@@ -991,16 +991,13 @@ if (notReadyBtn && galleryOverlay) {
     };
 }
 
-galleryOverlay.onclick = (e) => {
-    if (e.target === galleryOverlay) {
-        galleryOverlay.classList.add("hidden");
-    }
-};
-galleryOverlay.onclick = (e) => {
-    if (e.target === galleryOverlay) {
-        galleryOverlay.classList.add("hidden");
-    }
-};
+if (galleryOverlay) {
+    galleryOverlay.onclick = (e) => {
+        if (e.target === galleryOverlay) {
+            galleryOverlay.classList.add("hidden");
+        }
+    };
+}
                /* ========================================================
                   ===================== START TOUR BTN ====================
                   ======================================================== */
@@ -1064,12 +1061,13 @@ galleryOverlay.onclick = (e) => {
                   ====================== DOM EVENTS =======================
                   ======================================================== */
              /* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
+/* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
 function showFullscreenMedia(src, type) {
     let overlay = document.getElementById("fsMediaOverlay");
     let media = document.getElementById("fsMediaElement");
     let closeBtn = document.getElementById("fsMediaClose");
 
-    // предотвращаем дублирование
+    // не дублируем медиа в галерее
     if (!missedMedia.some(m => m.src === src)) {
         missedMedia.push({ type, src });
     }
@@ -1109,11 +1107,13 @@ function showFullscreenMedia(src, type) {
         closeBtn.style.color = "white";
         closeBtn.style.fontSize = "24px";
         closeBtn.style.cursor = "pointer";
-        closeBtn.onclick = () => overlay.style.display = "none";
+        closeBtn.onclick = () => {
+            overlay.style.display = "none";
+        };
         overlay.appendChild(closeBtn);
     }
 
-    // переключение типа медиа
+    // переключаем тип медиа
     if (type === "video") {
         const newVideo = document.createElement("video");
         newVideo.id = "fsMediaElement";
@@ -1138,7 +1138,7 @@ function showFullscreenMedia(src, type) {
 
     overlay.style.display = "flex";
 
-    // если открыто из галереи — НЕ закрываем
+    // если открыто из галереи — не закрываем по таймеру
     if (window.__openedFromGallery) {
         window.__openedFromGallery = false;
         return;
@@ -1152,6 +1152,7 @@ function showFullscreenMedia(src, type) {
     }, 3000);
 }
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
