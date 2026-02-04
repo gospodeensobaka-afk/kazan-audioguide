@@ -75,6 +75,20 @@
     <img id="photoImage" src="">
     <button id="closePhotoBtn" class="close-photo-btn">✕</button>
   </div>
+    <!-- === MISSED MEDIA GALLERY === -->
+<div id="galleryOverlay" class="hidden" style="
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 20px;
+    justify-content: center;
+    align-items: flex-start;
+    overflow-y: auto;
+    z-index: 200000;
+"></div>
 </div>
 <!-- === КОНЕЦ ФОТО БЛОКА === -->
 
@@ -93,11 +107,12 @@
         Включить компас
     </button>
 <!-- === NOT READY BUTTON === -->
-<button id="notReadyBtn" class="photo-btn" style="top: 210px; left: 10px; position: absolute; z-index: 1000;">
+<button id="notReadyBtn">
     Не успеваю
 </button>
 </body>
 </html>
+
 
 
 
