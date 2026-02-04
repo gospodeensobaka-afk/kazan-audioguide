@@ -1,34 +1,34 @@
-//// EXPERIMENTAL: SIMPLE POLLING GALLERY OVERRIDE
+//// EXPERIMENTAL: UNIVERSAL PHOTO INTERCEPTOR
 
 console.log("Experimental module loaded");
 
 document.addEventListener("DOMContentLoaded", () => {
-    const overlay = document.getElementById("photoOverlay");
-    const img = document.getElementById("photoImage");
+    console.log("Experimental: universal photo hook active");
 
-    if (!overlay || !img) {
-        console.warn("Experimental: overlay or img not found — skipped");
-        return;
-    }
+    // Перехватываем установку src у всех изображений
+    const originalSetAttribute = Element.prototype.setAttribute;
 
-    console.log("Experimental: polling hook active");
+    Element.prototype.setAttribute = function(name, value) {
+        try {
+            if (name === "src" && this.id === "photoImage") {
+                console.log("Experimental: intercepted photo src =", value);
 
-    // Проверяем каждые 120 мс — появился ли overlay
-    setInterval(() => {
-        const isVisible = !overlay.classList.contains("hidden");
+                // Показываем экспериментальную галерею
+                experimentalGallery(value);
 
-        if (isVisible) {
-            console.log("Experimental: overlay detected → running experimental gallery");
+                // Блокируем стандартную галерею
+                const overlay = document.getElementById("photoOverlay");
+                if (overlay) overlay.classList.add("hidden");
 
-            try {
-                experimentalGallery(img.src);
-                overlay.classList.add("hidden"); // скрываем core-версию
-            } catch (e) {
-                console.error("Experimental gallery failed:", e);
-                console.log("Experimental: fallback → core gallery");
+                return; // НЕ вызываем оригинальный setAttribute → core не покажет фото
             }
+        } catch (e) {
+            console.error("Experimental interceptor failed:", e);
         }
-    }, 120);
+
+        // fallback → стандартное поведение
+        return originalSetAttribute.apply(this, arguments);
+    };
 });
 
 
