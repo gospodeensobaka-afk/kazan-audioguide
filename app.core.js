@@ -1,14 +1,13 @@
                /* ========================================================
                   =============== GLOBAL VARIABLES & STATE ===============
                   ======================================================== */
-               document.getElementById("buildIndicator").textContent =
-                 "build: " + new Date().toLocaleTimeString();
+            
                // TOUR START FLAG
                let tourStarted = false;
                let map;
                let currentPointImage = null;
                
-               const togglePhotoBtn = document.getElementById("togglePhotoBtn");
+               
                const photoOverlay = document.getElementById("photoOverlay");
                const photoImage = document.getElementById("photoImage");
                const closePhotoBtn = document.getElementById("closePhotoBtn");
@@ -1153,5 +1152,6 @@ function showFullscreenMedia(src, type) {
 }
 
 document.addEventListener("DOMContentLoaded", initMap);
+
 
                /* ==================== END OF APP.JS ====================== */
