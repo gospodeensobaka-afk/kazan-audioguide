@@ -1048,14 +1048,10 @@ globalAudio.autoplay = true;
     photoImage.src = currentPointImage;
     photoOverlay.classList.remove("hidden");
 };
-
 photoOverlay.onclick = (e) => {
     if (e.target === photoOverlay) {
         photoOverlay.classList.add("hidden");
     }
 };
-
 document.addEventListener("DOMContentLoaded", initMap);
-
 /* ==================== END OF APP.JS ====================== */
-
