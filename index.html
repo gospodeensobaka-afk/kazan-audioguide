@@ -11,202 +11,13 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
 
+    <!-- Подключаем JS ПОСЛЕ DOM -->
     <script src="app.js" defer></script>
 </head>
 
-<!-- === START VIDEO_OVERLAY === -->
-<div id="videoOverlay"
-     style="
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,0.9);
-        display:none;
-        justify-content:center;
-        align-items:center;
-        z-index:100000;
-     ">
-    <video id="videoElement"
-           style="max-width:100%; max-height:100%;"
-           controls></video>
+<body>
 
-    <button id="closeVideoBtn"
-            style="
-                position:absolute;
-                top:20px;
-                right:20px;
-                width:40px;
-                height:40px;
-                border-radius:20px;
-                border:none;
-                background:rgba(255,255,255,0.8);
-                font-size:24px;
-                cursor:pointer;
-            ">
-        ×
-    </button>
-</div>
-<!-- === END VIDEO_OVERLAY === -->
-    <body>
-    <audio id="globalAudio" controls autoplay preload="auto"></audio>
-    <div id="buildIndicator"
-     style="
-        position:absolute;
-        bottom:10px;
-        right:10px;
-        background:rgba(0,0,0,0.55);
-        color:white;
-        padding:4px 10px;
-        border-radius:6px;
-        font-size:12px;
-        z-index:999999;
-        backdrop-filter:blur(4px);
-     ">
-  build: loading…
-</div>
-<button id="startTourBtn"
-        style="
-            position:absolute;
-            top:50%;
-            left:50%;
-            transform:translate(-50%, -50%);
-            padding:16px 28px;
-            font-size:18px;
-            border-radius:12px;
-            background:#007aff;
-            color:white;
-            border:none;
-            z-index:999999; /* ← подняли над картой */
-            pointer-events:auto; /* ← гарантируем клики */
-        ">
-    Начать экскурсию
-</button>
-    <div id="tourProgress"
-     style="
-        position:absolute;
-        top:10px;
-        right:10px;
-        background:rgba(0,0,0,0.55);
-        color:white;
-        padding:6px 12px;
-        border-radius:8px;
-        font-size:14px;
-        z-index:999999;
-        backdrop-filter:blur(4px);
-     ">
-    Пройдено: 0 из 0
-</div>
-    <div id="map"></div>
-<!-- === START NOT_READY_BUTTON === -->
-<button id="notReadyBtn"
-        style="
-            position:absolute;
-            bottom:20px;
-            right:20px;
-            padding:10px 14px;
-            background:white;
-            border-radius:8px;
-            border:none;
-            font-size:14px;
-            z-index:999999;
-        ">
-    Не успеваю
-</button>
-<!-- === END NOT_READY_BUTTON === -->
-<!-- === ФОТО ОВЕРЛЕЙ И КНОПКА === -->
-<button id="togglePhotoBtn" class="photo-btn" style="display:none;">
-  📷 Показать фото
-</button>
-
-<!-- === START PHOTO_OVERLAY_FULLSCREEN === -->
-<div id="photoOverlay"
-     style="
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,0.9);
-        display:none;
-        justify-content:center;
-        align-items:center;
-        z-index:1000002;
-     ">
-    <img id="photoImage"
-         style="
-            max-width:100%;
-            max-height:100%;
-            object-fit:contain;
-         ">
-</div>
-<!-- === END PHOTO_OVERLAY_FULLSCREEN === -->
-<!-- === КОНЕЦ ФОТО БЛОКА === -->
-
-<button id="simulate">Симуляция</button>
-
-    
-
-    <button id="enableAudio"
-            style="top: 60px; left: 10px; position: absolute; z-index: 10;">
-        Включить звук
-    </button>
-
-    <!-- 🔥 Новая кнопка компаса -->
-    <button id="enableCompass"
-            style="top: 110px; left: 10px; position: absolute; z-index: 10;">
-        Включить компас
-    </button>
-
-
-<!-- === START VIDEO_OVERLAY === -->
-<div id="videoOverlay"
-     style="
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,0.9);
-        display:none;
-        justify-content:center;
-        align-items:center;
-        z-index:100000;
-     ">
-    <video id="videoElement"
-           style="max-width:100%; max-height:100%;"
-           controls></video>
-
-    <button id="closeVideoBtn"
-            style="
-                position:absolute;
-                top:20px;
-                right:20px;
-                width:40px;
-                height:40px;
-                border-radius:20px;
-                border:none;
-                background:rgba(255,255,255,0.8);
-                font-size:24px;
-                cursor:pointer;
-            ">
-        ×
-    </button>
-</div>
-<!-- === END VIDEO_OVERLAY === -->
-<!-- === START GALLERY_OVERLAY === -->
-<div id="galleryOverlay"
-     style="
-        position:fixed;
-        bottom:20px;
-        left:50%;
-        transform:translateX(-50%);
-        width:320px;
-        background:rgba(0,0,0,0.75);
-        backdrop-filter:blur(10px);
-        border-radius:18px;
-        padding:12px;
-        display:none;
-        flex-direction:row;
-        gap:10px;
-        z-index:1000000;
-     ">
-</div>
-<!-- === END GALLERY_OVERLAY === -->
-
-<!-- === START VIDEO_OVERLAY === -->
+<!-- === VIDEO OVERLAY (единственный) === -->
 <div id="videoOverlay"
      style="
         position:fixed;
@@ -238,15 +49,139 @@
         ×
     </button>
 </div>
-<!-- === END VIDEO_OVERLAY === -->
-    </body>
+<!-- === END VIDEO OVERLAY === -->
+
+
+<audio id="globalAudio" controls autoplay preload="auto"></audio>
+
+<div id="buildIndicator"
+     style="
+        position:absolute;
+        bottom:10px;
+        right:10px;
+        background:rgba(0,0,0,0.55);
+        color:white;
+        padding:4px 10px;
+        border-radius:6px;
+        font-size:12px;
+        z-index:999999;
+        backdrop-filter:blur(4px);
+     ">
+  build: loading…
+</div>
+
+<button id="startTourBtn"
+        style="
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            padding:16px 28px;
+            font-size:18px;
+            border-radius:12px;
+            background:#007aff;
+            color:white;
+            border:none;
+            z-index:999999;
+            pointer-events:auto;
+        ">
+    Начать экскурсию
+</button>
+
+<div id="tourProgress"
+     style="
+        position:absolute;
+        top:10px;
+        right:10px;
+        background:rgba(0,0,0,0.55);
+        color:white;
+        padding:6px 12px;
+        border-radius:8px;
+        font-size:14px;
+        z-index:999999;
+        backdrop-filter:blur(4px);
+     ">
+    Пройдено: 0 из 0
+</div>
+
+<div id="map"></div>
+
+<!-- === NOT READY BUTTON === -->
+<button id="notReadyBtn"
+        style="
+            position:absolute;
+            bottom:20px;
+            right:20px;
+            padding:10px 14px;
+            background:white;
+            border-radius:8px;
+            border:none;
+            font-size:14px;
+            z-index:999999;
+        ">
+    Не успеваю
+</button>
+
+<!-- === PHOTO OVERLAY FULLSCREEN === -->
+<div id="photoOverlay"
+     style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.9);
+        display:none;
+        justify-content:center;
+        align-items:center;
+        z-index:1000002;
+     ">
+    <img id="photoImage"
+         style="
+            max-width:100%;
+            max-height:100%;
+            object-fit:contain;
+         ">
+</div>
+
+<!-- Кнопка фото (не используется, но оставлена) -->
+<button id="togglePhotoBtn" class="photo-btn" style="display:none;">
+  📷 Показать фото
+</button>
+
+<!-- === SIMULATION BUTTON === -->
+<button id="simulate"
+        style="position:absolute; top:10px; left:10px; z-index:999999;">
+    Симуляция
+</button>
+
+<!-- === ENABLE AUDIO === -->
+<button id="enableAudio"
+        style="top: 60px; left: 10px; position: absolute; z-index: 10;">
+    Включить звук
+</button>
+
+<!-- === ENABLE COMPASS === -->
+<button id="enableCompass"
+        style="top: 110px; left: 10px; position: absolute; z-index: 10;">
+    Включить компас
+</button>
+
+<!-- === GALLERY OVERLAY === -->
+<div id="galleryOverlay"
+     style="
+        position:fixed;
+        bottom:20px;
+        left:50%;
+        transform:translateX(-50%);
+        width:320px;
+        background:rgba(0,0,0,0.75);
+        backdrop-filter:blur(10px);
+        border-radius:18px;
+        padding:12px;
+        display:none;
+        flex-direction:row;
+        gap:10px;
+        z-index:1000000;
+     ">
+</div>
+
+</body>
 </html>
-
-
-
-
-
-
-
-
-
