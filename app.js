@@ -229,6 +229,7 @@ lastZoneMedia = [];
                        dbg.style.zIndex = "99999";
                        dbg.style.whiteSpace = "pre-line";
                        dbg.style.display = "block";
+                     dbg.style.pointerEvents = "none"; /* === PATCH_DEBUG_POINTER_EVENTS === */
                        document.body.appendChild(dbg);
                    }
                    return dbg;
@@ -466,7 +467,16 @@ function showTimedVideo(src) {
 
     const videoOverlay = document.getElementById("videoOverlay");
     const videoElement = document.getElementById("videoElement");
-
+/* === PATCH_VIDEO_POINTER_EVENTS === */
+const closeVideoBtn = document.getElementById("closeVideoBtn");
+videoOverlay.style.pointerEvents = "auto";
+if (closeVideoBtn) {
+    closeVideoBtn.style.pointerEvents = "auto";
+    closeVideoBtn.onclick = () => {
+        videoElement.pause();
+        videoOverlay.style.display = "none";
+    };
+}
     videoElement.src = src;
     videoElement.currentTime = 0;
     videoElement.play().catch(() => {});
@@ -538,6 +548,9 @@ document.getElementById("notReadyBtn").onclick = () => {
     });
 
     gallery.style.display = "flex";
+  gallery.onclick = () => {
+    gallery.style.display = "none";
+}; /* === PATCH_GALLERY_CLOSE === */
 };
 
 /* === END GALLERY_LOGIC === */
@@ -1179,4 +1192,5 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
