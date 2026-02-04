@@ -1,33 +1,51 @@
-//// EXPERIMENTAL: SAFE OVERRIDE FOR GALLERY
+//// EXPERIMENTAL: DOM-HOOK GALLERY OVERRIDE
 
 console.log("Experimental module loaded");
 
-// Проверяем, существует ли функция showPhotoOverlay в ядре
-if (typeof window.showPhotoOverlay !== "function") {
-    console.warn("Experimental: showPhotoOverlay not found in core — override skipped");
-} else {
+// Ждём, пока DOM загрузится
+document.addEventListener("DOMContentLoaded", () => {
+    const overlay = document.getElementById("photoOverlay");
+    const img = document.getElementById("photoImage");
 
-    // Сохраняем оригинальную функцию
-    const original_showPhotoOverlay = window.showPhotoOverlay;
+    if (!overlay || !img) {
+        console.warn("Experimental: photoOverlay or photoImage not found — override skipped");
+        return;
+    }
 
-    // Переопределяем
-    window.showPhotoOverlay = function(src) {
-        console.log("Experimental: override triggered with src =", src);
+    console.log("Experimental: DOM hook installed");
 
-        try {
-            return experimental_showPhotoOverlay(src); // пробуем новую версию
-        } catch (e) {
-            console.error("Experimental gallery failed:", e);
-            console.log("Experimental: fallback → core version");
-            return original_showPhotoOverlay(src); // fallback
+    // Создаём MutationObserver для отслеживания появления галереи
+    const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+            if (m.attributeName === "class") {
+                const isVisible = !overlay.classList.contains("hidden");
+
+                if (isVisible) {
+                    console.log("Experimental: gallery triggered via DOM");
+
+                    try {
+                        // Пробуем экспериментальную галерею
+                        experimentalGallery(img.src);
+
+                        // Прячем стандартную галерею
+                        overlay.classList.add("hidden");
+                    } catch (e) {
+                        console.error("Experimental gallery failed:", e);
+                        console.log("Experimental: fallback → core gallery");
+                        // Ничего не делаем → core галерея останется видимой
+                    }
+                }
+            }
         }
-    };
-}
+    });
+
+    observer.observe(overlay, { attributes: true });
+});
 
 
-// Новая экспериментальная галерея
-function experimental_showPhotoOverlay(src) {
-    console.log("Experimental: running experimental_showPhotoOverlay");
+// === НОВАЯ ЭКСПЕРИМЕНТАЛЬНАЯ ГАЛЕРЕЯ ===
+function experimentalGallery(src) {
+    console.log("Experimental: running experimentalGallery");
 
     // Удаляем старое окно, если оно было
     const old = document.getElementById("expGalleryWindow");
