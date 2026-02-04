@@ -1043,15 +1043,17 @@ globalAudio.autoplay = true;
                
                    document.body.appendChild(preview);
                
-                  togglePhotoBtn.onclick = () => {
+                 togglePhotoBtn.onclick = () => {
     if (!currentPointImage) return;
     photoImage.src = currentPointImage;
-    photoOverlay.classList.remove("hidden");
+    photoOverlay.style.display = "flex";
 };
+
 photoOverlay.onclick = (e) => {
     if (e.target === photoOverlay) {
-        photoOverlay.classList.add("hidden");
+        photoOverlay.style.display = "none";
     }
 };
+
 document.addEventListener("DOMContentLoaded", initMap);
 /* ==================== END OF APP.JS ====================== */
