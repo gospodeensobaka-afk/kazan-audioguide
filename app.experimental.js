@@ -1,20 +1,34 @@
-//// EXPERIMENTAL: OVERRIDE GALLERY WITH SAFE FALLBACK
+//// EXPERIMENTAL: SAFE OVERRIDE FOR GALLERY
 
-// Сохраняем оригинальную функцию из core
-const original_showTimedPhoto = window.showTimedPhoto;
+console.log("Experimental module loaded");
 
-// Переопределяем showTimedPhoto
-window.showTimedPhoto = function(src) {
-    try {
-        return experimental_showTimedPhoto(src); // пробуем новую версию
-    } catch (e) {
-        console.warn("Experimental gallery failed, fallback to core:", e);
-        return original_showTimedPhoto(src); // fallback на стабильную
-    }
-};
+// Проверяем, существует ли функция showPhotoOverlay в ядре
+if (typeof window.showPhotoOverlay !== "function") {
+    console.warn("Experimental: showPhotoOverlay not found in core — override skipped");
+} else {
+
+    // Сохраняем оригинальную функцию
+    const original_showPhotoOverlay = window.showPhotoOverlay;
+
+    // Переопределяем
+    window.showPhotoOverlay = function(src) {
+        console.log("Experimental: override triggered with src =", src);
+
+        try {
+            return experimental_showPhotoOverlay(src); // пробуем новую версию
+        } catch (e) {
+            console.error("Experimental gallery failed:", e);
+            console.log("Experimental: fallback → core version");
+            return original_showPhotoOverlay(src); // fallback
+        }
+    };
+}
+
 
 // Новая экспериментальная галерея
-function experimental_showTimedPhoto(src) {
+function experimental_showPhotoOverlay(src) {
+    console.log("Experimental: running experimental_showPhotoOverlay");
+
     // Удаляем старое окно, если оно было
     const old = document.getElementById("expGalleryWindow");
     if (old) old.remove();
@@ -37,7 +51,6 @@ function experimental_showTimedPhoto(src) {
     win.style.flexDirection = "column";
     win.style.alignItems = "center";
     win.style.gap = "10px";
-    win.style.animation = "expFadeIn 0.25s ease";
 
     // Фото
     const img = document.createElement("img");
