@@ -13,182 +13,104 @@
 
     <script src="app.js" defer></script>
 </head>
+
 <body>
     <audio id="globalAudio" controls autoplay preload="auto"></audio>
-
     <div id="buildIndicator"
-         style="
+     style="
+        position:absolute;
+        bottom:10px;
+        right:10px;
+        background:rgba(0,0,0,0.55);
+        color:white;
+        padding:4px 10px;
+        border-radius:6px;
+        font-size:12px;
+        z-index:999999;
+        backdrop-filter:blur(4px);
+     ">
+  build: loading…
+</div>
+<button id="startTourBtn"
+        style="
             position:absolute;
-            bottom:10px;
-            right:10px;
-            background:rgba(0,0,0,0.55);
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            padding:16px 28px;
+            font-size:18px;
+            border-radius:12px;
+            background:#007aff;
             color:white;
-            padding:4px 10px;
-            border-radius:6px;
-            font-size:12px;
-            z-index:999999;
-            backdrop-filter:blur(4px);
-         ">
-        build: loading…
-    </div>
-
-    <button id="startTourBtn"
-            style="
-                position:absolute;
-                top:50%;
-                left:50%;
-                transform:translate(-50%, -50%);
-                padding:16px 28px;
-                font-size:18px;
-                border-radius:12px;
-                background:#007aff;
-                color:white;
-                border:none;
-                z-index:999999;
-                pointer-events:auto;
-            ">
-        Начать экскурсию
-    </button>
-
+            border:none;
+            z-index:999999; /* ← подняли над картой */
+            pointer-events:auto; /* ← гарантируем клики */
+        ">
+    Начать экскурсию
+</button>
     <div id="tourProgress"
-         style="
-            position:absolute;
-            top:10px;
-            right:10px;
-            background:rgba(0,0,0,0.55);
-            color:white;
-            padding:6px 12px;
-            border-radius:8px;
-            font-size:14px;
-            z-index:999999;
-            backdrop-filter:blur(4px);
-         ">
-        Пройдено: 0 из 0
-    </div>
-
+     style="
+        position:absolute;
+        top:10px;
+        right:10px;
+        background:rgba(0,0,0,0.55);
+        color:white;
+        padding:6px 12px;
+        border-radius:8px;
+        font-size:14px;
+        z-index:999999;
+        backdrop-filter:blur(4px);
+     ">
+    Пройдено: 0 из 0
+</div>
     <div id="map"></div>
 
-    <!-- Кнопка "Не успеваю" -->
-    <button id="notReadyBtn"
-            style="
-                position:absolute;
-                bottom:20px;
-                right:20px;
-                padding:10px 14px;
-                background:white;
-                border-radius:8px;
-                border:none;
-                font-size:14px;
-                z-index:999999;
-            ">
-        Не успеваю
-    </button>
+<!-- === ФОТО ОВЕРЛЕЙ И КНОПКА === -->
+<button id="togglePhotoBtn" class="photo-btn" style="display:none;">
+  📷 Показать фото
+</button>
 
-    <!-- Кнопка показа фото (может быть скрыта) -->
-    <button id="togglePhotoBtn" class="photo-btn" style="display:none;">
-        📷 Показать фото
-    </button>
+<div id="photoOverlay" class="photo-overlay hidden">
+  <div class="photo-inner">
+    <img id="photoImage" src="">
+    <button id="closePhotoBtn" class="close-photo-btn">✕</button>
+  </div>
+</div>
+<!-- === КОНЕЦ ФОТО БЛОКА === -->
 
-    <!-- FULLSCREEN PHOTO OVERLAY -->
-    <div id="photoOverlay"
-         style="
-            position:fixed;
-            inset:0;
-            background:rgba(0,0,0,0.9);
-            display:none;
-            justify-content:center;
-            align-items:center;
-            z-index:1000002;
-         ">
-        <img id="photoImage"
-             style="
-                max-width:100%;
-                max-height:100%;
-                object-fit:contain;
-             ">
-    </div>
+<button id="simulate">Симуляция</button>
 
-    <!-- Кнопки управления симуляцией и звуком -->
-    <button id="simulate"
-            style="
-                position:absolute;
-                top:10px;
-                left:10px;
-                z-index:10;
-            ">
-        Симуляция
-    </button>
+    
 
     <button id="enableAudio"
-            style="
-                position:absolute;
-                top:60px;
-                left:10px;
-                z-index:10;
-            ">
+            style="top: 60px; left: 10px; position: absolute; z-index: 10;">
         Включить звук
     </button>
 
+    <!-- 🔥 Новая кнопка компаса -->
     <button id="enableCompass"
-            style="
-                position:absolute;
-                top:110px;
-                left:10px;
-                z-index:10;
-            ">
+            style="top: 110px; left: 10px; position: absolute; z-index: 10;">
         Включить компас
     </button>
-
-    <!-- GALLERY OVERLAY -->
-    <div id="galleryOverlay"
-         style="
-            position:fixed;
+<button id="notReadyBtn"
+        style="
+            position:absolute;
             bottom:20px;
-            left:50%;
-            transform:translateX(-50%);
-            width:320px;
-            background:rgba(0,0,0,0.75);
-            backdrop-filter:blur(10px);
-            border-radius:18px;
-            padding:12px;
-            display:none;
-            flex-direction:row;
-            gap:10px;
-            z-index:1000000;
-         ">
-    </div>
-
-    <!-- SINGLE VIDEO OVERLAY -->
-    <div id="videoOverlay"
-         style="
-            position:fixed;
-            inset:0;
-            background:rgba(0,0,0,0.9);
-            display:none;
-            justify-content:center;
-            align-items:center;
-            z-index:1000001;
-         ">
-        <video id="videoElement"
-               style="max-width:100%; max-height:100%;"
-               controls></video>
-
-        <button id="closeVideoBtn"
-                style="
-                    position:absolute;
-                    top:20px;
-                    right:20px;
-                    width:40px;
-                    height:40px;
-                    border-radius:20px;
-                    border:none;
-                    background:rgba(255,255,255,0.8);
-                    font-size:24px;
-                    cursor:pointer;
-                    z-index:1000002;
-                ">
-            ×
-        </button>
-    </div>
+            right:20px;
+            padding:10px 14px;
+            background:white;
+            border-radius:8px;
+            border:none;
+            font-size:14px;
+            z-index:999999;
+        ">
+    Не успеваю
+</button>
 </body>
 </html>
+
+
+
+
+
+
