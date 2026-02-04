@@ -12,7 +12,7 @@
                const photoOverlay = document.getElementById("photoOverlay");
 
                const photoImage = document.getElementById("photoImage");
-               const closePhotoBtn = document.getElementById("closePhotoBtn");
+               
                /* === PATCH_PHOTO_CLOSE_ON_CLICK === */
 photoOverlay.onclick = () => {
     photoOverlay.style.display = "none";
@@ -1196,6 +1196,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
