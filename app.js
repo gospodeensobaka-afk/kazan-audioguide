@@ -11,7 +11,7 @@
                const togglePhotoBtn = document.getElementById("togglePhotoBtn");
                const photoOverlay = document.getElementById("photoOverlay");
                const photoImage = document.getElementById("photoImage");
-               const closePhotoBtn = document.getElementById("closePhotoBtn");
+              
                
                let arrowEl = null;
                let lastCoords = null;
@@ -1078,3 +1078,4 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
