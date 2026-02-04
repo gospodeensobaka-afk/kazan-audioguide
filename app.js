@@ -1048,34 +1048,18 @@ globalAudio.autoplay = true;
                
                    document.body.appendChild(preview);
                
-                   preview.onclick = () => {
-                       currentPointImage = src;
-                       photoImage.src = src;
-                       photoOverlay.classList.remove("hidden");
-                   };
-               
-                   // исчезает через 10 секунд
-                   setTimeout(() => {
-                       preview.remove();
-                   }, 10000);
-               }
-               togglePhotoBtn.onclick = () => {
-                   if (!currentPointImage) return;
-                   photoImage.src = currentPointImage;
-                   photoOverlay.classList.remove("hidden");
-               };
-               
-               closePhotoBtn.onclick = () => {
-                   photoOverlay.classList.add("hidden");
-               };
-               
-               photoOverlay.onclick = (e) => {
-                   if (e.target === photoOverlay) {
-                       photoOverlay.classList.add("hidden");
-                   }
-               };
-               
-               document.addEventListener("DOMContentLoaded", initMap);
-               
-               /* ==================== END OF APP.JS ====================== */
+                  togglePhotoBtn.onclick = () => {
+    if (!currentPointImage) return;
+    photoImage.src = currentPointImage;
+    photoOverlay.classList.remove("hidden");
+};
 
+photoOverlay.onclick = (e) => {
+    if (e.target === photoOverlay) {
+        photoOverlay.classList.add("hidden");
+    }
+};
+
+document.addEventListener("DOMContentLoaded", initMap);
+
+/* ==================== END OF APP.JS ====================== */
