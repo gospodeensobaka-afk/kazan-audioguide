@@ -941,11 +941,11 @@ globalAudio.autoplay = true;
                    /* ========================================================
                   ========================= BUTTONS ======================
                   ======================================================== */
-                 /* === NOT READY BUTTON + GALLERY === */
+/* === NOT READY BUTTON + GALLERY === */
 const notReadyBtn = document.getElementById("notReadyBtn");
 const galleryOverlay = document.getElementById("galleryOverlay");
 
-if (notReadyBtn) {
+if (notReadyBtn && galleryOverlay) {
     notReadyBtn.onclick = () => {
         galleryOverlay.innerHTML = "";
 
@@ -968,11 +968,7 @@ if (notReadyBtn) {
                 img.style.height = "100%";
                 img.style.objectFit = "cover";
                 thumb.appendChild(img);
-
-                thumb.onclick = () => showFullscreenMedia(item.src, "photo");
-            }
-
-            if (item.type === "video") {
+            } else {
                 const icon = document.createElement("div");
                 icon.style.width = "0";
                 icon.style.height = "0";
@@ -980,9 +976,13 @@ if (notReadyBtn) {
                 icon.style.borderTop = "12px solid transparent";
                 icon.style.borderBottom = "12px solid transparent";
                 thumb.appendChild(icon);
-
-                thumb.onclick = () => showFullscreenMedia(item.src, "video");
             }
+
+            thumb.onclick = () => {
+                galleryOverlay.classList.add("hidden"); // ← прячем галерею
+                window.__openedFromGallery = true;      // ← флаг для showFullscreenMedia
+                showFullscreenMedia(item.src, item.type);
+            };
 
             galleryOverlay.appendChild(thumb);
         });
@@ -991,6 +991,11 @@ if (notReadyBtn) {
     };
 }
 
+galleryOverlay.onclick = (e) => {
+    if (e.target === galleryOverlay) {
+        galleryOverlay.classList.add("hidden");
+    }
+};
 galleryOverlay.onclick = (e) => {
     if (e.target === galleryOverlay) {
         galleryOverlay.classList.add("hidden");
@@ -1058,81 +1063,17 @@ galleryOverlay.onclick = (e) => {
                /* ========================================================
                   ====================== DOM EVENTS =======================
                   ======================================================== */
-               function showFullscreenMedia(src, type) {
-    let overlay = document.getElementById("fsMediaOverlay");
-    let media = document.getElementById("fsMediaElement");
-    let closeBtn = document.getElementById("fsMediaClose");
-
-    if (!overlay) {
-        overlay = document.createElement("div");
-        overlay.id = "fsMediaOverlay";
-        overlay.style.position = "fixed";
-        overlay.style.top = "0";
-        overlay.style.left = "0";
-        overlay.style.width = "100%";
-        overlay.style.height = "100%";
-        overlay.style.background = "rgba(0,0,0,0.9)";
-        overlay.style.display = "flex";
-        overlay.style.alignItems = "center";
-        overlay.style.justifyContent = "center";
-        overlay.style.zIndex = "100000";
-        document.body.appendChild(overlay);
-
-        media = document.createElement(type === "video" ? "video" : "img");
-        media.id = "fsMediaElement";
-        media.style.maxWidth = "100%";
-        media.style.maxHeight = "100%";
-        if (type === "video") media.controls = true;
-        overlay.appendChild(media);
-
-        closeBtn = document.createElement("button");
-        closeBtn.id = "fsMediaClose";
-        closeBtn.textContent = "×";
-        closeBtn.style.position = "absolute";
-        closeBtn.style.top = "20px";
-        closeBtn.style.right = "20px";
-        closeBtn.style.width = "40px";
-        closeBtn.style.height = "40px";
-        closeBtn.style.borderRadius = "20px";
-        closeBtn.style.border = "none";
-        closeBtn.style.background = "rgba(0,0,0,0.7)";
-        closeBtn.style.color = "white";
-        closeBtn.style.fontSize = "24px";
-        closeBtn.style.cursor = "pointer";
-        closeBtn.onclick = () => overlay.remove();
-        overlay.appendChild(closeBtn);
-    }
-
-    // Обновляем тип медиа
-    if (type === "video") {
-        const newVideo = document.createElement("video");
-        newVideo.id = "fsMediaElement";
-        newVideo.src = src;
-        newVideo.style.maxWidth = "100%";
-        newVideo.style.maxHeight = "100%";
-        newVideo.controls = true;
-        overlay.replaceChild(newVideo, media);
-        media = newVideo;
-        media.play().catch(() => {});
-    } else {
-        media.src = src;
-    }
-
-    overlay.style.display = "flex";
-
-    // Авто‑закрытие через 3 секунды
-    setTimeout(() => {
-        if (overlay) overlay.remove();
-    }, 3000);
-}
-               
-               document.addEventListener("DOMContentLoaded", initMap);
-               /* === FULLSCREEN MEDIA FUNCTION === */
+             /* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
 function showFullscreenMedia(src, type) {
     let overlay = document.getElementById("fsMediaOverlay");
     let media = document.getElementById("fsMediaElement");
     let closeBtn = document.getElementById("fsMediaClose");
 
+    // предотвращаем дублирование
+    if (!missedMedia.some(m => m.src === src)) {
+        missedMedia.push({ type, src });
+    }
+
     if (!overlay) {
         overlay = document.createElement("div");
         overlay.id = "fsMediaOverlay";
@@ -1145,14 +1086,13 @@ function showFullscreenMedia(src, type) {
         overlay.style.display = "flex";
         overlay.style.alignItems = "center";
         overlay.style.justifyContent = "center";
-        overlay.style.zIndex = "100000";
+        overlay.style.zIndex = "300000"; // выше галереи
         document.body.appendChild(overlay);
 
-        media = document.createElement(type === "video" ? "video" : "img");
+        media = document.createElement("img");
         media.id = "fsMediaElement";
         media.style.maxWidth = "100%";
         media.style.maxHeight = "100%";
-        if (type === "video") media.controls = true;
         overlay.appendChild(media);
 
         closeBtn = document.createElement("button");
@@ -1169,10 +1109,11 @@ function showFullscreenMedia(src, type) {
         closeBtn.style.color = "white";
         closeBtn.style.fontSize = "24px";
         closeBtn.style.cursor = "pointer";
-        closeBtn.onclick = () => overlay.remove();
+        closeBtn.onclick = () => overlay.style.display = "none";
         overlay.appendChild(closeBtn);
     }
 
+    // переключение типа медиа
     if (type === "video") {
         const newVideo = document.createElement("video");
         newVideo.id = "fsMediaElement";
@@ -1184,18 +1125,33 @@ function showFullscreenMedia(src, type) {
         media = newVideo;
         media.play().catch(() => {});
     } else {
+        if (media.tagName.toLowerCase() !== "img") {
+            const newImg = document.createElement("img");
+            newImg.id = "fsMediaElement";
+            newImg.style.maxWidth = "100%";
+            newImg.style.maxHeight = "100%";
+            overlay.replaceChild(newImg, media);
+            media = newImg;
+        }
         media.src = src;
     }
 
     overlay.style.display = "flex";
 
-    /* === ADD TO MISSED MEDIA === */
-    missedMedia.push({ type, src });
+    // если открыто из галереи — НЕ закрываем
+    if (window.__openedFromGallery) {
+        window.__openedFromGallery = false;
+        return;
+    }
 
+    // иначе — авто‑закрытие (и фото, и видео)
     setTimeout(() => {
-        if (overlay) overlay.remove();
+        if (overlay && overlay.style.display !== "none") {
+            overlay.style.display = "none";
+        }
     }, 3000);
 }
                /* ==================== END OF APP.JS ====================== */
+
 
 
