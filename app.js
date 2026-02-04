@@ -386,7 +386,7 @@ lastZoneMedia = [];
                /* ========================================================
                   ========== SIMULATE AUDIO ZONE (MANUAL TRIGGER) =========
                   ======================================================== */
-               ffunction simulateAudioZone(id) {
+               function simulateAudioZone(id) {
     const z = zones.find(z => z.id === id && z.type === "audio");
     if (!z) return;
 
@@ -542,7 +542,7 @@ document.getElementById("notReadyBtn").onclick = () => {
 
             thumb.onclick = () => {
                 photoImage.src = item.src;
-                photoOverlay.classList.remove("hidden");
+                photoOverlay.style.display = "flex";
             };
         }
 
@@ -1185,7 +1185,7 @@ globalAudio.autoplay = true;
                };
                
                closePhotoBtn.onclick = () => {
-                   photoOverlay.classList.add("hidden");
+                  photoOverlay.style.display = "none";
                };
                
                photoOverlay.onclick = (e) => {
@@ -1197,6 +1197,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
