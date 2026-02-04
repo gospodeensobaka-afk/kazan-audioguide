@@ -134,6 +134,8 @@
                   ======================================================== */
                
             function playZoneAudio(src, id) {
+              currentZoneId = id;
+lastZoneMedia = [];
     if (!audioEnabled) audioEnabled = true;
 
     globalAudio.src = src;
@@ -435,124 +437,110 @@ const videoTimings = {
         3: "videos/zone3_video.mp4"
     }
 };
-/* ========================================================
-   ========== TIMED PHOTO / VIDEO POPUP ====================
-   ======================================================== */
+
+/* === START TIMED_MEDIA === */
+
+let lastZoneMedia = [];
+let currentZoneId = null;
+
+const autoCloseTimings = {
+    5: 2000
+};
 
 function showTimedPhoto(src) {
-    const preview = document.createElement("img");
-    preview.src = src;
-    preview.style.position = "absolute";
-    preview.style.bottom = "120px";
-    preview.style.left = "10px";
-    preview.style.width = "80px";
-    preview.style.height = "80px";
-    preview.style.borderRadius = "8px";
-    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-    preview.style.zIndex = "99999";
-    preview.style.cursor = "pointer";
+    lastZoneMedia.push({ type: "photo", src });
 
-    document.body.appendChild(preview);
+    photoImage.src = src;
+    photoOverlay.classList.remove("hidden");
 
-    preview.onclick = () => {
-        currentPointImage = src;
-        photoImage.src = src;
-        photoOverlay.classList.remove("hidden");
-    };
-
-    // исчезает через 10 секунд
-    setTimeout(() => preview.remove(), 10000);
+    const timeout = autoCloseTimings[currentZoneId];
+    if (timeout) {
+        setTimeout(() => {
+            photoOverlay.classList.add("hidden");
+        }, timeout);
+    }
 }
 
 function showTimedVideo(src) {
-    // Маленькое превью в углу, как у фото
-    const preview = document.createElement("div");
-    preview.style.position = "absolute";
-    preview.style.bottom = "120px";
-    preview.style.left = "100px";
-    preview.style.width = "80px";
-    preview.style.height = "80px";
-    preview.style.borderRadius = "8px";
-    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-    preview.style.zIndex = "99999";
-    preview.style.cursor = "pointer";
-    preview.style.background = "black";
-    preview.style.display = "flex";
-    preview.style.alignItems = "center";
-    preview.style.justifyContent = "center";
+    lastZoneMedia.push({ type: "video", src });
 
-    const playIcon = document.createElement("div");
-    playIcon.style.width = "0";
-    playIcon.style.height = "0";
-    playIcon.style.borderLeft = "18px solid white";
-    playIcon.style.borderTop = "10px solid transparent";
-    playIcon.style.borderBottom = "10px solid transparent";
+    const videoOverlay = document.getElementById("videoOverlay");
+    const videoElement = document.getElementById("videoElement");
 
-    preview.appendChild(playIcon);
-    document.body.appendChild(preview);
+    videoElement.src = src;
+    videoElement.currentTime = 0;
+    videoElement.play().catch(() => {});
+    videoOverlay.style.display = "flex";
 
-    // Ленивая инициализация полноэкранного оверлея
-    let videoOverlay = document.getElementById("videoOverlay");
-    let videoElement = document.getElementById("videoElement");
-    let closeVideoBtn = document.getElementById("closeVideoBtn");
-
-    if (!videoOverlay) {
-        videoOverlay = document.createElement("div");
-        videoOverlay.id = "videoOverlay";
-        videoOverlay.style.position = "fixed";
-        videoOverlay.style.top = "0";
-        videoOverlay.style.left = "0";
-        videoOverlay.style.width = "100%";
-        videoOverlay.style.height = "100%";
-        videoOverlay.style.background = "rgba(0,0,0,0.9)";
-        videoOverlay.style.display = "flex";
-        videoOverlay.style.alignItems = "center";
-        videoOverlay.style.justifyContent = "center";
-        videoOverlay.style.zIndex = "100000";
-        videoOverlay.classList.add("hidden");
-
-        videoElement = document.createElement("video");
-        videoElement.id = "videoElement";
-        videoElement.style.maxWidth = "100%";
-        videoElement.style.maxHeight = "100%";
-        videoElement.controls = true;
-
-        closeVideoBtn = document.createElement("button");
-        closeVideoBtn.id = "closeVideoBtn";
-        closeVideoBtn.textContent = "×";
-        closeVideoBtn.style.position = "absolute";
-        closeVideoBtn.style.top = "20px";
-        closeVideoBtn.style.right = "20px";
-        closeVideoBtn.style.width = "40px";
-        closeVideoBtn.style.height = "40px";
-        closeVideoBtn.style.borderRadius = "20px";
-        closeVideoBtn.style.border = "none";
-        closeVideoBtn.style.background = "rgba(0,0,0,0.7)";
-        closeVideoBtn.style.color = "white";
-        closeVideoBtn.style.fontSize = "24px";
-        closeVideoBtn.style.cursor = "pointer";
-
-        closeVideoBtn.onclick = () => {
+    const timeout = autoCloseTimings[currentZoneId];
+    if (timeout) {
+        setTimeout(() => {
             videoElement.pause();
-            videoOverlay.classList.add("hidden");
-        };
-
-        videoOverlay.appendChild(videoElement);
-        videoOverlay.appendChild(closeVideoBtn);
-        document.body.appendChild(videoOverlay);
+            videoOverlay.style.display = "none";
+        }, timeout);
     }
-
-    preview.onclick = () => {
-        videoElement.src = src;
-        videoElement.currentTime = 0;
-        videoElement.play().catch(() => {});
-        videoOverlay.classList.remove("hidden");
-    };
-
-    // превью исчезает через 10 секунд
-    setTimeout(() => preview.remove(), 10000);
 }
 
+/* === END TIMED_MEDIA === */
+/* === START GALLERY_LOGIC === */
+
+document.getElementById("notReadyBtn").onclick = () => {
+    const gallery = document.getElementById("galleryOverlay");
+    gallery.innerHTML = "";
+
+    lastZoneMedia.forEach(item => {
+        const thumb = document.createElement("div");
+        thumb.style.width = "80px";
+        thumb.style.height = "80px";
+        thumb.style.borderRadius = "12px";
+        thumb.style.overflow = "hidden";
+        thumb.style.background = "#000";
+        thumb.style.display = "flex";
+        thumb.style.alignItems = "center";
+        thumb.style.justifyContent = "center";
+        thumb.style.cursor = "pointer";
+
+        if (item.type === "photo") {
+            const img = document.createElement("img");
+            img.src = item.src;
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "cover";
+            thumb.appendChild(img);
+
+            thumb.onclick = () => {
+                photoImage.src = item.src;
+                photoOverlay.classList.remove("hidden");
+            };
+        }
+
+        if (item.type === "video") {
+            const icon = document.createElement("div");
+            icon.style.width = "0";
+            icon.style.height = "0";
+            icon.style.borderLeft = "20px solid white";
+            icon.style.borderTop = "12px solid transparent";
+            icon.style.borderBottom = "12px solid transparent";
+            thumb.appendChild(icon);
+
+            thumb.onclick = () => {
+                const videoOverlay = document.getElementById("videoOverlay");
+                const videoElement = document.getElementById("videoElement");
+
+                videoElement.src = item.src;
+                videoElement.currentTime = 0;
+                videoElement.play().catch(() => {});
+                videoOverlay.style.display = "flex";
+            };
+        }
+
+        gallery.appendChild(thumb);
+    });
+
+    gallery.style.display = "flex";
+};
+
+/* === END GALLERY_LOGIC === */
 function setupPhotoTimingsForAudio(audio, zoneId) {
     const src = audio.src.split("/").pop(); // например "3.mp3"
     const key = "audio/" + src;
@@ -1191,3 +1179,4 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
