@@ -117,12 +117,25 @@
   📷 Показать фото
 </button>
 
-<div id="photoOverlay" class="photo-overlay hidden">
-  <div class="photo-inner">
-    <img id="photoImage" src="">
-    <button id="closePhotoBtn" class="close-photo-btn">✕</button>
-  </div>
+<!-- === START PHOTO_OVERLAY_FULLSCREEN === -->
+<div id="photoOverlay"
+     style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.9);
+        display:none;
+        justify-content:center;
+        align-items:center;
+        z-index:1000002;
+     ">
+    <img id="photoImage"
+         style="
+            max-width:100%;
+            max-height:100%;
+            object-fit:contain;
+         ">
 </div>
+<!-- === END PHOTO_OVERLAY_FULLSCREEN === -->
 <!-- === КОНЕЦ ФОТО БЛОКА === -->
 
 <button id="simulate">Симуляция</button>
@@ -228,6 +241,7 @@
 <!-- === END VIDEO_OVERLAY === -->
     </body>
 </html>
+
 
 
 
