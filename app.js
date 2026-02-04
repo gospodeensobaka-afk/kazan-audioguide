@@ -420,7 +420,6 @@ const videoTimings = {
 /* === PATCH_SHOW_TIMED_PHOTO === */
 function showTimedPhoto(src) {
     lastZoneMedia.push({ type: "photo", src });
-
     photoImage.src = src;
     photoOverlay.style.display = "flex";
 }
@@ -428,17 +427,13 @@ function showTimedPhoto(src) {
 /* === PATCH_SHOW_TIMED_VIDEO === */
 function showTimedVideo(src) {
     lastZoneMedia.push({ type: "video", src });
-
     const videoOverlay = document.getElementById("videoOverlay");
     const videoElement = document.getElementById("videoElement");
-
     videoElement.src = src;
     videoElement.currentTime = 0;
     videoElement.play().catch(() => {});
-
     videoOverlay.style.display = "flex";
 }
-
 /* === PATCH_SETUP_TIMINGS === */
 function setupPhotoTimingsForAudio(audio, zoneId) {
     const src = audio.src.split("/").pop();
@@ -1063,3 +1058,4 @@ photoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
