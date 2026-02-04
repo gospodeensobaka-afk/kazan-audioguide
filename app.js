@@ -973,20 +973,17 @@ if (notReadyBtn) {
             }
 
             if (item.type === "video") {
-    const icon = document.createElement("div");
-    icon.style.width = "0";
-    icon.style.height = "0";
-    icon.style.borderLeft = "20px solid white";
-    icon.style.borderTop = "12px solid transparent";
-    icon.style.borderBottom = "12px solid transparent";
-    thumb.appendChild(icon);
+                const icon = document.createElement("div");
+                icon.style.width = "0";
+                icon.style.height = "0";
+                icon.style.borderLeft = "20px solid white";
+                icon.style.borderTop = "12px solid transparent";
+                icon.style.borderBottom = "12px solid transparent";
+                thumb.appendChild(icon);
 
-    thumb.onclick = () => {
-        galleryOverlay.classList.add("hidden"); // скрываем галерею
-        window.__openedFromGallery = true;      // ставим флаг
-        showFullscreenMedia(item.src, item.type);
-    };
-}
+                thumb.onclick = () => showFullscreenMedia(item.src, "video");
+            }
+
             galleryOverlay.appendChild(thumb);
         });
 
@@ -1076,11 +1073,6 @@ galleryOverlay.onclick = (e) => {
         overlay.style.height = "100%";
         overlay.style.background = "rgba(0,0,0,0.9)";
         overlay.style.display = "flex";
-      /* === DISABLE AUTO-CLOSE WHEN OPENED FROM GALLERY === */
-if (type === "photo" && window.__openedFromGallery) {
-    window.__openedFromGallery = false; // сбрасываем флаг
-    return; // фото остаётся открытым навсегда
-}
         overlay.style.alignItems = "center";
         overlay.style.justifyContent = "center";
         overlay.style.zIndex = "100000";
@@ -1197,13 +1189,13 @@ function showFullscreenMedia(src, type) {
 
     overlay.style.display = "flex";
 
-   /* === ADD TO MISSED MEDIA === */
-if (!missedMedia.some(m => m.src === src)) {
+    /* === ADD TO MISSED MEDIA === */
     missedMedia.push({ type, src });
+
+    setTimeout(() => {
+        if (overlay) overlay.remove();
+    }, 3000);
 }
                /* ==================== END OF APP.JS ====================== */
-
-
-
 
 
