@@ -16,6 +16,7 @@
 
 <body>
     <audio id="globalAudio" controls autoplay preload="auto"></audio>
+
     <div id="buildIndicator"
      style="
         position:absolute;
@@ -29,9 +30,11 @@
         z-index:999999;
         backdrop-filter:blur(4px);
      ">
-  build: loading…
-</div>
-<button id="startTourBtn"
+        build: loading…
+    </div>
+
+    <!-- Кнопка начала экскурсии -->
+    <button id="startTourBtn"
         style="
             position:absolute;
             top:50%;
@@ -43,11 +46,13 @@
             background:#007aff;
             color:white;
             border:none;
-            z-index:999999; /* ← подняли над картой */
-            pointer-events:auto; /* ← гарантируем клики */
+            z-index:999999;
+            pointer-events:auto;
         ">
-    Начать экскурсию
-</button>
+        Начать экскурсию
+    </button>
+
+    <!-- Прогресс -->
     <div id="tourProgress"
      style="
         position:absolute;
@@ -61,58 +66,59 @@
         z-index:999999;
         backdrop-filter:blur(4px);
      ">
-    Пройдено: 0 из 0
-</div>
+        Пройдено: 0 из 0
+    </div>
+
     <div id="map"></div>
 
-<!-- === ФОТО ОВЕРЛЕЙ И КНОПКА === -->
-<button id="togglePhotoBtn" class="photo-btn" style="display:none;">
-  📷 Показать фото
-</button>
+    <!-- === ФОТО ОВЕРЛЕЙ И КНОПКА === -->
+    <button id="togglePhotoBtn" class="photo-btn" style="display:none;">
+      📷 Показать фото
+    </button>
 
-<div id="photoOverlay" class="photo-overlay hidden">
-  <div class="photo-inner">
-    <img id="photoImage" src="">
-    <button id="closePhotoBtn" class="close-photo-btn">✕</button>
-  </div>
-    <!-- === MISSED MEDIA GALLERY === -->
-<div id="galleryOverlay" class="hidden" style="
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 20px;
-    justify-content: center;
-    align-items: flex-start;
-    overflow-y: auto;
-    z-index: 200000;
-"></div>
-</div>
-<!-- === КОНЕЦ ФОТО БЛОКА === -->
+    <div id="photoOverlay" class="photo-overlay hidden">
+      <div class="photo-inner">
+        <img id="photoImage" src="">
+        <button id="closePhotoBtn" class="close-photo-btn">✕</button>
+      </div>
+    </div>
 
-<button id="simulate">Симуляция</button>
+    <!-- === ГАЛЕРЕЯ ПРОПУЩЕННЫХ МЕДИА (СТОИТ ПРАВИЛЬНО!) === -->
+    <div id="galleryOverlay" class="hidden" style="
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 20px;
+        justify-content: center;
+        align-items: flex-start;
+        overflow-y: auto;
+        z-index: 200000;
+    "></div>
 
-    
+    <!-- Кнопки управления -->
+    <button id="simulate">Симуляция</button>
 
     <button id="enableAudio"
             style="top: 60px; left: 10px; position: absolute; z-index: 10;">
         Включить звук
     </button>
 
-    <!-- 🔥 Новая кнопка компаса -->
     <button id="enableCompass"
             style="top: 110px; left: 10px; position: absolute; z-index: 10;">
         Включить компас
     </button>
-<!-- === NOT READY BUTTON === -->
-<button id="notReadyBtn">
-    Не успеваю
-</button>
+
+    <!-- Кнопка "Не успеваю" -->
+    <button id="notReadyBtn"
+            style="top: 160px; left: 10px; position: absolute; z-index: 1000; padding:10px 14px; border-radius:6px; background:white; border:none; cursor:pointer;">
+        Не успеваю
+    </button>
+
 </body>
 </html>
-
 
 
 
