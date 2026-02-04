@@ -99,6 +99,18 @@ html, body {
     position: absolute;
     z-index: 5000;
 }
+#notReadyBtn {
+    position: absolute;
+    top: 210px; /* под кнопкой компаса */
+    left: 10px;
+    padding: 10px 14px;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    z-index: 1000;
+    border: none;
+    font-size: 14px;
+}
 
 
 
