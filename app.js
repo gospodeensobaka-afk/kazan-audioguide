@@ -1169,7 +1169,7 @@ globalAudio.autoplay = true;
                    preview.onclick = () => {
                        currentPointImage = src;
                        photoImage.src = src;
-                       photoOverlay.classList.remove("hidden");
+                       photoOverlay.style.display = "flex";
                    };
                
                    // исчезает через 10 секунд
@@ -1189,13 +1189,14 @@ globalAudio.autoplay = true;
                
                photoOverlay.onclick = (e) => {
                    if (e.target === photoOverlay) {
-                       photoOverlay.classList.add("hidden");
+                       photoOverlay.style.display = "none";
                    }
                };
                
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
