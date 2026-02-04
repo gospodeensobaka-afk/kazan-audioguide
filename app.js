@@ -147,26 +147,29 @@
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
 }
-               function setupPhotoTimingsForAudio(audio, zoneId) {
-    console.log("SETUP TIMINGS CALLED, zoneId =", zoneId, "src =", audio.src);
-
+              function setupPhotoTimingsForAudio(audio, zoneId) {
     const src = audio.src.split("/").pop();
     const key = "audio/" + src;
-    console.log("PHOTO KEY =", key, "TIMINGS =", photoTimings[key]);
 
-    const timings = photoTimings[key];
-    if (!timings) return;
+    const pTimings = photoTimings[key] || null;
+    const vTimings = videoTimings[key] || null;
 
-    let shown = {};
+    if (!pTimings && !vTimings) return;
+
+    const shownPhoto = {};
+    const shownVideo = {};
 
     audio.ontimeupdate = () => {
         const t = Math.floor(audio.currentTime);
-        console.log("AUDIO TIME", t);
 
-        if (timings[t] && !shown[t]) {
-            shown[t] = true;
-            console.log("SHOW TIMED PHOTO", timings[t]);
-            showTimedPhoto(timings[t]);
+        if (pTimings && pTimings[t] && !shownPhoto[t]) {
+            shownPhoto[t] = true;
+            showFullscreenMedia(pTimings[t], "photo");
+        }
+
+        if (vTimings && vTimings[t] && !shownVideo[t]) {
+            shownVideo[t] = true;
+            showFullscreenMedia(vTimings[t], "video");
         }
     };
 }
@@ -438,121 +441,6 @@ const videoTimings = {
 /* ========================================================
    ========== TIMED PHOTO / VIDEO POPUP ====================
    ======================================================== */
-
-function showTimedPhoto(src) {
-    const preview = document.createElement("img");
-    preview.src = src;
-    preview.style.position = "absolute";
-    preview.style.bottom = "120px";
-    preview.style.left = "10px";
-    preview.style.width = "80px";
-    preview.style.height = "80px";
-    preview.style.borderRadius = "8px";
-    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-    preview.style.zIndex = "99999";
-    preview.style.cursor = "pointer";
-
-    document.body.appendChild(preview);
-
-    preview.onclick = () => {
-        currentPointImage = src;
-        photoImage.src = src;
-        photoOverlay.classList.remove("hidden");
-    };
-
-    // исчезает через 10 секунд
-    setTimeout(() => preview.remove(), 10000);
-}
-
-function showTimedVideo(src) {
-    // Маленькое превью в углу, как у фото
-    const preview = document.createElement("div");
-    preview.style.position = "absolute";
-    preview.style.bottom = "120px";
-    preview.style.left = "100px";
-    preview.style.width = "80px";
-    preview.style.height = "80px";
-    preview.style.borderRadius = "8px";
-    preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-    preview.style.zIndex = "99999";
-    preview.style.cursor = "pointer";
-    preview.style.background = "black";
-    preview.style.display = "flex";
-    preview.style.alignItems = "center";
-    preview.style.justifyContent = "center";
-
-    const playIcon = document.createElement("div");
-    playIcon.style.width = "0";
-    playIcon.style.height = "0";
-    playIcon.style.borderLeft = "18px solid white";
-    playIcon.style.borderTop = "10px solid transparent";
-    playIcon.style.borderBottom = "10px solid transparent";
-
-    preview.appendChild(playIcon);
-    document.body.appendChild(preview);
-
-    // Ленивая инициализация полноэкранного оверлея
-    let videoOverlay = document.getElementById("videoOverlay");
-    let videoElement = document.getElementById("videoElement");
-    let closeVideoBtn = document.getElementById("closeVideoBtn");
-
-    if (!videoOverlay) {
-        videoOverlay = document.createElement("div");
-        videoOverlay.id = "videoOverlay";
-        videoOverlay.style.position = "fixed";
-        videoOverlay.style.top = "0";
-        videoOverlay.style.left = "0";
-        videoOverlay.style.width = "100%";
-        videoOverlay.style.height = "100%";
-        videoOverlay.style.background = "rgba(0,0,0,0.9)";
-        videoOverlay.style.display = "flex";
-        videoOverlay.style.alignItems = "center";
-        videoOverlay.style.justifyContent = "center";
-        videoOverlay.style.zIndex = "100000";
-        videoOverlay.classList.add("hidden");
-
-        videoElement = document.createElement("video");
-        videoElement.id = "videoElement";
-        videoElement.style.maxWidth = "100%";
-        videoElement.style.maxHeight = "100%";
-        videoElement.controls = true;
-
-        closeVideoBtn = document.createElement("button");
-        closeVideoBtn.id = "closeVideoBtn";
-        closeVideoBtn.textContent = "×";
-        closeVideoBtn.style.position = "absolute";
-        closeVideoBtn.style.top = "20px";
-        closeVideoBtn.style.right = "20px";
-        closeVideoBtn.style.width = "40px";
-        closeVideoBtn.style.height = "40px";
-        closeVideoBtn.style.borderRadius = "20px";
-        closeVideoBtn.style.border = "none";
-        closeVideoBtn.style.background = "rgba(0,0,0,0.7)";
-        closeVideoBtn.style.color = "white";
-        closeVideoBtn.style.fontSize = "24px";
-        closeVideoBtn.style.cursor = "pointer";
-
-        closeVideoBtn.onclick = () => {
-            videoElement.pause();
-            videoOverlay.classList.add("hidden");
-        };
-
-        videoOverlay.appendChild(videoElement);
-        videoOverlay.appendChild(closeVideoBtn);
-        document.body.appendChild(videoOverlay);
-    }
-
-    preview.onclick = () => {
-        videoElement.src = src;
-        videoElement.currentTime = 0;
-        videoElement.play().catch(() => {});
-        videoOverlay.classList.remove("hidden");
-    };
-
-    // превью исчезает через 10 секунд
-    setTimeout(() => preview.remove(), 10000);
-}
-
 function setupPhotoTimingsForAudio(audio, zoneId) {
     const src = audio.src.split("/").pop(); // например "3.mp3"
     const key = "audio/" + src;
@@ -1141,53 +1029,75 @@ globalAudio.autoplay = true;
                /* ========================================================
                   ====================== DOM EVENTS =======================
                   ======================================================== */
-               /* ========================================================
-                  ========== TIMED PHOTO POPUP (SMALL → FULL) =============
-                  ======================================================== */
-               
-               function showTimedPhoto(src) {
-                   // маленькое превью
-                   const preview = document.createElement("img");
-                   preview.src = src;
-                   preview.style.position = "absolute";
-                   preview.style.bottom = "120px";
-                   preview.style.left = "10px";
-                   preview.style.width = "80px";
-                   preview.style.height = "80px";
-                   preview.style.borderRadius = "8px";
-                   preview.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
-                   preview.style.zIndex = "99999";
-                   preview.style.cursor = "pointer";
-               
-                   document.body.appendChild(preview);
-               
-                   preview.onclick = () => {
-                       currentPointImage = src;
-                       photoImage.src = src;
-                       photoOverlay.classList.remove("hidden");
-                   };
-               
-                   // исчезает через 10 секунд
-                   setTimeout(() => {
-                       preview.remove();
-                   }, 10000);
-               }
-               togglePhotoBtn.onclick = () => {
-                   if (!currentPointImage) return;
-                   photoImage.src = currentPointImage;
-                   photoOverlay.classList.remove("hidden");
-               };
-               
-               closePhotoBtn.onclick = () => {
-                   photoOverlay.classList.add("hidden");
-               };
-               
-               photoOverlay.onclick = (e) => {
-                   if (e.target === photoOverlay) {
-                       photoOverlay.classList.add("hidden");
-                   }
-               };
+               function showFullscreenMedia(src, type) {
+    let overlay = document.getElementById("fsMediaOverlay");
+    let media = document.getElementById("fsMediaElement");
+    let closeBtn = document.getElementById("fsMediaClose");
+
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "fsMediaOverlay";
+        overlay.style.position = "fixed";
+        overlay.style.top = "0";
+        overlay.style.left = "0";
+        overlay.style.width = "100%";
+        overlay.style.height = "100%";
+        overlay.style.background = "rgba(0,0,0,0.9)";
+        overlay.style.display = "flex";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.style.zIndex = "100000";
+        document.body.appendChild(overlay);
+
+        media = document.createElement(type === "video" ? "video" : "img");
+        media.id = "fsMediaElement";
+        media.style.maxWidth = "100%";
+        media.style.maxHeight = "100%";
+        if (type === "video") media.controls = true;
+        overlay.appendChild(media);
+
+        closeBtn = document.createElement("button");
+        closeBtn.id = "fsMediaClose";
+        closeBtn.textContent = "×";
+        closeBtn.style.position = "absolute";
+        closeBtn.style.top = "20px";
+        closeBtn.style.right = "20px";
+        closeBtn.style.width = "40px";
+        closeBtn.style.height = "40px";
+        closeBtn.style.borderRadius = "20px";
+        closeBtn.style.border = "none";
+        closeBtn.style.background = "rgba(0,0,0,0.7)";
+        closeBtn.style.color = "white";
+        closeBtn.style.fontSize = "24px";
+        closeBtn.style.cursor = "pointer";
+        closeBtn.onclick = () => overlay.remove();
+        overlay.appendChild(closeBtn);
+    }
+
+    // Обновляем тип медиа
+    if (type === "video") {
+        const newVideo = document.createElement("video");
+        newVideo.id = "fsMediaElement";
+        newVideo.src = src;
+        newVideo.style.maxWidth = "100%";
+        newVideo.style.maxHeight = "100%";
+        newVideo.controls = true;
+        overlay.replaceChild(newVideo, media);
+        media = newVideo;
+        media.play().catch(() => {});
+    } else {
+        media.src = src;
+    }
+
+    overlay.style.display = "flex";
+
+    // Авто‑закрытие через 3 секунды
+    setTimeout(() => {
+        if (overlay) overlay.remove();
+    }, 3000);
+}
                
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
