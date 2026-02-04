@@ -662,8 +662,20 @@ function initMap() {
 
     map.on("load", () => {
         /* --- Arrow element --- */
-        arrowEl = document.createElement("img");
-        arrowEl.src = "arrow.png";
+        arrowEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+arrowEl.setAttribute("viewBox", "0 0 100 100");
+arrowEl.style.position = "absolute";
+arrowEl.style.width = "42px";
+arrowEl.style.height = "42px";
+arrowEl.style.transform = "translate(-50%, -50%)";
+arrowEl.style.zIndex = 999999;
+
+const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+arrowPath.setAttribute("d", "M50 0 L100 100 L0 100 Z");
+arrowPath.setAttribute("fill", "#007aff");
+
+arrowEl.appendChild(arrowPath);
+document.body.appendChild(arrowEl);
         arrowEl.style.position = "absolute";
         arrowEl.style.width = "42px";
         arrowEl.style.height = "42px";
@@ -948,3 +960,4 @@ videoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
 });
+
