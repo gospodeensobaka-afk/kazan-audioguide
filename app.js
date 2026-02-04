@@ -438,35 +438,7 @@ const videoTimings = {
         3: "videos/zone3_video.mp4"
     }
 };
-/* ========================================================
-   ========== TIMED PHOTO / VIDEO POPUP ====================
-   ======================================================== */
-function setupPhotoTimingsForAudio(audio, zoneId) {
-    const src = audio.src.split("/").pop(); // например "3.mp3"
-    const key = "audio/" + src;
 
-    const pTimings = photoTimings[key] || null;
-    const vTimings = videoTimings[key] || null;
-
-    if (!pTimings && !vTimings) return;
-
-    const shownPhoto = {};
-    const shownVideo = {};
-
-    audio.ontimeupdate = () => {
-        const t = Math.floor(audio.currentTime);
-
-        if (pTimings && pTimings[t] && !shownPhoto[t]) {
-            shownPhoto[t] = true;
-            showTimedPhoto(pTimings[t]);
-        }
-
-        if (vTimings && vTimings[t] && !shownVideo[t]) {
-            shownVideo[t] = true;
-            showTimedVideo(vTimings[t]);
-        }
-    };
-}
                /* ========================================================
                   ===================== MOVE MARKER =======================
                   ======================================================== */
@@ -1100,4 +1072,5 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
