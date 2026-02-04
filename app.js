@@ -649,13 +649,12 @@ function onMapMove() {
 /* ============================================================
    === MAP: INIT / LAYERS / SOURCES (APP3 RESTORED) ===========
    ============================================================ */
-
 function initMap() {
     map = new maplibregl.Map({
         container: "map",
-        style: "https://tiles.openfreemap.org/styles/bright/style.json",
+        style: "./style.json",   // ← ВОТ ЭТО — ТВОЙ ОРИГИНАЛЬНЫЙ СТИЛЬ
         center: [49.106414, 55.796289],
-        zoom: 15.2,
+        zoom: 15,
         pitch: 45,
         bearing: 0,
         attributionControl: false
@@ -663,7 +662,7 @@ function initMap() {
 
     map.on("load", () => {
 
-        /* --- Arrow element (SVG) --- */
+        // --- Arrow (как в app3 — SVG) ---
         arrowEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         arrowEl.setAttribute("viewBox", "0 0 100 100");
         arrowEl.style.position = "absolute";
@@ -678,6 +677,8 @@ function initMap() {
 
         arrowEl.appendChild(arrowPath);
         document.body.appendChild(arrowEl);
+    });
+}
 
         /* --- Route sources --- */
         map.addSource("route-passed", {
@@ -950,6 +951,7 @@ videoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
 });
+
 
 
 
