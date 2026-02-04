@@ -973,20 +973,20 @@ if (notReadyBtn) {
             }
 
             if (item.type === "video") {
-                const icon = document.createElement("div");
-                icon.style.width = "0";
-                icon.style.height = "0";
-                icon.style.borderLeft = "20px solid white";
-                icon.style.borderTop = "12px solid transparent";
-                icon.style.borderBottom = "12px solid transparent";
-                thumb.appendChild(icon);
+    const icon = document.createElement("div");
+    icon.style.width = "0";
+    icon.style.height = "0";
+    icon.style.borderLeft = "20px solid white";
+    icon.style.borderTop = "12px solid transparent";
+    icon.style.borderBottom = "12px solid transparent";
+    thumb.appendChild(icon);
 
-                thumb.onclick = () => {
-    galleryOverlay.classList.add("hidden"); // скрываем галерею
-    window.__openedFromGallery = true;      // ставим флаг
-    showFullscreenMedia(item.src, item.type);
-};
-
+    thumb.onclick = () => {
+        galleryOverlay.classList.add("hidden"); // скрываем галерею
+        window.__openedFromGallery = true;      // ставим флаг
+        showFullscreenMedia(item.src, item.type);
+    };
+}
             galleryOverlay.appendChild(thumb);
         });
 
@@ -1202,6 +1202,7 @@ if (!missedMedia.some(m => m.src === src)) {
     missedMedia.push({ type, src });
 }
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
