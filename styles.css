@@ -94,6 +94,11 @@ html, body {
 #superDebug {
     display: none !important;
 }
+/* === FIX START TOUR BUTTON CLICK === */
+#startTourBtn {
+    position: absolute;
+    z-index: 5000;
+}
 
 
 
