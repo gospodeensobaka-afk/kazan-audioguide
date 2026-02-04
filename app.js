@@ -10,9 +10,13 @@
                
                const togglePhotoBtn = document.getElementById("togglePhotoBtn");
                const photoOverlay = document.getElementById("photoOverlay");
+
                const photoImage = document.getElementById("photoImage");
                const closePhotoBtn = document.getElementById("closePhotoBtn");
-               
+               /* === PATCH_PHOTO_CLOSE_ON_CLICK === */
+photoOverlay.onclick = () => {
+    photoOverlay.style.display = "none";
+};
                let arrowEl = null;
                let lastCoords = null;
                let zones = [];
@@ -461,12 +465,12 @@ function showTimedPhoto(src) {
     lastZoneMedia.push({ type: "photo", src });
 
     photoImage.src = src;
-    photoOverlay.classList.remove("hidden");
+   photoOverlay.style.display = "flex";
 
     const timeout = autoCloseTimings[currentZoneId];
     if (timeout) {
         setTimeout(() => {
-            photoOverlay.classList.add("hidden");
+           photoOverlay.style.display = "none";
         }, timeout);
     }
 }
@@ -1193,6 +1197,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
