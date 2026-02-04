@@ -676,14 +676,7 @@ arrowPath.setAttribute("fill", "#007aff");
 
 arrowEl.appendChild(arrowPath);
 document.body.appendChild(arrowEl);
-        arrowEl.style.position = "absolute";
-        arrowEl.style.width = "42px";
-        arrowEl.style.height = "42px";
-        arrowEl.style.transform = "translate(-50%, -50%)";
-        arrowEl.style.zIndex = 999999;
-        document.body.appendChild(arrowEl);
-
-        /* --- Route sources --- */
+               /* --- Route sources --- */
         map.addSource("route-passed", {
             type: "geojson",
             data: { type: "Feature", geometry: { type: "LineString", coordinates: [] } }
@@ -960,4 +953,5 @@ videoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
 });
+
 
