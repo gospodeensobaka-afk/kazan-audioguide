@@ -90,5 +90,10 @@ html, body {
 .hidden {
     display: none !important;
 }
+/* === HIDE SUPER DEBUG PANEL === */
+#superDebug {
+    display: none !important;
+}
+
 
 
