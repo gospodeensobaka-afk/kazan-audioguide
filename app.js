@@ -647,36 +647,39 @@ function onMapMove() {
     updateArrowPositionFromCoords(lastCoords);
 }
 /* ============================================================
-   === MAP: INIT / LAYERS / SOURCES ===========================
+   === MAP: INIT / LAYERS / SOURCES (APP3 RESTORED) ===========
    ============================================================ */
 
 function initMap() {
     map = new maplibregl.Map({
         container: "map",
-        style: "https://demotiles.maplibre.org/style.json",
+        style: "https://tiles.openfreemap.org/styles/bright/style.json",
         center: [49.106414, 55.796289],
-        zoom: 14,
-        pitch: 60,
-        bearing: 0
+        zoom: 15.2,
+        pitch: 45,
+        bearing: 0,
+        attributionControl: false
     });
 
     map.on("load", () => {
-        /* --- Arrow element --- */
+
+        /* --- Arrow element (SVG) --- */
         arrowEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-arrowEl.setAttribute("viewBox", "0 0 100 100");
-arrowEl.style.position = "absolute";
-arrowEl.style.width = "42px";
-arrowEl.style.height = "42px";
-arrowEl.style.transform = "translate(-50%, -50%)";
-arrowEl.style.zIndex = 999999;
+        arrowEl.setAttribute("viewBox", "0 0 100 100");
+        arrowEl.style.position = "absolute";
+        arrowEl.style.width = "42px";
+        arrowEl.style.height = "42px";
+        arrowEl.style.transform = "translate(-50%, -50%)";
+        arrowEl.style.zIndex = 999999;
 
-const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-arrowPath.setAttribute("d", "M50 0 L100 100 L0 100 Z");
-arrowPath.setAttribute("fill", "#007aff");
+        const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        arrowPath.setAttribute("d", "M50 0 L100 100 L0 100 Z");
+        arrowPath.setAttribute("fill", "#007aff");
 
-arrowEl.appendChild(arrowPath);
-document.body.appendChild(arrowEl);
-               /* --- Route sources --- */
+        arrowEl.appendChild(arrowPath);
+        document.body.appendChild(arrowEl);
+
+        /* --- Route sources --- */
         map.addSource("route-passed", {
             type: "geojson",
             data: { type: "Feature", geometry: { type: "LineString", coordinates: [] } }
@@ -747,22 +750,16 @@ document.body.appendChild(arrowEl);
             }
         });
 
-        /* --- Map move event --- */
+        /* --- Keep arrow in place on map move --- */
         map.on("move", onMapMove);
 
-        /* --- Start button --- */
+        /* --- Buttons --- */
         document.getElementById("startTourBtn").onclick = startTour;
-
-        /* --- Enable audio button --- */
         document.getElementById("enableAudio").onclick = () => {
             audioEnabled = true;
             globalAudio = document.getElementById("globalAudio");
         };
-
-        /* --- Enable compass button --- */
         document.getElementById("enableCompass").onclick = startCompass;
-
-        /* --- Simulation button --- */
         document.getElementById("simulate").onclick = startSimulation;
     });
 }
@@ -953,5 +950,6 @@ videoOverlay.onclick = (e) => {
 document.addEventListener("DOMContentLoaded", () => {
     initMap();
 });
+
 
 
