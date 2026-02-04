@@ -560,11 +560,15 @@ document.getElementById("notReadyBtn").onclick = () => {
     });
 
     gallery.style.display = "flex";
+
+    // закрытие по клику на тёмный фон
+    gallery.onclick = (e) => {
+        if (e.target === gallery) {
+            gallery.style.display = "none";
+        }
+    };
 };
 /* === END PATCH_NOT_READY_TOGGLE === */
-  gallery.onclick = () => {
-    gallery.style.display = "none";
-}; /* === PATCH_GALLERY_CLOSE === */
 
 /* === END GALLERY_LOGIC === */
 function setupPhotoTimingsForAudio(audio, zoneId) {
@@ -1183,6 +1187,7 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
