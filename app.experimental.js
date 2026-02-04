@@ -2,22 +2,29 @@
 
 console.log("Experimental module loaded");
 
-// Ждём, пока DOM загрузится
+// Ждём загрузки DOM
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("Experimental: DOMContentLoaded fired");
+
     const overlay = document.getElementById("photoOverlay");
     const img = document.getElementById("photoImage");
+
+    console.log("Experimental: overlay =", overlay);
+    console.log("Experimental: overlay.classList =", overlay?.classList);
 
     if (!overlay || !img) {
         console.warn("Experimental: photoOverlay or photoImage not found — override skipped");
         return;
     }
 
-    console.log("Experimental: DOM hook installed");
+    console.log("Experimental: installing observer on overlay");
 
-    // Создаём MutationObserver для отслеживания появления галереи
+    // MutationObserver — следим за изменением класса overlay
     const observer = new MutationObserver((mutations) => {
         for (const m of mutations) {
             if (m.attributeName === "class") {
+                console.log("Experimental: overlay class changed →", overlay.className);
+
                 const isVisible = !overlay.classList.contains("hidden");
 
                 if (isVisible) {
@@ -71,11 +78,11 @@ function experimentalGallery(src) {
     win.style.gap = "10px";
 
     // Фото
-    const img = document.createElement("img");
-    img.src = src;
-    img.style.width = "100%";
-    img.style.borderRadius = "12px";
-    win.appendChild(img);
+    const imgEl = document.createElement("img");
+    imgEl.src = src;
+    imgEl.style.width = "100%";
+    imgEl.style.borderRadius = "12px";
+    win.appendChild(imgEl);
 
     // Кнопка закрытия
     const close = document.createElement("button");
