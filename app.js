@@ -1151,7 +1151,11 @@ function showFullscreenMedia(src, type) {
         }
     }, 3000);
 }
+
+document.addEventListener("DOMContentLoaded", initMap);
+
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
