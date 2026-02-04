@@ -194,17 +194,20 @@ lastZoneMedia = [];
                        const dist = distance(coords, [z.lat, z.lng]);
                
                        // СТАРАЯ НАДЁЖНАЯ ЛОГИКА: один раз при входе
-                       if (!z.visited && dist <= z.radius) {
-                   z.visited = true;
-               
-                   if (z.type === "audio") {
-                       visitedAudioZones++;
-                       updateProgress();
-                   }
-               
-                   updateCircleColors();
-                   if (z.audio) playZoneAudio(z.audio, z.id);
-               }
+                      if (!z.visited && dist <= z.radius) {
+    z.visited = true;
+
+    lastZoneMedia = []; /* === PATCH_RESET_MEDIA_SIMULATION === */
+    currentZoneId = z.id; /* ← правильный id зоны */
+
+    if (z.type === "audio") {
+        visitedAudioZones++;
+        updateProgress();
+    }
+
+    updateCircleColors();
+    if (z.audio) playZoneAudio(z.audio, z.id);
+}
                    });
                }
                
@@ -494,8 +497,17 @@ if (closeVideoBtn) {
 /* === END TIMED_MEDIA === */
 /* === START GALLERY_LOGIC === */
 
+/* === START PATCH_NOT_READY_TOGGLE === */
 document.getElementById("notReadyBtn").onclick = () => {
     const gallery = document.getElementById("galleryOverlay");
+
+    // если открыта — закрываем
+    if (gallery.style.display === "flex") {
+        gallery.style.display = "none";
+        return;
+    }
+
+    // иначе — открываем и заполняем
     gallery.innerHTML = "";
 
     lastZoneMedia.forEach(item => {
@@ -548,10 +560,11 @@ document.getElementById("notReadyBtn").onclick = () => {
     });
 
     gallery.style.display = "flex";
+};
+/* === END PATCH_NOT_READY_TOGGLE === */
   gallery.onclick = () => {
     gallery.style.display = "none";
 }; /* === PATCH_GALLERY_CLOSE === */
-};
 
 /* === END GALLERY_LOGIC === */
 function setupPhotoTimingsForAudio(audio, zoneId) {
@@ -680,28 +693,6 @@ function setupPhotoTimingsForAudio(audio, zoneId) {
                
                    // === ZONES ===
                    checkZones(coords);
-               
-                   // === PHOTO POINTS ===
-                   zones.forEach(z => {
-                       if (z.type !== "square" || !z.image) return;
-               
-                       const dist = distance(coords, [z.lat, z.lng]);
-               
-                       if (!z.entered && dist <= 30) {
-                           z.entered = true;
-                           currentPointImage = z.image;
-                           togglePhotoBtn.style.display = "block";
-                           photoImage.src = z.image;
-                           togglePhotoBtn.classList.add("photo-btn-glow");
-                       }
-               
-                       if (z.entered && dist > 30) {
-                           z.entered = false;
-                           togglePhotoBtn.style.display = "none";
-                           togglePhotoBtn.classList.remove("photo-btn-glow");
-                       }
-                   });
-               
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
                    debugUpdate(src, ang);
@@ -1192,5 +1183,6 @@ globalAudio.autoplay = true;
                document.addEventListener("DOMContentLoaded", initMap);
                
                /* ==================== END OF APP.JS ====================== */
+
 
 
