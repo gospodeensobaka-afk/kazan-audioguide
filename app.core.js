@@ -793,7 +793,29 @@ globalAudio.autoplay = true;
                            iconsPngStatus = "error";
                            debugUpdate("none", null, "PNG_LOAD_FAIL");
                        };
-               
+               // === UNIVERSAL MEDIA ZONES (PHOTO / VIDEO / BOTH) ===
+if (p.type === "media") {
+    const el = document.createElement("img");
+    el.src = p.icon;
+    el.style.width = "40px";
+    el.style.height = "40px";
+    el.style.cursor = "pointer";
+
+    el.onclick = () => {
+        if (p.photo) {
+            showFullscreenMedia(p.photo, "photo");
+            addMissedMedia("photo", p.photo, p.id);
+        }
+        if (p.video) {
+            showFullscreenMedia(p.video, "video");
+            addMissedMedia("video", p.video, p.id);
+        }
+    };
+
+    new maplibregl.Marker({ element: el })
+        .setLngLat([p.lng, p.lat])
+        .addTo(map);
+}
                        el.appendChild(img);
                
                        new maplibregl.Marker({ element: el })
@@ -960,22 +982,24 @@ if (notReadyBtn && galleryOverlay) {
             thumb.style.alignItems = "center";
             thumb.style.justifyContent = "center";
 
-            if (item.type === "photo") {
-                const img = document.createElement("img");
-                img.src = item.src;
-                img.style.width = "100%";
-                img.style.height = "100%";
-                img.style.objectFit = "cover";
-                thumb.appendChild(img);
-            } else {
-                const icon = document.createElement("div");
-                icon.style.width = "0";
-                icon.style.height = "0";
-                icon.style.borderLeft = "20px solid white";
-                icon.style.borderTop = "12px solid transparent";
-                icon.style.borderBottom = "12px solid transparent";
-                thumb.appendChild(icon);
-            }
+           if (item.type === "photo") {
+    const img = document.createElement("img");
+    img.src = item.src;
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "cover";
+    thumb.appendChild(img);
+}
+
+if (item.type === "video") {
+    const icon = document.createElement("div");
+    icon.style.width = "0";
+    icon.style.height = "0";
+    icon.style.borderLeft = "20px solid white";
+    icon.style.borderTop = "12px solid transparent";
+    icon.style.borderBottom = "12px solid transparent";
+    thumb.appendChild(icon);
+}
 
             thumb.onclick = () => {
                 galleryOverlay.classList.add("hidden");   // прячем галерею
@@ -1062,6 +1086,10 @@ if (galleryOverlay) {
              /* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
 /* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
 function showFullscreenMedia(src, type) {
+  // === UNIVERSAL MISSED MEDIA ADD ===
+function addMissedMedia(type, src, zoneId = null) {
+    
+}
     let overlay = document.getElementById("fsMediaOverlay");
     let media = document.getElementById("fsMediaElement");
     let closeBtn = document.getElementById("fsMediaClose");
@@ -1081,6 +1109,7 @@ function showFullscreenMedia(src, type) {
         overlay.style.height = "100%";
         overlay.style.background = "rgba(0,0,0,0.9)";
         overlay.style.display = "flex";
+      addMissedMedia(type, src);
         overlay.style.alignItems = "center";
         overlay.style.justifyContent = "center";
         overlay.style.zIndex = "300000"; // выше галереи
@@ -1155,3 +1184,4 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
