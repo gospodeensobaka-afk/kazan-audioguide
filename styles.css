@@ -9,147 +9,11 @@ html, body {
 #map {
     width: 100%;
     height: 100%;
-    position: relative;   /* ← добавили */
-    z-index: 1;           /* ← добавили */
+    position: relative;
+    z-index: 1;
 }
 
-#simulate {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    padding: 10px 14px;
-    background: white;
-    border-radius: 6px;
-    cursor: pointer;
-    z-index: 10;
-
-}
-.photo-btn {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  z-index: 1000;
-  padding: 10px 14px;
-  background: #ffffff;
-  border-radius: 8px;
-  border: none;
-  font-size: 13px;        /* ↓ уменьшили */
-  line-height: 16px;      /* ↓ чтобы текст не прыгал */
-  white-space: nowrap;    /* ↓ запрет переноса */
-  overflow: hidden;       /* ↓ если вдруг не влезет */
-  text-overflow: ellipsis;/* ↓ троеточие вместо переноса */
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  cursor: pointer;
-}
-
-.photo-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.65);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1100;
-}
-
-.photo-overlay.hidden {
-  display: none;
-}
-
-.photo-inner {
-  position: relative;
-  max-width: 90%;
-  max-height: 80%;
-}
-
-.photo-inner img {
-  display: block;
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 12px;
-}
-
-.close-photo-btn {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background: #ffffff;
-  border-radius: 50%;
-  border: none;
-  width: 28px;
-  height: 28px;
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-}
-.photo-btn-glow {
-    box-shadow: 0 0 8px 2px rgba(0, 150, 255, 0.6);
-    border: 1px solid rgba(0, 150, 255, 0.8);
-    transition: box-shadow 0.2s ease, border 0.2s ease;
-}
-.hidden {
-    display: none !important;
-}
-/* === HIDE SUPER DEBUG PANEL === */
-#superDebug {
-    display: none !important;
-}
-/* === FIX START TOUR BUTTON CLICK === */
-#startTourBtn {
-    position: absolute;
-    z-index: 5000;
-}
-#notReadyBtn {
-    
-    position: absolute;
-    top: 210px; /* под кнопкой компаса */
-    left: 10px;
-    padding: 10px 14px;
-    background: white;
-    border-radius: 6px;
-    cursor: pointer;
-    z-index: 1000;
-    border: none;
-    font-size: 14px;
-}
-#globalAudio {
-    position: absolute;
-    top: 100px;
-    left: 1px;
-    width: 300px;
-    z-index: 999999;
-}
-#galleryOverlay {
-    position: fixed;
-    inset: auto;
-    width: 80%;
-    height: 25%;
-    top: 70%;
-    left: 10%;
-    border-radius: 20px;
-    background: rgba(0, 0, 0, 0.5);
-
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 20px;
-    justify-content: center;
-    align-items: flex-start;
-    overflow-y: auto;
-    z-index: 200000;
-}
-#enableAudio {
-    position: absolute;
-    top: 60px;
-    right: 2px;
-    z-index: 10;
-}
-#enableCompass {
-    position: absolute;
-    top: 85px;
-    right: 1px;
-    z-index: 10;
-}
+/* Универсальный стиль кнопок */
 .control-btn {
     position: absolute;
     padding: 10px 14px;
@@ -160,67 +24,64 @@ html, body {
     font-size: 14px;
     z-index: 1000;
 }
+
+/* Позиции кнопок на ноутбуке */
 #simulate { top: 10px; left: 10px; }
-#enableAudio { top: 60px; left: 10px; }
-#enableCompass { top: 110px; left: 10px; }
-#notReadyBtn { top: 160px; left: 10px; }
+#enableCompass { top: 60px; left: 10px; }
+#notReadyBtn { top: 110px; left: 10px; }
 
-@media (max-width: 600px) {
-
-    #simulate { top: 10px; left: 10px; }
-    #enableAudio { top: 60px; left: 10px; }
-    #enableCompass { top: 110px; left: 10px; }
-    #notReadyBtn { top: 160px; left: 10px; }
-
-    #globalAudio {
-        top: 210px;
-        left: 10px;
-        width: calc(100% - 20px);
-    }
-
-    #galleryOverlay {
-        width: 90%;
-        height: 35%;
-        top: 60%;
-        left: 5%;
-    }
+/* Плеер */
+#globalAudio {
+    position: absolute;
+    top: 160px;
+    left: 10px;
+    width: 300px;
+    z-index: 999999;
 }
+
+/* Галерея (ноутбук) */
+#galleryOverlay {
+    position: fixed;
+    inset: auto;
+    width: 80%;
+    height: 25%;
+    top: 70%;
+    left: 10%;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 20px;
+    justify-content: center;
+    align-items: flex-start;
+    overflow-y: auto;
+    z-index: 200000;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Мобильная версия */
 @media (max-width: 600px) {
 
-    /* Плеер — сверху */
     #globalAudio {
         top: 10px;
         left: 10px;
         width: calc(100% - 20px);
-        z-index: 999999;
     }
 
-    /* Универсальный стиль кнопок */
     .control-btn {
         padding: 8px 12px;
         font-size: 13px;
-        border-radius: 6px;
-        width: auto;
         min-width: 120px;
     }
 
-    /* Кнопки — колонка слева */
-    #simulate {
-        top: 60px;
-        left: 10px;
-    }
+    #simulate { top: 60px; left: 10px; }
+    #enableCompass { top: 110px; left: 10px; }
+    #notReadyBtn { top: 160px; left: 10px; }
 
-    #enableCompass {
-        top: 110px;
-        left: 10px;
-    }
-
-    #notReadyBtn {
-        top: 160px;
-        left: 10px;
-    }
-
-    /* Галерея — по центру, снизу */
     #galleryOverlay {
         width: 85%;
         height: 30%;
