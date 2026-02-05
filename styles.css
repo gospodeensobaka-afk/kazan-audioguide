@@ -100,6 +100,7 @@ html, body {
     z-index: 5000;
 }
 #notReadyBtn {
+    
     position: absolute;
     top: 210px; /* под кнопкой компаса */
     left: 10px;
@@ -111,6 +112,53 @@ html, body {
     border: none;
     font-size: 14px;
 }
+#globalAudio {
+    position: absolute;
+    top: 100px;
+    left: 1px;
+    width: 300px;
+    z-index: 999999;
+}
+#galleryOverlay {
+    position: fixed;
+    inset: auto;
+    width: 80%;
+    height: 25%;
+    top: 70%;
+    left: 10%;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.5);
 
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 20px;
+    justify-content: center;
+    align-items: flex-start;
+    overflow-y: auto;
+    z-index: 200000;
+}
+#enableAudio {
+    position: absolute;
+    top: 60px;
+    right: 2px;
+    z-index: 10;
+}
+#enableCompass {
+    position: absolute;
+    top: 85px;
+    right: 1px;
+    z-index: 10;
+}
+.control-btn {
+    position: absolute;
+    padding: 10px 14px;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+    z-index: 1000;
+}
 
 
