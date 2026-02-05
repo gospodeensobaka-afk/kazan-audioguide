@@ -44,9 +44,10 @@
   "lat": 55.827071,
   "lng": 49.081481,
   "type": "media",
-  "icon": "icons/video_icon.png",
+  "icon": "icons/camera.png",
   "video": "videos/10.MP4"
 }
 ]
+
 
 
