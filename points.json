@@ -37,6 +37,16 @@
     "lng": 49.082825,
     "type": "audio",
     "radius": 10
-  }
+  },
+  {
+  "id": 6,
+  "name": "Видео зона",
+  "lat": 55.827071,
+  "lng": 49.081481,
+  "type": "media",
+  "icon": "icons/video_icon.png",
+  "video": "videos/10.MP4"
+}
 ]
+
 
