@@ -11,7 +11,8 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
 
-    <script src="app.js" defer></script>
+    <script src="app.core.js"></script>
+<script src="app.experimental.js"></script>
 </head>
 
 <body>
@@ -35,14 +36,15 @@
 
     <!-- Галерея -->
     <div id="galleryOverlay" class="hidden"></div>
-
-    <!-- Кнопки управления -->
+<div id="controlsRow">
     <button id="simulate" class="control-btn">Симуляция</button>
-    <button id="enableCompass" class="control-btn">Включить компас</button>
+    <button id="enableCompass" class="control-btn">Компас</button>
     <button id="notReadyBtn" class="control-btn">Не успеваю</button>
+</div>
 
     <!-- CORE + EXPERIMENTAL -->
     <script src="app.core.js"></script>
     <script src="app.experimental.js"></script>
 </body>
 </html>
+
