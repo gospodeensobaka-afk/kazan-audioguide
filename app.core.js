@@ -6,7 +6,7 @@
                let tourStarted = false;
                let map;
                let currentPointImage = null;
-               let audioPlaying = false;
+               
                
                const photoOverlay = document.getElementById("photoOverlay");
                const photoImage = document.getElementById("photoImage");
@@ -18,14 +18,7 @@
                
                let simulationActive = false;
                let simulationPoints = [];
-               const jumpPoints = [
-                   [55.826681, 49.082236],
-                   [55.826597, 49.082102],
-                   [55.826698, 49.082098],
-                   [55.826934, 49.081875],
-                   [55.826830, 49.082332],
-                   [55.826659, 49.082523]
-               ];
+               
                let simulationIndex = 0;
                let globalAudio = null;
                let gpsActive = false; // включится после старта
@@ -143,12 +136,7 @@ let missedMedia = []; // { type: "photo"|"video", src: "..." }
     setupPhotoTimingsForAudio(globalAudio, id);
 
     globalAudio.play().catch(() => {});
-audioPlaying = true;
 
-globalAudio.onended = () => {
-    audioPlaying = false;
-};
-              
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
 }
@@ -557,9 +545,9 @@ const videoTimings = {
                   ======================================================== */
                function simulateNextStep() {
                    if (!simulationActive) return;
-               // ждём окончания аудио
+               // ЖДЁМ окончания аудио перед движением
 if (audioPlaying) {
-    setTimeout(simulateNextStep, 500);
+    setTimeout(simulateNextStep, 300);
     return;
 }
                    // Если дошли до конца маршрута — стоп
@@ -574,25 +562,7 @@ if (audioPlaying) {
                    // 1) Двигаемся по маршруту
                    moveMarker(next);
                
-                   // 2) После каждой точки — прыжок в сторону
-                   if (simulationIndex < jumpPoints.length) {
-                       const jp = jumpPoints[simulationIndex];
-               
-                       console.log("SIMULATION: SIDE JUMP", jp);
-               
-                       setTimeout(() => {
-                           moveMarker(jp);
-               
-                           // Возврат на маршрут через 1.2 сек
-                           setTimeout(() => {
-                               simulationIndex++;
-                               simulateNextStep();
-                           }, 1200);
-               
-                       }, 800);
-               
-                       return;
-                   }
+                  
                
                    // 3) Если прыжков больше нет — обычная симуляция
                    simulationIndex++;
@@ -1146,4 +1116,3 @@ if (type === "photo") {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
-
