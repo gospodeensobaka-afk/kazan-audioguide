@@ -543,7 +543,7 @@ const videoTimings = {
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
                    debugUpdate(src, ang);
-               }
+              });
                
                /* ========================================================
                   ================== SIMULATION STEP ======================
@@ -1145,6 +1145,7 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
