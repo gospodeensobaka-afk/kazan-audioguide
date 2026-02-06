@@ -1124,18 +1124,19 @@ function showFullscreenMedia(src, type) {
         return;
     }
 
-    // иначе — авто‑закрытие (и фото, и видео)
+   // авто‑закрытие только для фото
+if (type === "photo") {
     setTimeout(() => {
         if (overlay && overlay.style.display !== "none") {
             overlay.style.display = "none";
         }
     }, 3000);
 }
-
 document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
