@@ -749,23 +749,7 @@ globalAudio.autoplay = true;
                   ======================================================== */
                
                const circleFeatures = [];
-               /* MEDIA ZONES (новые точки с иконкой и видео) */
-if (p.type === "media") {
-    const el = document.createElement("img");
-    el.src = p.icon;
-    el.style.width = "40px";
-    el.style.height = "40px";
-    el.style.cursor = "pointer";
-
-    el.onclick = () => {
-        if (p.photo) showFullscreenMedia(p.photo, "photo");
-        if (p.video) showFullscreenMedia(p.video, "video");
-    };
-
-    new maplibregl.Marker({ element: el })
-        .setLngLat([p.lng, p.lat])
-        .addTo(map);
-}
+               
                points.forEach(p => {
                    zones.push({
                        id: p.id,
