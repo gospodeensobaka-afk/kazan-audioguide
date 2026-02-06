@@ -1130,15 +1130,10 @@ if (type === "photo") {
         if (overlay && overlay.style.display !== "none") {
             overlay.style.display = "none";
         }
-    }, 3000);
+   }, 3000);
+    }
 }
+
 document.addEventListener("DOMContentLoaded", initMap);
 
-
-               /* ==================== END OF APP.JS ====================== */
-
-
-
-
-
-
+/* ==================== END OF APP.JS ====================== */
