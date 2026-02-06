@@ -557,7 +557,7 @@ const videoTimings = {
         z.entered = false;
         photoOverlay.classList.add("hidden");
     }
-});
+
                
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
@@ -1153,6 +1153,7 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
