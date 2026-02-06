@@ -540,12 +540,6 @@ const videoTimings = {
                
                    // === ZONES ===
                    checkZones(coords);
-              
-               
-                       
-                       }
-                  
-               
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
                    debugUpdate(src, ang);
@@ -1151,5 +1145,6 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
 
