@@ -6,7 +6,7 @@
                let tourStarted = false;
                let map;
                let currentPointImage = null;
-               
+               let audioPlaying = false;
                
                const photoOverlay = document.getElementById("photoOverlay");
                const photoImage = document.getElementById("photoImage");
@@ -143,7 +143,12 @@ let missedMedia = []; // { type: "photo"|"video", src: "..." }
     setupPhotoTimingsForAudio(globalAudio, id);
 
     globalAudio.play().catch(() => {});
+audioPlaying = true;
 
+globalAudio.onended = () => {
+    audioPlaying = false;
+};
+              
     audioPlaying = true;
     globalAudio.onended = () => audioPlaying = false;
 }
@@ -552,7 +557,11 @@ const videoTimings = {
                   ======================================================== */
                function simulateNextStep() {
                    if (!simulationActive) return;
-               
+               // ждём окончания аудио
+if (audioPlaying) {
+    setTimeout(simulateNextStep, 500);
+    return;
+}
                    // Если дошли до конца маршрута — стоп
                    if (simulationIndex >= simulationPoints.length) {
                        simulationActive = false;
@@ -1137,3 +1146,4 @@ if (type === "photo") {
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
