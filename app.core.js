@@ -541,26 +541,26 @@ const videoTimings = {
                    // === ZONES ===
                    checkZones(coords);
                
-                   // === PHOTO POINTS ===
-                   zones.forEach(z => {
-                       if (z.type !== "square" || !z.image) return;
-               
-                       const dist = distance(coords, [z.lat, z.lng]);
-               
-                       if (!z.entered && dist <= 30) {
-                           z.entered = true;
-                           currentPointImage = z.image;
-                           togglePhotoBtn.style.display = "block";
-                           photoImage.src = z.image;
-                           togglePhotoBtn.classList.add("photo-btn-glow");
-                       }
-               
-                       if (z.entered && dist > 30) {
-                           z.entered = false;
-                           togglePhotoBtn.style.display = "none";
-                           togglePhotoBtn.classList.remove("photo-btn-glow");
-                       }
-                   });
+                  // === PHOTO POINTS  ===
+zones.forEach(z => {
+    if (z.type !== "square" || !z.image) return;
+
+    const dist = distance(coords, [z.lat, z.lng]);
+
+    // Вход в зону
+    if (!z.entered && dist <= 30) {
+        z.entered = true;
+        currentPointImage = z.image;
+        photoImage.src = z.image;
+        photoOverlay.classList.remove("hidden");
+    }
+
+    // Выход из зоны
+    if (z.entered && dist > 30) {
+        z.entered = false;
+        photoOverlay.classList.add("hidden");
+    }
+});
                
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
@@ -1048,24 +1048,7 @@ if (galleryOverlay) {
                const compassBtn = document.getElementById("enableCompass");
                if (compassBtn) compassBtn.onclick = startCompass;
                
-               // === PLACE PHOTO BUTTON RIGHT UNDER COMPASS BUTTON ===
-               if (compassBtn && togglePhotoBtn) {
-                   togglePhotoBtn.style.position = "absolute";
-                   togglePhotoBtn.style.top = "160px";   // ниже компаса
-                   togglePhotoBtn.style.left = "10px";
-                   togglePhotoBtn.style.zIndex = "10";
-                   togglePhotoBtn.style.display = "block";
-                   togglePhotoBtn.style.width = "140px";
-                   togglePhotoBtn.style.height = "32px";
-               
-                   togglePhotoBtn.textContent = "Фото";
-                   togglePhotoBtn.style.fontSize = "13px";
-                   togglePhotoBtn.style.whiteSpace = "nowrap";
-                   togglePhotoBtn.style.overflow = "hidden";
-                   togglePhotoBtn.style.textOverflow = "ellipsis";
-               
-                   compassBtn.insertAdjacentElement("afterend", togglePhotoBtn);
-               }
+
                    /* ========================================================
                       ===================== INIT DEBUG PANEL =================
                       ======================================================== */
@@ -1173,4 +1156,5 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
