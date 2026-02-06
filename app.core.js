@@ -543,6 +543,7 @@ const videoTimings = {
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
                    debugUpdate(src, ang);
+                 }
              
                
                /* ========================================================
@@ -1048,9 +1049,7 @@ if (galleryOverlay) {
 /* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
 function showFullscreenMedia(src, type) {
   // === UNIVERSAL MISSED MEDIA ADD ===
-function addMissedMedia(type, src, zoneId = null) {
-    
-}
+
     let overlay = document.getElementById("fsMediaOverlay");
     let media = document.getElementById("fsMediaElement");
     let closeBtn = document.getElementById("fsMediaClose");
@@ -1070,7 +1069,6 @@ function addMissedMedia(type, src, zoneId = null) {
         overlay.style.height = "100%";
         overlay.style.background = "rgba(0,0,0,0.9)";
         overlay.style.display = "flex";
-      addMissedMedia(type, src);
         overlay.style.alignItems = "center";
         overlay.style.justifyContent = "center";
         overlay.style.zIndex = "300000"; // выше галереи
@@ -1145,6 +1143,7 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
