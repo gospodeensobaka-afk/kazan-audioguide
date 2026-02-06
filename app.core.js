@@ -1143,8 +1143,9 @@ function addMissedMedia(type, src, zoneId = null) {
 
 document.addEventListener("DOMContentLoaded", initMap);
 
-
+}
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
