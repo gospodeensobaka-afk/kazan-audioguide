@@ -541,11 +541,8 @@ const videoTimings = {
                    // === ZONES ===
                    checkZones(coords);
                
-                  // === PHOTO POINTS  ===
-zones.forEach(z => {
-    if (z.type !== "square" || !z.image) return;
-
-    const dist = distance(coords, [z.lat, z.lng]);
+                  // === PHOTO POINTS отключены ===
+// (квадраты больше не открывают фото автоматически)
 
     // Вход в зону
     if (!z.entered && dist <= 30) {
@@ -1156,5 +1153,6 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
 
