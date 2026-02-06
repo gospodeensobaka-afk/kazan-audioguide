@@ -41,13 +41,14 @@
   {
   "id": 6,
   "name": "Видео зона",
-  "lat": 55.827071,
-  "lng": 49.081481,
+  "lat": 55.827255,
+  "lng": 49.081818,
   "type": "media",
   "icon": "icons/camera.png",
   "video": "videos/10.MP4"
 }
 ]
+
 
 
 
