@@ -288,8 +288,7 @@ function setupPhotoTimingsForAudio(audio, zoneId) {
                --- PNG ---
                arrow=${arrowPngStatus}, icons=${iconsPngStatus}
                `;
-               }
-/* ========================================================
+               }/* ========================================================
                   ===================== COMPASS LOGIC =====================
                   ======================================================== */
                
@@ -541,11 +540,32 @@ const videoTimings = {
                
                    // === ZONES ===
                    checkZones(coords);
+               
+                   // === PHOTO POINTS ===
+                   zones.forEach(z => {
+                       if (z.type !== "square" || !z.image) return;
+               
+                       const dist = distance(coords, [z.lat, z.lng]);
+               
+                       if (!z.entered && dist <= 30) {
+                           z.entered = true;
+                           currentPointImage = z.image;
+                           togglePhotoBtn.style.display = "block";
+                           photoImage.src = z.image;
+                           togglePhotoBtn.classList.add("photo-btn-glow");
+                       }
+               
+                       if (z.entered && dist > 30) {
+                           z.entered = false;
+                           togglePhotoBtn.style.display = "none";
+                           togglePhotoBtn.classList.remove("photo-btn-glow");
+                       }
+                   });
+               
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
                    debugUpdate(src, ang);
-                 }
-             
+               }
                
                /* ========================================================
                   ================== SIMULATION STEP ======================
@@ -611,8 +631,7 @@ const videoTimings = {
                    });
                
                    setTimeout(simulateNextStep, 1200);
-               }
-/* ========================================================
+               }/* ========================================================
                   ======================= INIT MAP ========================
                   ======================================================== */
                
@@ -682,10 +701,11 @@ globalAudio.autoplay = true;
                    });
                }
                        simulationPoints = route.geometry.coordinates.map(c => [c[1], c[0]]);
-                                      /* ========================================================
-                          ====================== ROUTE SOURCES ====================
+               
+                       /* ========================================================
+                          ===================== ROUTE SOURCES ====================
                           ======================================================== */
-
+               
                        map.addSource("route-passed", {
                            type: "geojson",
                            data: {
@@ -693,7 +713,7 @@ globalAudio.autoplay = true;
                                geometry: { type: "LineString", coordinates: [] }
                            }
                        });
-
+               
                        map.addSource("route-remaining", {
                            type: "geojson",
                            data: {
@@ -704,11 +724,11 @@ globalAudio.autoplay = true;
                                }
                            }
                        });
-
+               
                        /* ========================================================
                           ====================== ROUTE LAYERS =====================
                           ======================================================== */
-
+               
                        map.addLayer({
                            id: "route-remaining-line",
                            type: "line",
@@ -716,7 +736,7 @@ globalAudio.autoplay = true;
                            layout: { "line-join": "round", "line-cap": "round" },
                            paint: { "line-width": 4, "line-color": "#007aff" }
                        });
-
+               
                        map.addLayer({
                            id: "route-passed-line",
                            type: "line",
@@ -724,70 +744,92 @@ globalAudio.autoplay = true;
                            layout: { "line-join": "round", "line-cap": "round" },
                            paint: { "line-width": 4, "line-color": "#333333" }
                        });
-
                        /* ========================================================
-                          ====================== AUDIO ZONES ======================
-                          ======================================================== */
+                  ====================== AUDIO ZONES ======================
+                  ======================================================== */
+               
+               const circleFeatures = [];
+               /* MEDIA ZONES (новые точки с иконкой и видео) */
+if (p.type === "media") {
+    const el = document.createElement("img");
+    el.src = p.icon;
+    el.style.width = "40px";
+    el.style.height = "40px";
+    el.style.cursor = "pointer";
 
-                       const circleFeatures = [];
+    el.onclick = () => {
+        if (p.photo) showFullscreenMedia(p.photo, "photo");
+        if (p.video) showFullscreenMedia(p.video, "video");
+    };
 
-                       points.forEach(p => {
-                           zones.push({
-                               id: p.id,
-                               name: p.name,
-                               lat: p.lat,
-                               lng: p.lng,
-                               radius: p.radius || 20,
-                               visited: false,
-                               entered: false,
-                               type: p.type,
-                               audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
-                               image: p.image || null,
-                               photo: p.photo || null,
-                               video: p.video || null,
-                               icon: p.icon || null
-                           });
-
-                           if (p.type === "audio") totalAudioZones++;
-
-                           if (p.type === "audio") {
-                               circleFeatures.push({
-                                   type: "Feature",
-                                   properties: { id: p.id, visited: false },
-                                   geometry: { type: "Point", coordinates: [p.lng, p.lat] }
-                               });
-                           }
-
-                           // === MEDIA ZONES (photo/video) ===
-                           if (p.type === "media") {
-                               const el = document.createElement("img");
-                               el.src = p.icon;
-                               el.style.width = "40px";
-                               el.style.height = "40px";
-                               el.style.cursor = "pointer";
-
-                               el.onclick = () => {
-                                   if (p.photo) showFullscreenMedia(p.photo, "photo");
-                                   if (p.video) showFullscreenMedia(p.video, "video");
-                               };
-
-                               new maplibregl.Marker({ element: el })
-                                   .setLngLat([p.lng, p.lat])
-                                   .addTo(map);
-                           }
+    new maplibregl.Marker({ element: el })
+        .setLngLat([p.lng, p.lat])
+        .addTo(map);
+}
+               points.forEach(p => {
+                   zones.push({
+                       id: p.id,
+                       name: p.name,
+                       lat: p.lat,
+                       lng: p.lng,
+                       radius: p.radius || 20,
+                       visited: false,
+                       entered: false,
+                       type: p.type,
+                       audio: p.type === "audio" ? `audio/${p.id}.mp3` : null,
+                       image: p.image || null
+                   });
+               
+                   if (p.type === "audio") totalAudioZones++;
+               
+                   if (p.type === "audio") {
+                       circleFeatures.push({
+                           type: "Feature",
+                           properties: { id: p.id, visited: false },
+                           geometry: { type: "Point", coordinates: [p.lng, p.lat] }
                        });
-
-                       updateProgress();
-
-                       /* ========================================================
-                          ==================== AUDIO CIRCLES ======================
-                          ======================================================== */
-
+                   }
+               
+                   /* PNG markers */
+                   if (p.type === "square") {
+                       const el = document.createElement("div");
+                       el.style.width = "40px";
+                       el.style.height = "40px";
+                       el.style.display = "flex";
+                       el.style.alignItems = "center";
+                       el.style.justifyContent = "center";
+               
+                       const img = document.createElement("img");
+                       img.src = `https://gospodeensobaka-afk.github.io/kazan-audioguide/icons/left.png`;
+                       img.style.width = "32px";
+                       img.style.height = "32px";
+               
+                       img.onload = () => { iconsPngStatus = "ok"; };
+                       img.onerror = () => {
+                           iconsPngStatus = "error";
+                           debugUpdate("none", null, "PNG_LOAD_FAIL");
+                       };
+               
+                       el.appendChild(img);
+               
+                       new maplibregl.Marker({ element: el })
+                           .setLngLat([p.lng, p.lat])
+                           .addTo(map);
+                   }
+               });
+               
+               // ← ВАЖНО: обновляем прогресс ПОСЛЕ цикла
+               updateProgress();
+               
+               /* ========================================================
+                  ==================== AUDIO CIRCLES ======================
+                  ======================================================== */
+               
                        map.addSource("audio-circles", {
                            type: "geojson",
                            data: { type: "FeatureCollection", features: circleFeatures }
                        });
-
+               
                        map.addLayer({
                            id: "audio-circles-layer",
                            type: "circle",
@@ -809,26 +851,112 @@ globalAudio.autoplay = true;
                                "circle-stroke-width": 2
                            }
                        });
-
-                       map.on("click", "audio-circles-layer", (e) => {
-                           const id = e.features[0].properties.id;
-                           simulateAudioZone(id);
-                       });
-
+                      // === SIMULATE AUDIO ZONE ON CLICK ===
+               map.on("click", "audio-circles-layer", (e) => {
+                   const id = e.features[0].properties.id;
+                   simulateAudioZone(id);
+               });
+               // FIX_PHYSICAL_AUDIO_RADIUS — визуальный радиус = физический радиус (метры → пиксели)
+               function updateAudioCircleRadius() {
+                   const zoom = map.getZoom();
+                   const center = map.getCenter();
+                   const lat = center.lat;
+               
+                   const metersPerPixel =
+                       156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
+               
+                   zones.forEach(z => {
+                       if (z.type === "audio") {
+                           const radiusPixels = z.radius / metersPerPixel;
+                           map.setPaintProperty("audio-circles-layer", "circle-radius", radiusPixels);
+                       }
+                   });
+               }
+               
+               map.on("zoom", updateAudioCircleRadius);
+               map.on("load", updateAudioCircleRadius);
                        /* ========================================================
-                          ===================== END MAP LOAD ======================
+                          ==================== PHOTO CIRCLES ======================
                           ======================================================== */
-
-                   }); // ← закрываем map.on("load")
-
-               } // ← закрываем initMap()
-
-               document.addEventListener("DOMContentLoaded", initMap);
-/* ========================================================
-   ================== GALLERY & CONTROLS ==================
-   ======================================================== */
-
-/* Кнопка "Не успеваю" + галерея */
+               
+                       const photoCircleFeatures = zones
+                           .filter(z => z.type === "square" && z.image)
+                           .map(z => ({
+                               type: "Feature",
+                               properties: { id: z.id },
+                               geometry: { type: "Point", coordinates: [z.lng, z.lat] }
+                           }));
+               
+                       map.addSource("photo-circles", {
+                           type: "geojson",
+                           data: { type: "FeatureCollection", features: photoCircleFeatures }
+                       });
+               
+                       map.addLayer({
+                           id: "photo-circles-layer",
+                           type: "circle",
+                           source: "photo-circles",
+                           paint: {
+                               "circle-radius": 30,
+                               "circle-color": "rgba(0,0,255,0.08)",
+                               "circle-stroke-color": "rgba(0,0,255,0.3)",
+                               "circle-stroke-width": 1
+                           }
+                       });
+               
+                       /* ========================================================
+                          ===================== DOM USER ARROW ===================
+                          ======================================================== */
+               arrowEl = document.createElement("div");
+               arrowEl.innerHTML = `
+               <svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+                 <polygon points="50,5 90,95 50,75 10,95" fill="currentColor"/>
+               </svg>
+               `;
+               
+               arrowEl.style.position = "absolute";
+               arrowEl.style.left = "50%";
+               arrowEl.style.top = "50%";
+               arrowEl.style.transformOrigin = "center center";
+               arrowEl.style.pointerEvents = "none";
+               arrowEl.style.zIndex = "9999";
+               arrowEl.style.color = "#00ff00"; // стартовый цвет
+               
+               applyArrowTransform();
+               
+               if (mapContainer) {
+                   mapContainer.appendChild(arrowEl);
+               } else {
+                   document.body.appendChild(arrowEl);
+               }
+                       /* ========================================================
+                          ====================== GPS TRACKING ====================
+                          ======================================================== */
+               
+                       if (navigator.geolocation) {
+                           navigator.geolocation.watchPosition(
+                               pos => {
+                                   if (!gpsActive) return;
+                                   moveMarker([pos.coords.latitude, pos.coords.longitude]);
+                               },
+                               err => console.log("GPS error:", err),
+                               { enableHighAccuracy: true }
+                           );
+                       }
+               
+                       /* ========================================================
+                          ===================== MAP MOVE UPDATE ==================
+                          ======================================================== */
+               
+                       map.on("move", handleMapMove);
+               
+                       console.log("Карта готова");
+                   });
+               
+                   /* ========================================================
+                  ========================= BUTTONS ======================
+                  ======================================================== */
+/* === NOT READY BUTTON + GALLERY === */
 const notReadyBtn = document.getElementById("notReadyBtn");
 const galleryOverlay = document.getElementById("galleryOverlay");
 
@@ -847,7 +975,6 @@ if (notReadyBtn && galleryOverlay) {
             thumb.style.display = "flex";
             thumb.style.alignItems = "center";
             thumb.style.justifyContent = "center";
-            thumb.style.margin = "4px";
 
             if (item.type === "photo") {
                 const img = document.createElement("img");
@@ -856,9 +983,7 @@ if (notReadyBtn && galleryOverlay) {
                 img.style.height = "100%";
                 img.style.objectFit = "cover";
                 thumb.appendChild(img);
-            }
-
-            if (item.type === "video") {
+            } else {
                 const icon = document.createElement("div");
                 icon.style.width = "0";
                 icon.style.height = "0";
@@ -869,9 +994,9 @@ if (notReadyBtn && galleryOverlay) {
             }
 
             thumb.onclick = () => {
-                galleryOverlay.classList.add("hidden");
-                window.__openedFromGallery = true;
-                showFullscreenMedia(item.src, item.type);
+                galleryOverlay.classList.add("hidden");   // прячем галерею
+                window.__openedFromGallery = true;        // флаг для showFullscreenMedia
+                showFullscreenMedia(item.src, item.type); // открываем медиа
             };
 
             galleryOverlay.appendChild(thumb);
@@ -888,33 +1013,70 @@ if (galleryOverlay) {
         }
     };
 }
-
-/* Старт экскурсии */
-const startBtn = document.getElementById("startTourBtn");
-if (startBtn) {
-    startBtn.onclick = () => {
-        tourStarted = true;
-        gpsActive = true;
-
-        const intro = new Audio("audio/start.mp3");
-        intro.play().catch(() => console.log("Не удалось проиграть start.mp3"));
-
-        startBtn.style.display = "none";
-    };
-}
-
-/* Симуляция */
-const simBtn = document.getElementById("simulate");
-if (simBtn) simBtn.onclick = startSimulation;
-
-/* Компас */
-const compassBtn = document.getElementById("enableCompass");
-if (compassBtn) compassBtn.onclick = startCompass;
-
-/* ========================================================
-   =============== FULLSCREEN MEDIA (PHOTO/VIDEO) =========
-   ======================================================== */
-
+               /* ========================================================
+                  ===================== START TOUR BTN ====================
+                  ======================================================== */
+               
+               /* START TOUR BTN */
+               const startBtn = document.getElementById("startTourBtn");
+               if (startBtn) {
+                   startBtn.onclick = () => {
+                       tourStarted = true;
+                       gpsActive = true;
+               
+                       const intro = new Audio("audio/start.mp3");
+                       intro.play().catch(() => console.log("Не удалось проиграть start.mp3"));
+               
+                       startBtn.style.display = "none";
+                   };
+               }
+               const simBtn = document.getElementById("simulate");
+               if (simBtn) simBtn.onclick = startSimulation;
+               
+               const audioBtn = document.getElementById("enableAudio");
+               if (audioBtn) {
+                   audioBtn.onclick = () => {
+                       const a = new Audio("audio/1.mp3");
+                       a.play()
+                           .then(() => audioEnabled = true)
+                           .catch(() => console.log("Ошибка разрешения аудио"));
+                   };
+               }
+               
+               const compassBtn = document.getElementById("enableCompass");
+               if (compassBtn) compassBtn.onclick = startCompass;
+               
+               // === PLACE PHOTO BUTTON RIGHT UNDER COMPASS BUTTON ===
+               if (compassBtn && togglePhotoBtn) {
+                   togglePhotoBtn.style.position = "absolute";
+                   togglePhotoBtn.style.top = "160px";   // ниже компаса
+                   togglePhotoBtn.style.left = "10px";
+                   togglePhotoBtn.style.zIndex = "10";
+                   togglePhotoBtn.style.display = "block";
+                   togglePhotoBtn.style.width = "140px";
+                   togglePhotoBtn.style.height = "32px";
+               
+                   togglePhotoBtn.textContent = "Фото";
+                   togglePhotoBtn.style.fontSize = "13px";
+                   togglePhotoBtn.style.whiteSpace = "nowrap";
+                   togglePhotoBtn.style.overflow = "hidden";
+                   togglePhotoBtn.style.textOverflow = "ellipsis";
+               
+                   compassBtn.insertAdjacentElement("afterend", togglePhotoBtn);
+               }
+                   /* ========================================================
+                      ===================== INIT DEBUG PANEL =================
+                      ======================================================== */
+               
+                   ensureSuperDebug();
+                   debugUpdate("init", 0, "INIT");
+               }
+               
+               /* ========================================================
+                  ====================== DOM EVENTS =======================
+                  ======================================================== */
+             /* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
+/* === FULLSCREEN MEDIA (PHOTO + VIDEO) === */
 function showFullscreenMedia(src, type) {
     let overlay = document.getElementById("fsMediaOverlay");
     let media = document.getElementById("fsMediaElement");
@@ -937,7 +1099,7 @@ function showFullscreenMedia(src, type) {
         overlay.style.display = "flex";
         overlay.style.alignItems = "center";
         overlay.style.justifyContent = "center";
-        overlay.style.zIndex = "300000";
+        overlay.style.zIndex = "300000"; // выше галереи
         document.body.appendChild(overlay);
 
         media = document.createElement("img");
@@ -997,7 +1159,7 @@ function showFullscreenMedia(src, type) {
         return;
     }
 
-    // авто‑закрытие (и фото, и видео)
+    // иначе — авто‑закрытие (и фото, и видео)
     setTimeout(() => {
         if (overlay && overlay.style.display !== "none") {
             overlay.style.display = "none";
@@ -1005,3 +1167,7 @@ function showFullscreenMedia(src, type) {
     }, 3000);
 }
 
+document.addEventListener("DOMContentLoaded", initMap);
+
+
+               /* ==================== END OF APP.JS ====================== */
