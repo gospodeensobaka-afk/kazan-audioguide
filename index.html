@@ -11,21 +11,55 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
 
-    
+    <script src="app.js" defer></script>
 </head>
 
 <body>
     <audio id="globalAudio" controls autoplay preload="auto"></audio>
 
+   
+
     <!-- Кнопка начала экскурсии -->
-    <button id="startTourBtn">Начать экскурсию</button>
+    <button id="startTourBtn"
+        style="
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            padding:16px 28px;
+            font-size:18px;
+            border-radius:12px;
+            background:#007aff;
+            color:white;
+            border:none;
+            z-index:999999;
+            pointer-events:auto;
+        ">
+        Начать экскурсию
+    </button>
 
     <!-- Прогресс -->
-    <div id="tourProgress">Пройдено: 0 из 0</div>
+    <div id="tourProgress"
+     style="
+        position:absolute;
+        top:10px;
+        right:10px;
+        background:rgba(0,0,0,0.55);
+        color:white;
+        padding:6px 12px;
+        border-radius:8px;
+        font-size:14px;
+        z-index:999999;
+        backdrop-filter:blur(4px);
+     ">
+        Пройдено: 0 из 0
+    </div>
 
     <div id="map"></div>
 
-    <!-- Фото оверлей -->
+    <!-- === ФОТО ОВЕРЛЕЙ И КНОПКА === -->
+   
+
     <div id="photoOverlay" class="photo-overlay hidden">
       <div class="photo-inner">
         <img id="photoImage" src="">
@@ -33,18 +67,51 @@
       </div>
     </div>
 
-    <!-- Галерея -->
-    <div id="galleryOverlay" class="hidden"></div>
-<div id="controlsRow">
-    <button id="simulate" class="control-btn">Симуляция</button>
-    <button id="enableCompass" class="control-btn">Компас</button>
-    <button id="notReadyBtn" class="control-btn">Не успеваю</button>
-</div>
+    <!-- === ГАЛЕРЕЯ ПРОПУЩЕННЫХ МЕДИА (СТОИТ ПРАВИЛЬНО!) === -->
+    <div id="galleryOverlay" class="hidden" style="
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 20px;
+        justify-content: center;
+        align-items: flex-start;
+        overflow-y: auto;
+        z-index: 200000;
+    "></div>
 
-  <script src="app.core.js"></script>
+    <!-- Кнопки управления -->
+   <button id="simulate" class="control-btn">Симуляция</button>
+
+    <button id="enableAudio" class="control-btn">
+        Включить звук
+    </button>
+
+    <button id="enableCompass" class="control-btn">
+        Включить компас
+    </button>
+
+    <!-- Кнопка "Не успеваю" -->
+   <button id="notReadyBtn" class="control-btn">
+        Не успеваю
+    </button>
+
+
+   <!-- 🔍 CORE + EXPERIMENTAL SCRIPTS -->
+<script src="app.core.js"></script>
 <script src="app.experimental.js"></script>
+    
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 
