@@ -541,24 +541,7 @@ const videoTimings = {
                    // === ZONES ===
                    checkZones(coords);
                
-                  // === PHOTO POINTS отключены ===
-// (квадраты больше не открывают фото автоматически)
-
-    // Вход в зону
-    if (!z.entered && dist <= 30) {
-        z.entered = true;
-        currentPointImage = z.image;
-        photoImage.src = z.image;
-        photoOverlay.classList.remove("hidden");
-    }
-
-    // Выход из зоны
-    if (z.entered && dist > 30) {
-        z.entered = false;
-        photoOverlay.classList.add("hidden");
-    }
-
-               
+                
                    const src = compassActive ? "compass" : "gps";
                    const ang = compassActive ? lastCorrectedAngle : gpsAngleLast;
                    debugUpdate(src, ang);
@@ -1153,6 +1136,7 @@ document.addEventListener("DOMContentLoaded", initMap);
 
 
                /* ==================== END OF APP.JS ====================== */
+
 
 
 
