@@ -2,9 +2,9 @@
    EXPERIMENT: extra photos for zone 5 (id:5)
    ============================================================ */
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("load", () => {
     if (!window.photoTimings) {
-        console.warn("[EXPERIMENT] photoTimings still not found");
+        console.warn("[EXPERIMENT] photoTimings still not found after load()");
         return;
     }
 
