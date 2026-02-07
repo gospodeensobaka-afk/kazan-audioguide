@@ -139,25 +139,7 @@ html, body {
     display: block;
     object-fit: contain;
 }
-#galleryOverlay {
-    position: fixed;
-    inset: auto;
-    width: 80%;
-    height: 25%;
-    top: 70%;
-    left: 10%;
-    border-radius: 20px;
-    background: rgba(0, 0, 0, 0.5);
 
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 20px;
-    justify-content: center;
-    align-items: flex-start;
-    overflow-y: auto;
-    z-index: 200000;
-}
 
 #enableCompass {
     position: absolute;
@@ -203,12 +185,37 @@ html, body {
         width: calc(100% - 20px);
     }
 
-    #galleryOverlay {
-        width: 90%;
-        height: 35%;
-        top: 60%;
-        left: 5%;
-    }
+   
+}
+/* === GALLERY OVERLAY — компактная нижняя панель === */
+#galleryOverlay {
+    position: fixed;
+    bottom: 10px;                 /* прибили к низу */
+    left: 50%;                    /* центрируем */
+    transform: translateX(-50%);  /* центрирование */
+
+    width: 70%;                   /* на 30% уже */
+    height: 18%;                  /* в 2 раза ниже чем было */
+
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 16px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;            /* фото в одну линию */
+    overflow-x: auto;             /* свайп влево-вправо */
+    overflow-y: hidden;           /* вертикаль отключена */
+
+    gap: 12px;
+    padding: 12px;
+
+    z-index: 200000;
+
+    scrollbar-width: none;        /* Firefox */
+}
+
+#galleryOverlay::-webkit-scrollbar {
+    display: none;                /* Chrome/Safari */
 }
 #uiEditorToggle {
     position: absolute;
@@ -222,6 +229,7 @@ html, body {
     font-size: 14px;
     z-index: 1000;
 }
+
 
 
 
