@@ -11,13 +11,13 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
 
-    <script src="app.js" defer></script>
+    <!-- CORE SCRIPTS (подключаем ОДИН раз!) -->
+    <script src="app.core.js"></script>
+    <script src="app.experimental.js"></script>
 </head>
 
 <body>
     <audio id="globalAudio" controls autoplay preload="auto"></audio>
-
-   
 
     <!-- Кнопка начала экскурсии -->
     <button id="startTourBtn" class="ui-editable"
@@ -57,9 +57,7 @@
 
     <div id="map"></div>
 
-    <!-- === ФОТО ОВЕРЛЕЙ И КНОПКА === -->
-   
-
+    <!-- Фото оверлей -->
     <div id="photoOverlay" class="photo-overlay hidden">
       <div class="photo-inner">
         <img id="photoImage" src="">
@@ -67,7 +65,7 @@
       </div>
     </div>
 
-    <!-- === ГАЛЕРЕЯ ПРОПУЩЕННЫХ МЕДИА (СТОИТ ПРАВИЛЬНО!) === -->
+    <!-- Галерея -->
     <div id="galleryOverlay" class="hidden" style="
         position: fixed;
         inset: 0;
@@ -83,41 +81,15 @@
     "></div>
 
     <!-- Кнопки управления -->
-  <!-- Кнопки управления -->
-<button id="simulate" class="control-btn ui-editable">Симуляция</button>
+    <button id="simulate" class="control-btn ui-editable">Симуляция</button>
+    <button id="enableAudio" class="control-btn ui-editable">Включить звук</button>
+    <button id="enableCompass" class="control-btn ui-editable">Включить компас</button>
+    <button id="notReadyBtn" class="control-btn ui-editable">Не успеваю</button>
 
-<button id="enableAudio" class="control-btn ui-editable">
-    Включить звук
-</button>
-
-<button id="enableCompass" class="control-btn ui-editable">
-    Включить компас
-</button>
-
-<!-- Кнопка "Не успеваю" -->
-<button id="notReadyBtn" class="control-btn ui-editable">
-    Не успеваю
-</button>
     <!-- Кнопка UI‑редактора -->
-<button id="uiEditorToggle" class="control-btn ui-editable" style="top:20px; right:20px;">
-    UI
-</button>
+    <button id="uiEditorToggle" class="control-btn ui-editable" style="top:20px; right:20px;">
+        UI
+    </button>
 
-
-   <!-- 🔍 CORE + EXPERIMENTAL SCRIPTS -->
-<script src="app.core.js"></script>
-<script src="app.experimental.js"></script>
-    
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
