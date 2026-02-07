@@ -158,12 +158,7 @@ html, body {
     overflow-y: auto;
     z-index: 200000;
 }
-#enableAudio {
-    position: absolute;
-    top: 60px;
-    right: 2px;
-    z-index: 10;
-}
+
 #enableCompass {
     position: absolute;
     top: 53px;
@@ -227,6 +222,7 @@ html, body {
     font-size: 14px;
     z-index: 1000;
 }
+
 
 
 
