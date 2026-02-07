@@ -1120,7 +1120,7 @@ let offsetY = 0;
 function enableUIEditor() {
     uiEditMode = true;
 
-    document.querySelectorAll(".ui-btn").forEach(btn => {
+    document.querySelectorAll(".ui-editable").forEach(btn => {
         btn.classList.add("edit-mode");
 
         btn.onmousedown = e => {
@@ -1148,7 +1148,7 @@ function enableUIEditor() {
 
 function disableUIEditor() {
     uiEditMode = false;
-    document.querySelectorAll(".ui-btn").forEach(btn => {
+    document.querySelectorAll(".ui-editable").forEach(btn => {
         btn.classList.remove("edit-mode");
         btn.onmousedown = null;
     });
@@ -1164,7 +1164,7 @@ function saveUIButtonPosition(btn) {
 }
 
 function loadUIButtonPositions() {
-    document.querySelectorAll(".ui-btn").forEach(btn => {
+   document.querySelectorAll(".ui-editable").forEach(btn => {
         const saved = localStorage.getItem("ui-pos-" + btn.id);
         if (saved) {
             const pos = JSON.parse(saved);
@@ -1177,5 +1177,15 @@ function loadUIButtonPositions() {
 document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
+/* === UI EDITOR TOGGLE BUTTON === */
+document.getElementById("uiEditorToggle").onclick = () => {
+    if (!uiEditMode) {
+        enableUIEditor();
+    } else {
+        disableUIEditor();
+    }
+};
+
 /* ==================== END OF APP.JS ====================== */
+
 
