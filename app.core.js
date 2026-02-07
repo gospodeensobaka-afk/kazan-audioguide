@@ -1112,7 +1112,70 @@ if (type === "photo") {
    }, 3000);
     }
 }
+let uiEditMode = false;
+let currentDrag = null;
+let offsetX = 0;
+let offsetY = 0;
 
+function enableUIEditor() {
+    uiEditMode = true;
+
+    document.querySelectorAll(".ui-btn").forEach(btn => {
+        btn.classList.add("edit-mode");
+
+        btn.onmousedown = e => {
+            if (!uiEditMode) return;
+            currentDrag = btn;
+            offsetX = e.clientX - btn.offsetLeft;
+            offsetY = e.clientY - btn.offsetTop;
+        };
+    });
+
+    document.onmousemove = e => {
+        if (currentDrag && uiEditMode) {
+            currentDrag.style.left = (e.clientX - offsetX) + "px";
+            currentDrag.style.top = (e.clientY - offsetY) + "px";
+        }
+    };
+
+    document.onmouseup = () => {
+        if (currentDrag) {
+            saveUIButtonPosition(currentDrag);
+        }
+        currentDrag = null;
+    };
+}
+
+function disableUIEditor() {
+    uiEditMode = false;
+    document.querySelectorAll(".ui-btn").forEach(btn => {
+        btn.classList.remove("edit-mode");
+        btn.onmousedown = null;
+    });
+}
+
+function saveUIButtonPosition(btn) {
+    const id = btn.id;
+    const pos = {
+        left: btn.style.left,
+        top: btn.style.top
+    };
+    localStorage.setItem("ui-pos-" + id, JSON.stringify(pos));
+}
+
+function loadUIButtonPositions() {
+    document.querySelectorAll(".ui-btn").forEach(btn => {
+        const saved = localStorage.getItem("ui-pos-" + btn.id);
+        if (saved) {
+            const pos = JSON.parse(saved);
+            btn.style.left = pos.left;
+            btn.style.top = pos.top;
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
