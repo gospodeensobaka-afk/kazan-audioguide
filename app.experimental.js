@@ -1,22 +1,25 @@
 /* ============================================================
-   EXPERIMENT: extra photos for zone 5 (id:5)
+   EXPERIMENT: show test photos once to fill gallery
    ============================================================ */
 
-window.addEventListener("load", () => {
-    if (!window.photoTimings) {
-        console.warn("[EXPERIMENT] photoTimings still not found after load()");
-        return;
+function tryShowTestPhotos() {
+    if (typeof window.showFullscreenMedia !== "function") {
+        console.log("[EXPERIMENT] waiting for core...");
+        return false;
     }
 
-    const key = "audio/5.mp3";
+    // Показываем фото с задержкой, чтобы не наложились друг на друга
+    setTimeout(() => showFullscreenMedia("photos/5.jpg", "photo"), 500);
+    setTimeout(() => showFullscreenMedia("photos/6.jpg", "photo"), 1500);
+    setTimeout(() => showFullscreenMedia("photos/7.jpg", "photo"), 2500);
 
-    if (!photoTimings[key]) {
-        photoTimings[key] = {};
+    console.log("[EXPERIMENT] test photos shown");
+    return true;
+}
+
+// Пытаемся каждые 100 мс, пока core не загрузится
+const exp = setInterval(() => {
+    if (tryShowTestPhotos()) {
+        clearInterval(exp);
     }
-
-    photoTimings[key][4] = "photos/5.jpg";
-    photoTimings[key][5] = "photos/6.jpg";
-    photoTimings[key][6] = "photos/7.jpg";
-
-    console.log("[EXPERIMENT] extra photos added for", key, photoTimings[key]);
-});
+}, 100);
