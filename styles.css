@@ -15,14 +15,13 @@ html, body {
 
 #simulate {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 95px;
+    left: 16px;
     padding: 10px 14px;
     background: white;
     border-radius: 6px;
     cursor: pointer;
-    z-index: 10;
-
+    z-index: 1000;
 }
 .photo-btn {
   position: absolute;
@@ -107,17 +106,16 @@ html, body {
     text-align: center;
 }
 #notReadyBtn {
-    
     position: absolute;
-    top: 210px; /* под кнопкой компаса */
-    left: 10px;
+    top: 140px;
+    left: 16px;
     padding: 10px 14px;
     background: white;
     border-radius: 6px;
     cursor: pointer;
-    z-index: 1000;
     border: none;
     font-size: 14px;
+    z-index: 1000;
 }
 /* === AUDIO WRAPPER (фиксированная позиция и высота) === */
 #audioWrapper {
@@ -168,9 +166,15 @@ html, body {
 }
 #enableCompass {
     position: absolute;
-    top: 85px;
-    right: 1px;
-    z-index: 10;
+    top: 53px;
+    left: 13px;
+    padding: 10px 14px;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+    z-index: 1000;
 }
 .control-btn {
     position: absolute;
@@ -211,16 +215,19 @@ html, body {
         left: 5%;
     }
 }
-.ui-editable {
-    position: absolute !important;
-    cursor: move !important;
-    user-select: none !important;
-    z-index: 999999 !important;
-
-    width: max-content;
-    max-width: 160px;
-    white-space: nowrap;
+#uiEditorToggle {
+    position: absolute;
+    top: 184px;
+    left: 17px;
+    padding: 10px 14px;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+    z-index: 1000;
 }
+
 
 
 
