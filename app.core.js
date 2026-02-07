@@ -1174,18 +1174,21 @@ function loadUIButtonPositions() {
     });
 }
 
+/* === UI EDITOR TOGGLE BUTTON === */
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("uiEditorToggle").onclick = () => {
+        if (!uiEditMode) enableUIEditor();
+        else disableUIEditor();
+    };
+});
+
+/* === LOAD POSITIONS === */
 document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
+
+/* === INIT MAP === */
 document.addEventListener("DOMContentLoaded", initMap);
 
-/* === UI EDITOR TOGGLE BUTTON === */
-document.getElementById("uiEditorToggle").onclick = () => {
-    if (!uiEditMode) {
-        enableUIEditor();
-    } else {
-        disableUIEditor();
-    }
-};
-
 /* ==================== END OF APP.JS ====================== */
+
 
 
