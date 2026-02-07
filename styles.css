@@ -96,8 +96,15 @@ html, body {
 }
 /* === FIX START TOUR BUTTON CLICK === */
 #startTourBtn {
-    position: absolute;
-    z-index: 5000;
+    padding: 14px 22px;
+    font-size: 18px;
+    border-radius: 12px;
+    background: #007aff;
+    color: white;
+    border: none;
+    white-space: nowrap; /* текст не переносится */
+    max-width: 80%; /* чтобы не вылезал за экран */
+    text-align: center;
 }
 #notReadyBtn {
     
@@ -201,6 +208,7 @@ html, body {
     max-width: 160px;
     white-space: nowrap;
 }
+
 
 
 
