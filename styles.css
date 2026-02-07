@@ -160,15 +160,13 @@ html, body {
     font-size: 14px;
     z-index: 1000;
 }
-#simulate { top: 10px; left: 10px; }
-#enableAudio { top: 60px; left: 10px; }
-#enableCompass { top: 110px; left: 10px; }
-#notReadyBtn { top: 160px; left: 10px; }
+
 
 .ui-editable {
-    position: absolute;
-    cursor: move;
-    user-select: none;
+    position: absolute !important;
+    cursor: move !important;
+    user-select: none !important;
+    z-index: 999999 !important;
 }
 .ui-editable.edit-mode {
     outline: 2px dashed #00ff00;
@@ -194,4 +192,5 @@ html, body {
         left: 5%;
     }
 }
+
 
