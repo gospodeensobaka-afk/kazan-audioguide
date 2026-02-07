@@ -119,14 +119,27 @@ html, body {
     border: none;
     font-size: 14px;
 }
-#globalAudio {
+/* === AUDIO WRAPPER (фиксированная позиция и высота) === */
+#audioWrapper {
     position: absolute;
     top: 10px;
     left: 10px;
-    right: 120px; /* чтобы не наезжать на прогресс */
-    width: auto;
-    max-width: calc(100% - 140px); /* адаптивно */
+
+    height: 36px; /* одинаковая высота с прогрессом */
+    width: calc(100% - 140px); /* место под прогресс справа */
+
+    display: flex;
+    align-items: center;
+
     z-index: 999999;
+}
+
+/* === AUDIO ELEMENT === */
+#globalAudio {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
 }
 #galleryOverlay {
     position: fixed;
@@ -208,6 +221,7 @@ html, body {
     max-width: 160px;
     white-space: nowrap;
 }
+
 
 
 
