@@ -174,10 +174,7 @@ html, body {
 
 @media (max-width: 600px) {
 
-    #simulate { top: 10px; left: 10px; }
-    #enableAudio { top: 60px; left: 10px; }
-    #enableCompass { top: 110px; left: 10px; }
-    #notReadyBtn { top: 160px; left: 10px; }
+    
 
     #globalAudio {
         top: 210px;
@@ -191,6 +188,16 @@ html, body {
         top: 60%;
         left: 5%;
     }
+}
+.ui-editable {
+    position: absolute !important;
+    cursor: move !important;
+    user-select: none !important;
+    z-index: 999999 !important;
+
+    width: max-content;
+    max-width: 160px;
+    white-space: nowrap;
 }
 
 
