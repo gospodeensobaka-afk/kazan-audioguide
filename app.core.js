@@ -995,7 +995,7 @@ function openMediaMenu6() {
 
 requestAnimationFrame(() => {
     sheet.style.transform = "translateY(0)";
-});
+}
   
 function closeMediaMenu6() {
     const overlay = document.getElementById("mediaMenu6");
@@ -1348,6 +1348,7 @@ document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
