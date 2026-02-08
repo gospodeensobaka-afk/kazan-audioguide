@@ -1089,7 +1089,7 @@ function showPhotoPreview6() {
     preview.innerHTML = "";
     preview.style.display = "flex";
 
-    const photos = ["photos/p6.jpg", "photos/p7.jpg", "photos/p8.jpg"];
+   const photos = ["images/p6.jpg", "images/p7.jpg", "images/p8.jpg"];
 
     photos.forEach(src => {
         const box = document.createElement("div");
@@ -1342,6 +1342,7 @@ document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
