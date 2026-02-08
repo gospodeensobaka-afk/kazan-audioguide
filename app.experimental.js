@@ -1,7 +1,13 @@
 /* ============================================================
    ========== EXPERIMENT: MEDIA MENU FOR ZONE ID6 ==============
    ============================================================ */
+console.log("EXPERIMENT LOADED");
 
+// Ждём, пока карта загрузится
+document.addEventListener("map-ready", () => {
+    console.log("EXPERIMENT: map-ready received");
+    initMediaMenuExperiment();
+});
 (function() {
 
     // Ждём, пока карта и точки будут готовы
