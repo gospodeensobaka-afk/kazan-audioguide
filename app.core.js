@@ -914,7 +914,7 @@ globalAudio.autoplay = true;
                           ======================================================== */
                
                        map.on("move", handleMapMove);
-               
+               document.dispatchEvent(new Event("map-ready"));
                        console.log("Карта готова");
                    });
                
@@ -1205,6 +1205,7 @@ document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
