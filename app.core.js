@@ -991,10 +991,13 @@ function openMediaMenu6() {
     if (!overlay) createMediaMenu6();
     overlay = document.getElementById("mediaMenu6");
 
-   overlay.style.display = "flex";
+    overlay.style.display = "flex";
 
-requestAnimationFrame(() => {
-    sheet.style.transform = "translateY(0)";
+    const sheet = document.getElementById("mediaMenu6Sheet");
+
+    requestAnimationFrame(() => {
+        sheet.style.transform = "translateY(0)";
+    });
 }
   
 function closeMediaMenu6() {
@@ -1348,6 +1351,7 @@ document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
