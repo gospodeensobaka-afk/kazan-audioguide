@@ -991,12 +991,12 @@ function openMediaMenu6() {
     if (!overlay) createMediaMenu6();
     overlay = document.getElementById("mediaMenu6");
 
-    overlay.style.display = "flex";
+   overlay.style.display = "flex";
 
-    const sheet = document.getElementById("mediaMenu6Sheet");
+requestAnimationFrame(() => {
     sheet.style.transform = "translateY(0)";
-}
-
+});
+  
 function closeMediaMenu6() {
     const overlay = document.getElementById("mediaMenu6");
     const sheet = document.getElementById("mediaMenu6Sheet");
@@ -1025,7 +1025,8 @@ function createMediaMenu6() {
     const sheet = document.createElement("div");
     sheet.id = "mediaMenu6Sheet";
     sheet.style.width = "100%";
-    sheet.style.background = "#fff";
+    sheet.style.background = "#1c1c1e"; // графитовый премиум
+sheet.style.boxShadow = "0 -4px 20px rgba(0,0,0,0.4)";
     sheet.style.borderTopLeftRadius = "16px";
     sheet.style.borderTopRightRadius = "16px";
     sheet.style.padding = "20px";
@@ -1047,8 +1048,10 @@ function createMediaMenu6() {
     videoBtn.style.marginBottom = "10px";
     videoBtn.style.borderRadius = "10px";
     videoBtn.style.border = "none";
-    videoBtn.style.background = "#007aff";
-    videoBtn.style.color = "#fff";
+    videoBtn.style.background = "linear-gradient(180deg, #0a84ff 0%, #0066cc 100%)";
+videoBtn.style.color = "#ffffff";
+videoBtn.style.fontWeight = "500";
+videoBtn.style.border = "none";
     videoBtn.onclick = () => {
         closeMediaMenu6();
         showFullscreenMedia("videos/10.MP4", "video");
@@ -1062,8 +1065,10 @@ function createMediaMenu6() {
     photoBtn.style.fontSize = "16px";
     photoBtn.style.borderRadius = "10px";
     photoBtn.style.border = "none";
-    photoBtn.style.background = "#34c759";
-    photoBtn.style.color = "#fff";
+    photoBtn.style.background = "linear-gradient(180deg, #30d158 0%, #1fa347 100%)";
+photoBtn.style.color = "#ffffff";
+photoBtn.style.fontWeight = "500";
+photoBtn.style.border = "none";
     photoBtn.onclick = () => showPhotoPreview6();
     sheet.appendChild(photoBtn);
 
@@ -1099,6 +1104,7 @@ function showPhotoPreview6() {
         box.style.overflow = "hidden";
         box.style.cursor = "pointer";
         box.style.background = "#000";
+      box.style.border = "1px solid rgba(255,255,255,0.1)";
 
         const img = document.createElement("img");
         img.src = src;
@@ -1342,6 +1348,7 @@ document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
