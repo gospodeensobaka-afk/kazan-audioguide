@@ -38,6 +38,8 @@
                let compassUpdates = 0;
                /* === MISSED MEDIA STORAGE === */
 let missedMedia = []; // { type: "photo"|"video", src: "..." }
+// === EXPERIMENT: track current zone for gallery ===
+let currentZoneId = null;
                let gpsAngleLast = null;
                let gpsUpdates = 0;
                
@@ -127,6 +129,8 @@ let missedMedia = []; // { type: "photo"|"video", src: "..." }
                   ======================================================== */
                
             function playZoneAudio(src, id) {
+                  // === EXPERIMENT: remember which zone is active ===
+    currentZoneId = id;
     if (!audioEnabled) audioEnabled = true;
 
     globalAudio.src = src;
@@ -1026,10 +1030,22 @@ function showFullscreenMedia(src, type) {
     let media = document.getElementById("fsMediaElement");
     let closeBtn = document.getElementById("fsMediaClose");
 
-    // не дублируем медиа в галерее
-    if (!missedMedia.some(m => m.src === src)) {
-        missedMedia.push({ type, src });
-    }
+   // === EXPERIMENT: store media with zoneId and keep only last 3 zones ===
+if (!missedMedia.some(m => m.src === src)) {
+
+    // добавляем медиа с привязкой к зоне
+    missedMedia.push({
+        zoneId: currentZoneId,
+        type,
+        src
+    });
+
+    // определяем последние 3 зоны
+    const lastZones = [...new Set(missedMedia.map(m => m.zoneId))].slice(-3);
+
+    // оставляем только медиа из последних 3 зон
+    missedMedia = missedMedia.filter(m => lastZones.includes(m.zoneId));
+}
 
     if (!overlay) {
         overlay = document.createElement("div");
@@ -1189,6 +1205,7 @@ document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
