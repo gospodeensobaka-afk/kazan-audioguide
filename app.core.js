@@ -745,10 +745,14 @@ globalAudio.autoplay = true;
         el.style.height = "40px";
         el.style.cursor = "pointer";
 
-        el.onclick = () => {
-            if (p.photo) showFullscreenMedia(p.photo, "photo");
-            if (p.video) showFullscreenMedia(p.video, "video");
-        };
+       if (p.id === 6) {
+    el.onclick = () => openMediaMenu6();
+} else {
+    el.onclick = () => {
+        if (p.photo) showFullscreenMedia(p.photo, "photo");
+        if (p.video) showFullscreenMedia(p.video, "video");
+    };
+};
 
         new maplibregl.Marker({ element: el })
             .setLngLat([p.lng, p.lat])
@@ -978,6 +982,139 @@ if (galleryOverlay) {
         }
     };
 }
+                     /* ========================================================
+   ========== MEDIA MENU FOR ZONE 6 (CORE VERSION) =========
+   ======================================================== */
+
+function openMediaMenu6() {
+    let overlay = document.getElementById("mediaMenu6");
+    if (!overlay) createMediaMenu6();
+    overlay = document.getElementById("mediaMenu6");
+
+    overlay.style.display = "flex";
+
+    const sheet = document.getElementById("mediaMenu6Sheet");
+    sheet.style.transform = "translateY(0)";
+}
+
+function closeMediaMenu6() {
+    const overlay = document.getElementById("mediaMenu6");
+    const sheet = document.getElementById("mediaMenu6Sheet");
+
+    sheet.style.transform = "translateY(100%)";
+
+    setTimeout(() => {
+        overlay.style.display = "none";
+    }, 250);
+}
+
+function createMediaMenu6() {
+    const overlay = document.createElement("div");
+    overlay.id = "mediaMenu6";
+    overlay.style.position = "fixed";
+    overlay.style.left = "0";
+    overlay.style.top = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.background = "rgba(0,0,0,0.4)";
+    overlay.style.display = "none";
+    overlay.style.zIndex = "200000";
+    overlay.style.alignItems = "flex-end";
+    overlay.style.justifyContent = "center";
+
+    const sheet = document.createElement("div");
+    sheet.id = "mediaMenu6Sheet";
+    sheet.style.width = "100%";
+    sheet.style.background = "#fff";
+    sheet.style.borderTopLeftRadius = "16px";
+    sheet.style.borderTopRightRadius = "16px";
+    sheet.style.padding = "20px";
+    sheet.style.boxSizing = "border-box";
+    sheet.style.transform = "translateY(100%)";
+    sheet.style.transition = "transform 0.25s ease-out";
+
+    const title = document.createElement("div");
+    title.textContent = "Сувенирный магазин, чак‑чак стоит 300р";
+    title.style.fontSize = "18px";
+    title.style.marginBottom = "16px";
+    sheet.appendChild(title);
+
+    const videoBtn = document.createElement("button");
+    videoBtn.textContent = "Видео";
+    videoBtn.style.width = "100%";
+    videoBtn.style.padding = "14px";
+    videoBtn.style.fontSize = "16px";
+    videoBtn.style.marginBottom = "10px";
+    videoBtn.style.borderRadius = "10px";
+    videoBtn.style.border = "none";
+    videoBtn.style.background = "#007aff";
+    videoBtn.style.color = "#fff";
+    videoBtn.onclick = () => {
+        closeMediaMenu6();
+        showFullscreenMedia("videos/10.MP4", "video");
+    };
+    sheet.appendChild(videoBtn);
+
+    const photoBtn = document.createElement("button");
+    photoBtn.textContent = "Фото";
+    photoBtn.style.width = "100%";
+    photoBtn.style.padding = "14px";
+    photoBtn.style.fontSize = "16px";
+    photoBtn.style.borderRadius = "10px";
+    photoBtn.style.border = "none";
+    photoBtn.style.background = "#34c759";
+    photoBtn.style.color = "#fff";
+    photoBtn.onclick = () => showPhotoPreview6();
+    sheet.appendChild(photoBtn);
+
+    const preview = document.createElement("div");
+    preview.id = "mediaMenu6Preview";
+    preview.style.display = "none";
+    preview.style.marginTop = "16px";
+    preview.style.display = "flex";
+    preview.style.gap = "10px";
+    preview.style.justifyContent = "center";
+    sheet.appendChild(preview);
+
+    overlay.appendChild(sheet);
+    document.body.appendChild(overlay);
+
+    overlay.onclick = e => {
+        if (e.target === overlay) closeMediaMenu6();
+    };
+}
+
+function showPhotoPreview6() {
+    const preview = document.getElementById("mediaMenu6Preview");
+    preview.innerHTML = "";
+    preview.style.display = "flex";
+
+    const photos = ["photos/p6.jpg", "photos/p7.jpg", "photos/p8.jpg"];
+
+    photos.forEach(src => {
+        const box = document.createElement("div");
+        box.style.width = "80px";
+        box.style.height = "80px";
+        box.style.borderRadius = "10px";
+        box.style.overflow = "hidden";
+        box.style.cursor = "pointer";
+        box.style.background = "#000";
+
+        const img = document.createElement("img");
+        img.src = src;
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "cover";
+
+        box.appendChild(img);
+        box.onclick = () => {
+            closeMediaMenu6();
+            showFullscreenMedia(src, "photo");
+        };
+
+        preview.appendChild(box);
+    });
+}
                /* ========================================================
                   ===================== START TOUR BTN ====================
                   ======================================================== */
@@ -1205,6 +1342,7 @@ document.addEventListener("DOMContentLoaded", loadUIButtonPositions);
 document.addEventListener("DOMContentLoaded", initMap);
 
 /* ==================== END OF APP.JS ====================== */
+
 
 
 
